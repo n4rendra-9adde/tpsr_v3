@@ -9,6 +9,8 @@ var ROUTE_ROLE_MAP = {
   compliance: ['auditor', 'admin'],
   sboms: ['security', 'auditor', 'admin'],
   approve: ['security', 'admin'],
+  activate: ['security', 'admin'],
+  supersede: ['security', 'admin'],
 };
 
 function authenticateHeaders(req, res, next) {

@@ -16,6 +16,8 @@ var historyRoute = require('./routes/history');
 var complianceReportRoute = require('./routes/compliance-report');
 var sbomsRoute = require('./routes/sboms');
 var approveRoute = require('./routes/approve');
+var activateRoute = require('./routes/activate');
+var supersedeRoute = require('./routes/supersede');
 
 
 // Startup environment validation
@@ -91,6 +93,12 @@ function getAllowedRoles(method, reqPath) {
   if (method === 'POST' && reqPath === '/approve') {
     return auth.ROUTE_ROLE_MAP.approve;
   }
+  if (method === 'POST' && reqPath === '/activate') {
+    return auth.ROUTE_ROLE_MAP.activate;
+  }
+  if (method === 'POST' && reqPath === '/supersede') {
+    return auth.ROUTE_ROLE_MAP.supersede;
+  }
   return null;
 }
 
@@ -111,6 +119,8 @@ app.use('/api', historyRoute);
 app.use('/api', complianceReportRoute);
 app.use('/api', sbomsRoute);
 app.use('/api', approveRoute);
+app.use('/api', activateRoute);
+app.use('/api', supersedeRoute);
 
 
 app.use(function (req, res) {

@@ -96,9 +96,12 @@ Step 2.4A — Enhance Jenkins submission to pass richer provenance fields
 Step 2.4A.1 — Runtime validate Jenkins richer provenance fields
 Step 2.4B — Add Requested By and Job Name to dashboard SBOM list
 Step 2.5A — Add minimal SBOM lifecycle approval flow
+Step 2.5A.1 — Runtime validate SBOM lifecycle approval flow
+Step 2.7A — Basic performance measurements for TPSR
+Step 2.7B — Add dashboard Approve button with role-aware access control
 
 ### CURRENT STEP
-Step 2.5A.1 — Runtime validate SBOM lifecycle approval flow
+Waiting for next Phase-2 instructions
 ## Key Architecture Decisions
 Blockchain — Hyperledger Fabric 2.5 with Raft consensus
 Organizations — Vendor, Security Team, Auditor

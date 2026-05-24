@@ -17,6 +17,13 @@ const VERIFY_ROLE = (process.env.REACT_APP_VERIFY_ROLE || '').trim() || 'auditor
 const HISTORY_ROLE = (process.env.REACT_APP_HISTORY_ROLE || '').trim() || 'auditor';
 const COMPLIANCE_ROLE = (process.env.REACT_APP_COMPLIANCE_ROLE || '').trim() || 'admin';
 
+const DEMO_IDENTITIES = [
+  { label: 'Developer', userId: 'developer-user', role: 'developer' },
+  { label: 'Security', userId: 'security-user', role: 'security' },
+  { label: 'Auditor', userId: 'auditor-user', role: 'auditor' },
+  { label: 'Admin', userId: 'admin-user', role: 'admin' },
+];
+
 // Detect if any defaults are still active
 const _usingDefaults =
   USER_ID === 'dashboard-user' ||
@@ -25,7 +32,7 @@ const _usingDefaults =
   HISTORY_ROLE === 'auditor' ||
   COMPLIANCE_ROLE === 'admin';
 
-function SBOMListPage() {
+function SBOMListPage({ selectedIdentity }) {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(false);
@@ -38,14 +45,14 @@ function SBOMListPage() {
 
   useEffect(() => {
     fetchSboms();
-  }, []);
+  }, [selectedIdentity]);
 
   const fetchSboms = async () => {
     setLoading(true);
     setErrorMsg('');
     try {
       const response = await axios.get(`${API_BASE_URL}/sboms`, {
-        headers: { 'x-user-id': USER_ID, 'x-user-role': SBOMS_ROLE }
+        headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role }
       });
       const rawSboms = response.data.sboms || [];
       const normalizedSboms = rawSboms.map(item => ({
@@ -81,7 +88,7 @@ function SBOMListPage() {
 
   const fetchDocument = async (sbomID) => {
     const response = await axios.get(`${API_BASE_URL}/sboms/${encodeURIComponent(sbomID)}/document`, {
-      headers: { 'x-user-id': USER_ID, 'x-user-role': SBOMS_ROLE }
+      headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role }
     });
     return response.data;
   };
@@ -118,7 +125,7 @@ function SBOMListPage() {
     try {
       setActionLoading(`${record.sbomID}-download`);
       const response = await axios.get(`${API_BASE_URL}/sboms/${encodeURIComponent(record.sbomID)}/document?download=true`, {
-        headers: { 'x-user-id': USER_ID, 'x-user-role': SBOMS_ROLE },
+        headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role },
         responseType: 'blob'
       });
       
@@ -145,6 +152,84 @@ function SBOMListPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleApprove = (record) => {
+    Modal.confirm({
+      title: 'Approve SBOM?',
+      content: 'This will change the SBOM lifecycle status from PENDING to APPROVED.',
+      onOk: async () => {
+        try {
+          setActionLoading(`${record.sbomID}-approve`);
+          await axios.post(`${API_BASE_URL}/approve`, { sbomID: record.sbomID }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': selectedIdentity.userId,
+              'x-user-role': selectedIdentity.role
+            }
+          });
+          message.success('SBOM approved successfully');
+          await fetchSboms();
+        } catch (err) {
+          const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to approve SBOM';
+          message.error(msg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
+  };
+
+  const handleActivate = (record) => {
+    Modal.confirm({
+      title: 'Activate SBOM?',
+      content: 'This will change the SBOM lifecycle status from APPROVED to ACTIVE.',
+      onOk: async () => {
+        try {
+          setActionLoading(`${record.sbomID}-activate`);
+          await axios.post(`${API_BASE_URL}/activate`, { sbomID: record.sbomID }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': selectedIdentity.userId,
+              'x-user-role': selectedIdentity.role
+            }
+          });
+          message.success('SBOM activated successfully');
+          await fetchSboms();
+        } catch (err) {
+          const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to activate SBOM';
+          message.error(msg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
+  };
+
+  const handleSupersede = (record) => {
+    Modal.confirm({
+      title: 'Supersede SBOM?',
+      content: 'This will change the SBOM lifecycle status to SUPERSEDED.',
+      onOk: async () => {
+        try {
+          setActionLoading(`${record.sbomID}-supersede`);
+          await axios.post(`${API_BASE_URL}/supersede`, { sbomID: record.sbomID }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': selectedIdentity.userId,
+              'x-user-role': selectedIdentity.role
+            }
+          });
+          message.success('SBOM superseded successfully');
+          await fetchSboms();
+        } catch (err) {
+          const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to supersede SBOM';
+          message.error(msg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
   };
 
   const total = sboms.length;
@@ -183,6 +268,22 @@ function SBOMListPage() {
           <Button size="small" loading={actionLoading === `${record.sbomID}-view`} onClick={() => handleView(record)}>View</Button>
           <Button size="small" loading={actionLoading === `${record.sbomID}-copy`} onClick={() => handleCopy(record)}>Copy</Button>
           <Button size="small" loading={actionLoading === `${record.sbomID}-download`} onClick={() => handleDownload(record)}>Download</Button>
+          {(selectedIdentity.role === 'security' || selectedIdentity.role === 'admin') && (
+            <>
+              {record.status === 'PENDING' && (
+                <Button size="small" type="primary" loading={actionLoading === `${record.sbomID}-approve`} onClick={() => handleApprove(record)}>Approve</Button>
+              )}
+              {record.status === 'APPROVED' && (
+                <>
+                  <Button size="small" type="primary" loading={actionLoading === `${record.sbomID}-activate`} onClick={() => handleActivate(record)}>Activate</Button>
+                  <Button size="small" danger loading={actionLoading === `${record.sbomID}-supersede`} onClick={() => handleSupersede(record)}>Supersede</Button>
+                </>
+              )}
+              {record.status === 'ACTIVE' && (
+                <Button size="small" danger loading={actionLoading === `${record.sbomID}-supersede`} onClick={() => handleSupersede(record)}>Supersede</Button>
+              )}
+            </>
+          )}
         </Space>
       ),
     },
@@ -277,7 +378,7 @@ function SBOMListPage() {
   );
 }
 
-function VerifyPage() {
+function VerifyPage({ selectedIdentity }) {
   const [sbomID, setSbomId] = useState('');
   const [sbomContent, setSbomContent] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -301,7 +402,7 @@ function VerifyPage() {
       const response = await axios.post(
         `${API_BASE_URL}/verify`,
         { sbomID: idTrimmed, sbom: contentTrimmed },
-        { headers: { 'x-user-id': USER_ID, 'x-user-role': VERIFY_ROLE } }
+        { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
       );
       setResult(response.data.verification);
     } catch (err) {
@@ -384,7 +485,7 @@ function VerifyPage() {
   );
 }
 
-function HistoryPage() {
+function HistoryPage({ selectedIdentity }) {
   const [sbomID, setSbomId] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -404,7 +505,7 @@ function HistoryPage() {
     try {
       const response = await axios.get(
         `${API_BASE_URL}/history/${encodeURIComponent(idTrimmed)}`,
-        { headers: { 'x-user-id': USER_ID, 'x-user-role': HISTORY_ROLE } }
+        { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
       );
       setHistory(response.data.history || []);
     } catch (err) {
@@ -418,7 +519,16 @@ function HistoryPage() {
   const totalEvents = history.length;
   const deleteEvents = history.filter(i => i.isDelete).length;
   const activeStatusEvents = history.filter(i => i.record?.status === 'ACTIVE').length;
-  const latestTransaction = history.length > 0 ? history[history.length - 1].txID : '-';
+  let latestTransaction = '-';
+  if (history.length > 0) {
+    let latestEntry = history[0];
+    for (let i = 1; i < history.length; i++) {
+      if ((history[i].timestamp || 0) > (latestEntry.timestamp || 0)) {
+        latestEntry = history[i];
+      }
+    }
+    latestTransaction = latestEntry.txID || '-';
+  }
 
   const columns = [
     { title: 'Transaction ID', dataIndex: 'txID', key: 'txID' },
@@ -531,7 +641,7 @@ function HistoryPage() {
   );
 }
 
-function CompliancePage() {
+function CompliancePage({ selectedIdentity }) {
   const [sbomID, setSbomId] = useState('');
   const [sbomContent, setSbomContent] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -555,7 +665,7 @@ function CompliancePage() {
       const response = await axios.post(
         `${API_BASE_URL}/compliance-report`,
         { sbomID: idTrimmed, sbom: contentTrimmed },
-        { headers: { 'x-user-id': USER_ID, 'x-user-role': COMPLIANCE_ROLE } }
+        { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
       );
       setReport(response.data.report);
     } catch (err) {
@@ -661,6 +771,7 @@ function CompliancePage() {
 function App() {
   const location = useLocation();
   const [configWarningDismissed, setConfigWarningDismissed] = useState(false);
+  const [selectedIdentity, setSelectedIdentity] = useState(DEMO_IDENTITIES[1]); // Default to Security
 
   const menuItems = [
     {
@@ -695,8 +806,23 @@ function App() {
         />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center' }}>
+        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Title level={3} style={{ margin: 0 }}>TPSR Dashboard</Title>
+          <Space>
+            <Text type="secondary" style={{ fontSize: '12px', marginRight: '16px' }}>
+              Prototype demo identity only. Production IAM/SSO is not implemented.
+            </Text>
+            <Text strong>Demo Identity:</Text>
+            <Select
+              value={selectedIdentity.userId}
+              onChange={(value) => {
+                const id = DEMO_IDENTITIES.find(i => i.userId === value);
+                if (id) setSelectedIdentity(id);
+              }}
+              style={{ width: 150 }}
+              options={DEMO_IDENTITIES.map(id => ({ label: id.label, value: id.userId }))}
+            />
+          </Space>
         </Header>
         <Content style={{ padding: '24px', margin: 0, minHeight: 280 }}>
           {_usingDefaults && !configWarningDismissed && (
@@ -711,10 +837,10 @@ function App() {
           )}
           <Routes>
             <Route path="/" element={<Navigate to="/sboms" replace />} />
-            <Route path="/sboms" element={<SBOMListPage />} />
-            <Route path="/verify" element={<VerifyPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/compliance" element={<CompliancePage />} />
+            <Route path="/sboms" element={<SBOMListPage selectedIdentity={selectedIdentity} />} />
+            <Route path="/verify" element={<VerifyPage selectedIdentity={selectedIdentity} />} />
+            <Route path="/history" element={<HistoryPage selectedIdentity={selectedIdentity} />} />
+            <Route path="/compliance" element={<CompliancePage selectedIdentity={selectedIdentity} />} />
           </Routes>
         </Content>
       </Layout>

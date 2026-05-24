@@ -1,0 +1,9 @@
+
+> tpsr-api@1.0.0 start
+> node src/server.js
+
+[TPSR] Testing database connection...
+[TPSR] Database connection verified.
+TPSR API server running on port 3000
+[TPSR] Received SIGTERM. Shutting down gracefully...
+[TPSR] Database pool closed. Exiting.
