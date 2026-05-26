@@ -17,6 +17,10 @@ func (c *SBOMContract) SubmitSBOM(
 	format string,
 	offChainRef string,
 	signatures []string,
+	policyStatus string,
+	policyReason string,
+	policyViolations []string,
+	policyEvaluationMode string,
 ) error {
 
 	// A. Validate required inputs
@@ -83,10 +87,14 @@ func (c *SBOMContract) SubmitSBOM(
 		BuildID:         buildID,
 		SoftwareName:    softwareName,
 		SoftwareVersion: softwareVersion,
-		Format:          format,
-		Status:          StatusPending,
-		OffChainRef:     offChainRef,
-		Signatures:      signatures,
+		Format:               format,
+		Status:               StatusRegistered,
+		OffChainRef:          offChainRef,
+		Signatures:           signatures,
+		PolicyStatus:         policyStatus,
+		PolicyReason:         policyReason,
+		PolicyViolations:     policyViolations,
+		PolicyEvaluationMode: policyEvaluationMode,
 	}
 
 	// H. Marshal to JSON

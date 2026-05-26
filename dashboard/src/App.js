@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Space, Button, Alert, Descriptions, Modal, message } from 'antd';
+import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Space, Button, Alert, Descriptions, Modal, message, Upload, Tooltip } from 'antd';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -32,6 +32,25 @@ const _usingDefaults =
   HISTORY_ROLE === 'auditor' ||
   COMPLIANCE_ROLE === 'admin';
 
+/** Abbreviate a long Fabric X.509 identity string for display in tables. */
+function abbrevLedgerId(id) {
+  if (!id || typeof id !== 'string') return '-';
+  if (id.length <= 24) return id;
+  return id.slice(0, 20) + '...';
+}
+
+/** Format a Unix epoch timestamp (seconds) to a human-readable string. */
+function fmtUnix(ts) {
+  if (!ts) return '-';
+  return new Date(ts * 1000).toLocaleString();
+}
+
+/** Format an ISO date string or return '-'. */
+function fmtISO(iso) {
+  if (!iso) return '-';
+  try { return new Date(iso).toLocaleString(); } catch (_) { return iso; }
+}
+
 function SBOMListPage({ selectedIdentity }) {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -41,6 +60,7 @@ function SBOMListPage({ selectedIdentity }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSbomId, setSelectedSbomId] = useState(null);
   const [selectedSbomJson, setSelectedSbomJson] = useState('');
+  const [selectedRecord, setSelectedRecord] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
@@ -62,9 +82,16 @@ function SBOMListPage({ selectedIdentity }) {
         softwareVersion: item.softwareVersion ?? item.software_version,
         buildID: item.buildID ?? item.build_id ?? item.build_number,
         submitterID: item.submitterID ?? item.submitter_id,
+        fabricTxId: item.fabricTxId ?? item.fabric_tx_id,
+        sbomHash: item.sbomHash ?? item.sbom_hash,
+        offChainRef: item.offChainRef ?? item.off_chain_ref,
+        createdAt: item.createdAt ?? item.created_at,
         timestamp: item.timestamp ?? item.created_at,
         requestedBy: item.requestedBy ?? item.requested_by,
-        jobName: item.jobName ?? item.job_name
+        jobName: item.jobName ?? item.job_name,
+        policyStatus: item.policyStatus ?? item.policy_status,
+        policyReason: item.policyReason ?? item.policy_reason,
+        policyViolations: item.policyViolations ?? item.policy_violations
       }));
       setSboms(normalizedSboms);
     } catch (err) {
@@ -97,6 +124,7 @@ function SBOMListPage({ selectedIdentity }) {
     try {
       setActionLoading(`${record.sbomID}-view`);
       const data = await fetchDocument(record.sbomID);
+      setSelectedRecord(record);
       setSelectedSbomId(record.sbomID);
       setSelectedSbomJson(JSON.stringify(data.sbom, null, 2));
       setModalVisible(true);
@@ -157,7 +185,7 @@ function SBOMListPage({ selectedIdentity }) {
   const handleApprove = (record) => {
     Modal.confirm({
       title: 'Approve SBOM?',
-      content: 'This will change the SBOM lifecycle status from PENDING to APPROVED.',
+      content: 'This will change the SBOM lifecycle status from COMPLIANT to APPROVED.',
       onOk: async () => {
         try {
           setActionLoading(`${record.sbomID}-approve`);
@@ -171,7 +199,10 @@ function SBOMListPage({ selectedIdentity }) {
           message.success('SBOM approved successfully');
           await fetchSboms();
         } catch (err) {
-          const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to approve SBOM';
+          const errData = err.response?.data;
+          const msg = errData?.error 
+                      ? (errData.details ? `${errData.error} - ${errData.details}` : errData.error)
+                      : (err.message || 'Failed to approve SBOM');
           message.error(msg);
         } finally {
           setActionLoading(null);
@@ -232,6 +263,97 @@ function SBOMListPage({ selectedIdentity }) {
     });
   };
 
+  const handleReviewPending = (record) => {
+    Modal.confirm({
+      title: 'Mark Review Pending?',
+      content: 'This will move the SBOM to the REVIEW_PENDING state for security evaluation.',
+      onOk: async () => {
+        try {
+          setActionLoading(`${record.sbomID}-review`);
+          await axios.post(`${API_BASE_URL}/review-pending`, { sbomID: record.sbomID }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': selectedIdentity.userId,
+              'x-user-role': selectedIdentity.role
+            }
+          });
+          message.success('SBOM marked as review pending');
+          await fetchSboms();
+        } catch (err) {
+          const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to update SBOM';
+          message.error(msg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
+  };
+
+  const handleSecurityReviewed = (record) => {
+    Modal.confirm({
+      title: 'Mark Security Reviewed?',
+      content: 'This will confirm security review is complete and automatically evaluate compliance. This may automatically advance to COMPLIANT or REJECTED.',
+      onOk: async () => {
+        try {
+          setActionLoading(`${record.sbomID}-security`);
+          await axios.post(`${API_BASE_URL}/security-reviewed`, { sbomID: record.sbomID }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': selectedIdentity.userId,
+              'x-user-role': selectedIdentity.role
+            }
+          });
+          message.success('SBOM security review processed');
+          await fetchSboms();
+        } catch (err) {
+          const errData = err.response?.data;
+          const msg = errData?.error 
+                      ? (errData.details ? `${errData.error} - ${errData.details}` : errData.error)
+                      : (err.message || 'Failed to process security review');
+          message.error(msg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
+  };
+
+  const handleReject = (record) => {
+    let rejectReason = '';
+    Modal.confirm({
+      title: 'Reject SBOM?',
+      content: (
+        <div>
+          <p>This will reject the SBOM and mark it as REJECTED.</p>
+          <Input.TextArea
+            placeholder="Optional reason for rejection"
+            onChange={e => rejectReason = e.target.value}
+            rows={3}
+          />
+        </div>
+      ),
+      onOk: async () => {
+        try {
+          setActionLoading(`${record.sbomID}-reject`);
+          await axios.post(`${API_BASE_URL}/reject`, { sbomID: record.sbomID, reason: rejectReason }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': selectedIdentity.userId,
+              'x-user-role': selectedIdentity.role
+            }
+          });
+          message.success('SBOM rejected successfully');
+          await fetchSboms();
+        } catch (err) {
+          const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to reject SBOM';
+          message.error(msg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
+  };
+
   const total = sboms.length;
   const approved = sboms.filter((i) => i.status === 'APPROVED').length;
   const active = sboms.filter((i) => i.status === 'ACTIVE').length;
@@ -243,23 +365,42 @@ function SBOMListPage({ selectedIdentity }) {
     { title: 'Version', dataIndex: 'softwareVersion', key: 'softwareVersion' },
     { title: 'Format', dataIndex: 'format', key: 'format' },
     {
+      title: 'Policy Status',
+      dataIndex: 'policyStatus',
+      key: 'policyStatus',
+      render: (status) => {
+        if (!status) return <Tag>UNKNOWN</Tag>;
+        return <Tag color={status === 'PASS' ? 'success' : 'error'}>{status}</Tag>;
+      }
+    },
+    {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
         let color = 'default';
-        if (status === 'PENDING') color = 'gold';
+        if (status === 'REGISTERED') color = 'default';
+        if (status === 'REVIEW_PENDING') color = 'orange';
+        if (status === 'SECURITY_REVIEWED') color = 'cyan';
+        if (status === 'COMPLIANT') color = 'geekblue';
         if (status === 'APPROVED') color = 'blue';
         if (status === 'ACTIVE') color = 'green';
         if (status === 'SUPERSEDED') color = 'red';
+        if (status === 'REJECTED') color = 'red';
         return <Tag color={color}>{status}</Tag>;
       },
     },
     { title: 'Build ID', dataIndex: 'buildID', key: 'buildID' },
-    { title: 'Requested By', dataIndex: 'requestedBy', key: 'requestedBy', render: (text) => text || '-' },
+    { title: 'Recorded By', dataIndex: 'requestedBy', key: 'requestedBy', render: (text) => text || '-' },
     { title: 'Job Name', dataIndex: 'jobName', key: 'jobName', render: (text) => text || '-' },
-    { title: 'Submitter', dataIndex: 'submitterID', key: 'submitterID', render: (text) => text || '-' },
-    { title: 'Timestamp', dataIndex: 'timestamp', key: 'timestamp' },
+    {
+      title: 'Anchored',
+      key: 'anchored',
+      render: (_, record) => record.fabricTxId
+        ? <Tooltip title={`Fabric Tx: ${record.fabricTxId}`}><Tag color="geekblue">Anchored</Tag></Tooltip>
+        : <Tag>Pending</Tag>
+    },
+    { title: 'Anchored At', dataIndex: 'createdAt', key: 'createdAt', render: (t) => fmtISO(t) },
     {
       title: 'Actions',
       key: 'actions',
@@ -270,7 +411,13 @@ function SBOMListPage({ selectedIdentity }) {
           <Button size="small" loading={actionLoading === `${record.sbomID}-download`} onClick={() => handleDownload(record)}>Download</Button>
           {(selectedIdentity.role === 'security' || selectedIdentity.role === 'admin') && (
             <>
-              {record.status === 'PENDING' && (
+              {record.status === 'REGISTERED' && (
+                <Button size="small" type="dashed" loading={actionLoading === `${record.sbomID}-review`} onClick={() => handleReviewPending(record)}>Review Pending</Button>
+              )}
+              {record.status === 'REVIEW_PENDING' && (
+                <Button size="small" type="primary" loading={actionLoading === `${record.sbomID}-security`} onClick={() => handleSecurityReviewed(record)}>Security Reviewed</Button>
+              )}
+              {record.status === 'COMPLIANT' && (selectedIdentity.role === 'auditor' || selectedIdentity.role === 'admin') && (
                 <Button size="small" type="primary" loading={actionLoading === `${record.sbomID}-approve`} onClick={() => handleApprove(record)}>Approve</Button>
               )}
               {record.status === 'APPROVED' && (
@@ -283,6 +430,13 @@ function SBOMListPage({ selectedIdentity }) {
                 <Button size="small" danger loading={actionLoading === `${record.sbomID}-supersede`} onClick={() => handleSupersede(record)}>Supersede</Button>
               )}
             </>
+          )}
+          {record.status === 'COMPLIANT' && selectedIdentity.role === 'auditor' && selectedIdentity.role !== 'admin' && (
+            <Button size="small" type="primary" loading={actionLoading === `${record.sbomID}-approve`} onClick={() => handleApprove(record)}>Approve</Button>
+          )}
+          {(selectedIdentity.role === 'security' || selectedIdentity.role === 'auditor' || selectedIdentity.role === 'admin') && 
+           ['REGISTERED', 'REVIEW_PENDING', 'SECURITY_REVIEWED', 'COMPLIANT', 'APPROVED', 'ACTIVE'].includes(record.status) && (
+            <Button size="small" danger loading={actionLoading === `${record.sbomID}-reject`} onClick={() => handleReject(record)}>Reject</Button>
           )}
         </Space>
       ),
@@ -341,10 +495,14 @@ function SBOMListPage({ selectedIdentity }) {
             disabled={loading}
             options={[
               { value: 'All', label: 'All' },
-              { value: 'PENDING', label: 'PENDING' },
+              { value: 'REGISTERED', label: 'REGISTERED' },
+              { value: 'REVIEW_PENDING', label: 'REVIEW_PENDING' },
+              { value: 'SECURITY_REVIEWED', label: 'SECURITY_REVIEWED' },
+              { value: 'COMPLIANT', label: 'COMPLIANT' },
               { value: 'APPROVED', label: 'APPROVED' },
               { value: 'ACTIVE', label: 'ACTIVE' },
               { value: 'SUPERSEDED', label: 'SUPERSEDED' },
+              { value: 'REJECTED', label: 'REJECTED' },
             ]}
           />
           <Button onClick={fetchSboms} loading={loading}>Refresh</Button>
@@ -359,20 +517,82 @@ function SBOMListPage({ selectedIdentity }) {
       </Card>
 
       <Modal
-        title={`SBOM JSON - ${selectedSbomId}`}
+        title={`SBOM Document - ${selectedSbomId}`}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={[
           <Button key="close" onClick={() => setModalVisible(false)}>Close</Button>
         ]}
-        width={800}
+        width={860}
       >
-        <Input.TextArea
-          value={selectedSbomJson}
-          rows={20}
-          readOnly
-          style={{ fontFamily: 'monospace' }}
-        />
+        {selectedRecord && (
+          <>
+            <Card
+              title="Ledger Anchor Evidence"
+              size="small"
+              style={{ marginBottom: 16, borderColor: '#91caff', backgroundColor: '#e6f4ff' }}
+            >
+              <Descriptions column={1} bordered size="small">
+                <Descriptions.Item label="Recorded By">
+                  <Text strong>{selectedRecord.requestedBy || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Ledger Identity">
+                  <Tooltip title={selectedRecord.submitterID || 'N/A'}>
+                    <Text code style={{ cursor: 'help' }}>{abbrevLedgerId(selectedRecord.submitterID)}</Text>
+                  </Tooltip>
+                </Descriptions.Item>
+                <Descriptions.Item label="Anchored Hash">
+                  <Text code style={{ wordBreak: 'break-all' }}>{selectedRecord.sbomHash || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Fabric Transaction ID">
+                  <Text code style={{ wordBreak: 'break-all' }}>{selectedRecord.fabricTxId || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Anchored At">
+                  {fmtISO(selectedRecord.createdAt)}
+                </Descriptions.Item>
+                <Descriptions.Item label="Lifecycle State">
+                  <Tag color={selectedRecord.status === 'ACTIVE' ? 'green' : selectedRecord.status === 'APPROVED' ? 'blue' : selectedRecord.status === 'REJECTED' ? 'red' : 'default'}>
+                    {selectedRecord.status || '-'}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Off-chain SBOM Reference">
+                  {selectedRecord.offChainRef || '-'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Fabric Channel">
+                  {selectedRecord.fabric_channel || 'tpsrchannel'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Policy Status">
+                  {selectedRecord.policyStatus
+                    ? <Tag color={selectedRecord.policyStatus === 'PASS' ? 'success' : 'error'}>{selectedRecord.policyStatus}</Tag>
+                    : <Tag>UNKNOWN</Tag>}
+                </Descriptions.Item>
+                {selectedRecord.policyReason && (
+                  <Descriptions.Item label="Policy Reason">{selectedRecord.policyReason}</Descriptions.Item>
+                )}
+                {selectedRecord.policyViolations && selectedRecord.policyViolations.length > 0 && (
+                  <Descriptions.Item label="Policy Violations">
+                    <ul>{selectedRecord.policyViolations.map((v, i) => <li key={i}><Text type="danger">{v}</Text></li>)}</ul>
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+            </Card>
+            <Text strong>Raw SBOM JSON Payload:</Text>
+            <Input.TextArea
+              value={selectedSbomJson}
+              rows={14}
+              readOnly
+              style={{ fontFamily: 'monospace', marginTop: 8 }}
+            />
+          </>
+        )}
+        {!selectedRecord && (
+          <Input.TextArea
+            value={selectedSbomJson}
+            rows={16}
+            readOnly
+            style={{ fontFamily: 'monospace', marginTop: 8 }}
+          />
+        )}
       </Modal>
     </div>
   );
@@ -381,43 +601,120 @@ function SBOMListPage({ selectedIdentity }) {
 function VerifyPage({ selectedIdentity }) {
   const [sbomID, setSbomId] = useState('');
   const [sbomContent, setSbomContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileReading, setFileReading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [anchorDoc, setAnchorDoc] = useState(null);
+  const [perfMetrics, setPerfMetrics] = useState(null);
+
+  const handleBeforeUpload = (file) => {
+    setErrorMsg('');
+    setSelectedFile(null);
+    setSbomContent('');
+
+    const allowedExtensions = ['.json', '.xml', '.spdx', '.cdx', '.txt'];
+    const ext = file.name.slice((Math.max(0, file.name.lastIndexOf(".")) || Infinity)).toLowerCase();
+    
+    if (!allowedExtensions.includes(ext)) {
+      setErrorMsg(`Invalid file type. Allowed: ${allowedExtensions.join(', ')}`);
+      return false;
+    }
+
+    if (file.size === 0) {
+      setErrorMsg('Selected SBOM file is empty.');
+      return false;
+    }
+
+    setFileReading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      if (!content || content.trim() === '') {
+        setErrorMsg('Selected SBOM file is empty or could not be read as text.');
+        setFileReading(false);
+        return;
+      }
+      setSbomContent(content);
+      setSelectedFile(file);
+      setFileReading(false);
+    };
+    reader.onerror = () => {
+      setErrorMsg('Failed to read selected SBOM file.');
+      setFileReading(false);
+    };
+    reader.readAsText(file);
+    return false;
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setSbomContent('');
+    setErrorMsg('');
+    setResult(null);
+    setAnchorDoc(null);
+    setPerfMetrics(null);
+  };
 
   const handleVerify = async () => {
     setErrorMsg('');
     setResult(null);
+    setAnchorDoc(null);
 
     const idTrimmed = sbomID.trim();
     const contentTrimmed = sbomContent.trim();
 
-    if (!idTrimmed || !contentTrimmed) {
-      setErrorMsg('SBOM ID and SBOM Content are required');
+    if (!idTrimmed) {
+      setErrorMsg('SBOM ID is required.');
+      return;
+    }
+    if (!contentTrimmed) {
+      setErrorMsg('Please select an SBOM file.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/verify`,
-        { sbomID: idTrimmed, sbom: contentTrimmed },
-        { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-      );
-      setResult(response.data.verification);
-    } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Verification failed';
-      setErrorMsg(msg);
+      const [verifyResp, docResp] = await Promise.allSettled([
+        axios.post(
+          `${API_BASE_URL}/verify`,
+          { sbomID: idTrimmed, sbom: contentTrimmed },
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        ),
+        axios.get(
+          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/document`,
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        )
+      ]);
+
+      if (verifyResp.status === 'fulfilled') {
+        setResult(verifyResp.value.data.verification);
+        if (verifyResp.value.data.performanceMetrics) {
+          setPerfMetrics(verifyResp.value.data.performanceMetrics);
+        }
+      } else {
+        const err = verifyResp.reason;
+        setErrorMsg(err.response?.data?.error || err.response?.data?.message || err.message || 'Verification failed');
+      }
+
+      if (docResp.status === 'fulfilled') {
+        setAnchorDoc(docResp.value.data);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const getLedgerStatusColor = (status) => {
-    if (status === 'PENDING') return 'gold';
+    if (status === 'REGISTERED') return 'default';
+    if (status === 'REVIEW_PENDING') return 'orange';
+    if (status === 'SECURITY_REVIEWED') return 'cyan';
+    if (status === 'COMPLIANT') return 'geekblue';
     if (status === 'APPROVED') return 'blue';
     if (status === 'ACTIVE') return 'green';
     if (status === 'SUPERSEDED') return 'red';
+    if (status === 'REJECTED') return 'red';
     return 'default';
   };
 
@@ -442,16 +739,39 @@ function VerifyPage({ selectedIdentity }) {
           </div>
 
           <div>
-            <div style={{ marginBottom: 8 }}><Text strong>SBOM Content</Text></div>
-            <TextArea 
-              rows={8} 
-              placeholder="Paste raw SBOM JSON/XML content here" 
-              value={sbomContent} 
-              onChange={(e) => setSbomContent(e.target.value)} 
-            />
+            <div style={{ marginBottom: 8 }}><Text strong>SBOM File</Text></div>
+            <Upload
+              beforeUpload={handleBeforeUpload}
+              showUploadList={false}
+              accept=".json,.xml,.spdx,.cdx,.txt"
+              maxCount={1}
+            >
+              <Button disabled={fileReading}>
+                {fileReading ? 'Reading file...' : (selectedFile ? 'Replace Local SBOM File' : 'Select Local SBOM File')}
+              </Button>
+            </Upload>
+            {selectedFile && (
+              <Alert 
+                style={{ marginTop: 8 }}
+                type="info"
+                message={<Text strong>{selectedFile.name}</Text>}
+                description={`Size: ${(selectedFile.size / 1024).toFixed(2)} KB | Status: Loaded`}
+                showIcon
+                action={
+                  <Button size="small" danger onClick={handleRemoveFile}>
+                    Remove
+                  </Button>
+                }
+              />
+            )}
           </div>
 
-          <Button type="primary" onClick={handleVerify} loading={loading}>
+          <Button 
+            type="primary" 
+            onClick={handleVerify} 
+            loading={loading}
+            disabled={!sbomID.trim() || !sbomContent || fileReading}
+          >
             Verify Integrity
           </Button>
         </Space>
@@ -459,6 +779,44 @@ function VerifyPage({ selectedIdentity }) {
 
       {result && (
         <Card title="Verification Result" size="small">
+
+          {anchorDoc && (
+            <Card
+              title="Ledger Anchor Proof"
+              size="small"
+              style={{ marginBottom: 16, borderColor: '#91caff', backgroundColor: '#e6f4ff' }}
+            >
+              <Descriptions column={1} bordered size="small">
+                <Descriptions.Item label="Anchored Hash">
+                  <Text code style={{ wordBreak: 'break-all' }}>{anchorDoc.sbomHash || result.storedHash || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Submitted / Computed Hash">
+                  <Text code style={{ wordBreak: 'break-all' }}>{result.submittedHash || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Hash Match">
+                  <Tag color={result.match ? 'green' : 'red'}>{result.match ? 'MATCH ✓' : 'MISMATCH ✗'}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Fabric Transaction ID">
+                  <Text code style={{ wordBreak: 'break-all' }}>{anchorDoc.fabricTxID || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Anchored At">
+                  {fmtISO(anchorDoc.anchoredAt)}
+                </Descriptions.Item>
+                <Descriptions.Item label="Recorded By">
+                  <Text strong>{anchorDoc.recordedBy || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Ledger Identity">
+                  <Tooltip title={anchorDoc.submitterID || 'N/A'}>
+                    <Text code style={{ cursor: 'help' }}>{abbrevLedgerId(anchorDoc.submitterID)}</Text>
+                  </Tooltip>
+                </Descriptions.Item>
+                <Descriptions.Item label="Lifecycle State">
+                  <Tag color={getLedgerStatusColor(result.status)}>{result.status || '-'}</Tag>
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
+          )}
+
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="Status">
               <Tag color={result.match ? 'green' : 'red'}>{result.match ? 'VERIFIED' : 'FAILED'}</Tag>
@@ -479,6 +837,129 @@ function VerifyPage({ selectedIdentity }) {
               <Tag color={getLedgerStatusColor(result.status)}>{result.status}</Tag>
             </Descriptions.Item>
           </Descriptions>
+
+          {perfMetrics && (
+            <Card
+              title="Performance Metrics"
+              size="small"
+              style={{ marginTop: 16, borderColor: '#d9d9d9', backgroundColor: '#fafafa' }}
+            >
+              <Descriptions column={2} bordered size="small">
+                {Object.entries(perfMetrics).map(([key, value]) => (
+                  <Descriptions.Item key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}>
+                    {value !== null ? `${value} ms` : 'N/A'}
+                  </Descriptions.Item>
+                ))}
+              </Descriptions>
+            </Card>
+          )}
+
+          {result.match === false && (
+            <div style={{ marginTop: 24 }}>
+              <Title level={4}>Integrity Failure Analysis</Title>
+
+              {result.integrityFailureReason && (
+                <Alert
+                  style={{ marginBottom: 16 }}
+                  type="error"
+                  showIcon
+                  message="Why Integrity Failed"
+                  description={result.integrityFailureReason}
+                />
+              )}
+
+              {result.tamperDetected && (
+                <div style={{ marginBottom: 16 }}>
+                  <Text strong>Primary Tamper Classification: </Text>
+                  <Tag color="volcano">{result.tamperType}</Tag>
+                </div>
+              )}
+
+              {result.tamperReport && result.tamperReport.summary && (
+                <Alert message={result.tamperReport.summary} type="warning" showIcon style={{ marginBottom: 16 }} />
+              )}
+
+              {result.affectedComponents && result.affectedComponents.length > 0 && (
+                <>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>Changed Components</Text>
+                  <Table
+                    dataSource={result.affectedComponents}
+                    rowKey={(record, idx) => record.component + idx}
+                    pagination={false}
+                    size="small"
+                    bordered
+                    style={{ marginBottom: 16 }}
+                    columns={[
+                      { title: 'Component', dataIndex: 'component', key: 'component' },
+                      { title: 'Original Version', dataIndex: 'originalVersion', key: 'originalVersion', render: t => t || '-' },
+                      { title: 'Modified Version', dataIndex: 'modifiedVersion', key: 'modifiedVersion', render: t => t || '-' },
+                      {
+                        title: 'Change',
+                        dataIndex: 'status',
+                        key: 'status',
+                        render: status => {
+                          let color = 'default';
+                          if (status === 'Added') color = 'red';
+                          if (status === 'Removed') color = 'volcano';
+                          if (status === 'Modified') color = 'orange';
+                          return <Tag color={color}>{status}</Tag>;
+                        }
+                      }
+                    ]}
+                  />
+                </>
+              )}
+
+              {result.changedFields && result.changedFields.length > 0 && (
+                <>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>Changed Metadata Fields</Text>
+                  <Table
+                    dataSource={result.changedFields}
+                    rowKey={(record, idx) => record.fieldPath + idx}
+                    pagination={false}
+                    size="small"
+                    bordered
+                    style={{ marginBottom: 16 }}
+                    columns={[
+                      { title: 'Field Path', dataIndex: 'fieldPath', key: 'fieldPath' },
+                      { title: 'Original Value', dataIndex: 'originalValue', key: 'originalValue', render: t => t !== null ? t : '-' },
+                      { title: 'Modified Value', dataIndex: 'modifiedValue', key: 'modifiedValue', render: t => t !== null ? t : '-' },
+                      { title: 'Change Type', dataIndex: 'changeType', key: 'changeType', render: t => <Tag color="orange">{t}</Tag> }
+                    ]}
+                  />
+                </>
+              )}
+
+              {result.submittedPolicySnapshot && (
+                <Card title="Submitted SBOM Policy Evaluation" size="small" style={{ backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+                  <Descriptions column={1} size="small" bordered>
+                    <Descriptions.Item label="Policy Status">
+                      <Tag color={result.submittedPolicySnapshot.policyStatus === 'PASS' ? 'success' : 'error'}>
+                        {result.submittedPolicySnapshot.policyStatus}
+                      </Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Reason">
+                      {result.submittedPolicySnapshot.policyReason}
+                    </Descriptions.Item>
+                    {result.submittedPolicySnapshot.policyTamperNote && (
+                      <Descriptions.Item label="Tamper + Policy Link">
+                        <Text type="danger">{result.submittedPolicySnapshot.policyTamperNote}</Text>
+                      </Descriptions.Item>
+                    )}
+                    {result.submittedPolicySnapshot.policyViolations && result.submittedPolicySnapshot.policyViolations.length > 0 && (
+                      <Descriptions.Item label="Violations">
+                        <ul>
+                          {result.submittedPolicySnapshot.policyViolations.map((v, idx) => (
+                            <li key={idx}><Text type="danger">{v}</Text></li>
+                          ))}
+                        </ul>
+                      </Descriptions.Item>
+                    )}
+                  </Descriptions>
+                </Card>
+              )}
+            </div>
+          )}
         </Card>
       )}
     </div>
@@ -531,35 +1012,55 @@ function HistoryPage({ selectedIdentity }) {
   }
 
   const columns = [
-    { title: 'Transaction ID', dataIndex: 'txID', key: 'txID' },
-    { title: 'Timestamp', dataIndex: 'timestamp', key: 'timestamp' },
-    { 
-      title: 'Deleted', 
-      dataIndex: 'isDelete', 
-      key: 'isDelete',
-      render: (isDel) => (isDel ? 'Yes' : 'No')
+    {
+      title: 'Fabric Tx ID',
+      dataIndex: 'txID',
+      key: 'txID',
+      render: (txID) => txID
+        ? <Tooltip title={txID}><Text code style={{ cursor: 'help' }}>{txID.slice(0, 16) + '...'}</Text></Tooltip>
+        : '-'
     },
-    { 
-      title: 'Status', 
+    {
+      title: 'Anchored At',
+      dataIndex: 'timestamp',
+      key: 'timestamp',
+      render: (ts) => fmtUnix(ts)
+    },
+    {
+      title: 'Deleted',
+      dataIndex: 'isDelete',
+      key: 'isDelete',
+      render: (isDel) => isDel ? <Tag color="red">Yes</Tag> : <Tag color="green">No</Tag>
+    },
+    {
+      title: 'Lifecycle State',
       key: 'status',
       render: (_, item) => {
         const s = item.record?.status;
         if (!s) return '-';
         let color = 'default';
-        if (s === 'PENDING') color = 'gold';
+        if (s === 'REGISTERED') color = 'default';
+        if (s === 'REVIEW_PENDING') color = 'orange';
+        if (s === 'SECURITY_REVIEWED') color = 'cyan';
+        if (s === 'COMPLIANT') color = 'geekblue';
         if (s === 'APPROVED') color = 'blue';
         if (s === 'ACTIVE') color = 'green';
         if (s === 'SUPERSEDED') color = 'red';
+        if (s === 'REJECTED') color = 'red';
         return <Tag color={color}>{s}</Tag>;
       }
     },
-    { 
-      title: 'Submitter', 
+    {
+      title: 'Ledger Identity',
       key: 'submitterID',
-      render: (_, item) => item.record?.submitterID || '-'
+      render: (_, item) => {
+        const full = item.record?.submitterID || '';
+        if (!full) return '-';
+        return <Tooltip title={full}><Text code style={{ cursor: 'help' }}>{abbrevLedgerId(full)}</Text></Tooltip>;
+      }
     },
-    { 
-      title: 'Build ID', 
+    {
+      title: 'Build ID',
       key: 'buildID',
       render: (_, item) => item.record?.buildID || '-'
     },
@@ -644,43 +1145,120 @@ function HistoryPage({ selectedIdentity }) {
 function CompliancePage({ selectedIdentity }) {
   const [sbomID, setSbomId] = useState('');
   const [sbomContent, setSbomContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileReading, setFileReading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
+  const [anchorDoc, setAnchorDoc] = useState(null);
+  const [perfMetrics, setPerfMetrics] = useState(null);
+
+  const handleBeforeUpload = (file) => {
+    setErrorMsg('');
+    setSelectedFile(null);
+    setSbomContent('');
+
+    const allowedExtensions = ['.json', '.xml', '.spdx', '.cdx', '.txt'];
+    const ext = file.name.slice((Math.max(0, file.name.lastIndexOf(".")) || Infinity)).toLowerCase();
+    
+    if (!allowedExtensions.includes(ext)) {
+      setErrorMsg(`Invalid file type. Allowed: ${allowedExtensions.join(', ')}`);
+      return false;
+    }
+
+    if (file.size === 0) {
+      setErrorMsg('Selected SBOM file is empty.');
+      return false;
+    }
+
+    setFileReading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      if (!content || content.trim() === '') {
+        setErrorMsg('Selected SBOM file is empty or could not be read as text.');
+        setFileReading(false);
+        return;
+      }
+      setSbomContent(content);
+      setSelectedFile(file);
+      setFileReading(false);
+    };
+    reader.onerror = () => {
+      setErrorMsg('Failed to read selected SBOM file.');
+      setFileReading(false);
+    };
+    reader.readAsText(file);
+    return false;
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setSbomContent('');
+    setErrorMsg('');
+    setReport(null);
+    setAnchorDoc(null);
+    setPerfMetrics(null);
+  };
 
   const handleGenerate = async () => {
     setErrorMsg('');
     setReport(null);
+    setAnchorDoc(null);
 
     const idTrimmed = sbomID.trim();
     const contentTrimmed = sbomContent.trim();
 
-    if (!idTrimmed || !contentTrimmed) {
-      setErrorMsg('SBOM ID and SBOM Content are required');
+    if (!idTrimmed) {
+      setErrorMsg('SBOM ID is required.');
+      return;
+    }
+    if (!contentTrimmed) {
+      setErrorMsg('Please select an SBOM file.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/compliance-report`,
-        { sbomID: idTrimmed, sbom: contentTrimmed },
-        { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-      );
-      setReport(response.data.report);
-    } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Compliance report generation failed';
-      setErrorMsg(msg);
+      const [reportResp, docResp] = await Promise.allSettled([
+        axios.post(
+          `${API_BASE_URL}/compliance-report`,
+          { sbomID: idTrimmed, sbom: contentTrimmed },
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        ),
+        axios.get(
+          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/document`,
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        )
+      ]);
+
+      if (reportResp.status === 'fulfilled') {
+        setReport(reportResp.value.data.report);
+        if (reportResp.value.data.performanceMetrics) {
+          setPerfMetrics(reportResp.value.data.performanceMetrics);
+        }
+      } else {
+        const err = reportResp.reason;
+        setErrorMsg(err.response?.data?.error || err.response?.data?.message || err.message || 'Compliance report generation failed');
+      }
+
+      if (docResp.status === 'fulfilled') {
+        setAnchorDoc(docResp.value.data);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const getLedgerStatusColor = (status) => {
-    if (status === 'PENDING') return 'gold';
+    if (status === 'REGISTERED') return 'default';
+    if (status === 'REVIEW_PENDING') return 'orange';
+    if (status === 'SECURITY_REVIEWED') return 'cyan';
+    if (status === 'COMPLIANT') return 'geekblue';
     if (status === 'APPROVED') return 'blue';
     if (status === 'ACTIVE') return 'green';
     if (status === 'SUPERSEDED') return 'red';
+    if (status === 'REJECTED') return 'red';
     return 'default';
   };
 
@@ -705,16 +1283,39 @@ function CompliancePage({ selectedIdentity }) {
           </div>
 
           <div>
-            <div style={{ marginBottom: 8 }}><Text strong>SBOM Content</Text></div>
-            <TextArea 
-              rows={8} 
-              placeholder="Paste raw SBOM JSON/XML content here" 
-              value={sbomContent} 
-              onChange={(e) => setSbomContent(e.target.value)} 
-            />
+            <div style={{ marginBottom: 8 }}><Text strong>SBOM File</Text></div>
+            <Upload
+              beforeUpload={handleBeforeUpload}
+              showUploadList={false}
+              accept=".json,.xml,.spdx,.cdx,.txt"
+              maxCount={1}
+            >
+              <Button disabled={fileReading}>
+                {fileReading ? 'Reading file...' : (selectedFile ? 'Replace Local SBOM File' : 'Select Local SBOM File')}
+              </Button>
+            </Upload>
+            {selectedFile && (
+              <Alert 
+                style={{ marginTop: 8 }}
+                type="info"
+                message={<Text strong>{selectedFile.name}</Text>}
+                description={`Size: ${(selectedFile.size / 1024).toFixed(2)} KB | Status: Loaded`}
+                showIcon
+                action={
+                  <Button size="small" danger onClick={handleRemoveFile}>
+                    Remove
+                  </Button>
+                }
+              />
+            )}
           </div>
 
-          <Button type="primary" onClick={handleGenerate} loading={loading}>
+          <Button 
+            type="primary" 
+            onClick={handleGenerate} 
+            loading={loading}
+            disabled={!sbomID.trim() || !sbomContent || fileReading}
+          >
             Generate Compliance Report
           </Button>
         </Space>
@@ -722,12 +1323,174 @@ function CompliancePage({ selectedIdentity }) {
 
       {report && (
         <Card title="Compliance Report Result" size="small">
-          <Alert 
+          <Alert
             style={{ marginBottom: 16 }}
-            type={report.compliant ? 'success' : 'warning'}
-            message={report.compliant ? 'SBOM is compliant with the current ledger state.' : 'SBOM is not compliant with the current ledger state.'}
-            showIcon 
+            type={report.compliant ? 'success' : 'error'}
+            message={report.compliant ? 'SBOM is COMPLIANT with the current ledger state.' : 'SBOM is NON-COMPLIANT with the current ledger state.'}
+            showIcon
           />
+
+          {anchorDoc && (
+            <Card
+              title="Anchor & Governance Evidence"
+              size="small"
+              style={{ marginBottom: 16, borderColor: '#91caff', backgroundColor: '#e6f4ff' }}
+            >
+              <Descriptions column={1} bordered size="small">
+                <Descriptions.Item label="Recorded By">
+                  <Text strong>{anchorDoc.recordedBy || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Ledger Identity">
+                  <Tooltip title={anchorDoc.submitterID || 'N/A'}>
+                    <Text code style={{ cursor: 'help' }}>{abbrevLedgerId(anchorDoc.submitterID)}</Text>
+                  </Tooltip>
+                </Descriptions.Item>
+                <Descriptions.Item label="Anchored Hash">
+                  <Text code style={{ wordBreak: 'break-all' }}>{anchorDoc.sbomHash || report.storedHash || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Submitted Hash">
+                  <Text code style={{ wordBreak: 'break-all' }}>{report.computedHash || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Hash Match">
+                  <Tag color={report.integrityMatch ? 'green' : 'red'}>{report.integrityMatch ? 'MATCH ✓' : 'MISMATCH ✗'}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Fabric Transaction ID">
+                  <Text code style={{ wordBreak: 'break-all' }}>{anchorDoc.fabricTxID || '-'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Anchored At">
+                  {fmtISO(anchorDoc.anchoredAt)}
+                </Descriptions.Item>
+                <Descriptions.Item label="Lifecycle State">
+                  <Tag color={getLedgerStatusColor(report.lifecycleState)}>{report.lifecycleState || '-'}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Off-chain SBOM Reference">
+                  {anchorDoc.offChainRef || '-'}
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
+          )}
+
+          {perfMetrics && (
+            <Card
+              title="Performance Metrics"
+              size="small"
+              style={{ marginTop: 16, borderColor: '#d9d9d9', backgroundColor: '#fafafa' }}
+            >
+              <Descriptions column={2} bordered size="small">
+                {Object.entries(perfMetrics).map(([key, value]) => (
+                  <Descriptions.Item key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}>
+                    {value !== null ? `${value} ms` : 'N/A'}
+                  </Descriptions.Item>
+                ))}
+              </Descriptions>
+            </Card>
+          )}
+
+          {!report.compliant && report.nonComplianceReasons && report.nonComplianceReasons.length > 0 && (
+            <Card
+              title="Non-Compliance Reasons"
+              size="small"
+              style={{ marginBottom: 16, borderColor: '#ff4d4f', backgroundColor: '#fff2f0' }}
+            >
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {report.nonComplianceReasons.map((reason, idx) => (
+                  <Tag color="error" key={idx} style={{ marginBottom: 4 }}>{reason}</Tag>
+                ))}
+
+                {report.integrityFailureReason && (
+                  <Alert
+                    type="error"
+                    showIcon
+                    message="Integrity Failure"
+                    description={report.integrityFailureReason}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
+
+                {report.tamperSummary && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message="Tampering Summary"
+                    description={report.tamperSummary}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
+
+                {report.policyFailureReason && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message="Policy Failure"
+                    description={report.policyFailureReason}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
+
+                {report.lifecycleFailureReason && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message="Lifecycle State Not Eligible"
+                    description={report.lifecycleFailureReason}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
+              </Space>
+            </Card>
+          )}
+
+          {report.affectedComponents && report.affectedComponents.length > 0 && (
+            <>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>Changed Components</Text>
+              <Table
+                dataSource={report.affectedComponents}
+                rowKey={(record, idx) => record.component + idx}
+                pagination={false}
+                size="small"
+                bordered
+                style={{ marginBottom: 16 }}
+                columns={[
+                  { title: 'Component', dataIndex: 'component', key: 'component' },
+                  { title: 'Original Version', dataIndex: 'originalVersion', key: 'originalVersion', render: t => t || '-' },
+                  { title: 'Modified Version', dataIndex: 'modifiedVersion', key: 'modifiedVersion', render: t => t || '-' },
+                  {
+                    title: 'Change',
+                    dataIndex: 'status',
+                    key: 'status',
+                    render: status => {
+                      let color = 'default';
+                      if (status === 'Added') color = 'red';
+                      if (status === 'Removed') color = 'volcano';
+                      if (status === 'Modified') color = 'orange';
+                      return <Tag color={color}>{status}</Tag>;
+                    }
+                  }
+                ]}
+              />
+            </>
+          )}
+
+          {report.changedFields && report.changedFields.length > 0 && (
+            <>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>Changed Metadata Fields</Text>
+              <Table
+                dataSource={report.changedFields}
+                rowKey={(record, idx) => record.fieldPath + idx}
+                pagination={false}
+                size="small"
+                bordered
+                style={{ marginBottom: 16 }}
+                columns={[
+                  { title: 'Field Path', dataIndex: 'fieldPath', key: 'fieldPath' },
+                  { title: 'Original Value', dataIndex: 'originalValue', key: 'originalValue', render: t => t !== null ? t : '-' },
+                  { title: 'Modified Value', dataIndex: 'modifiedValue', key: 'modifiedValue', render: t => t !== null ? t : '-' },
+                  { title: 'Change Type', dataIndex: 'changeType', key: 'changeType', render: t => <Tag color="orange">{t}</Tag> }
+                ]}
+              />
+            </>
+          )}
+
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="Compliance Status">
               <Tag color={report.compliant ? 'green' : 'red'}>
@@ -736,6 +1499,9 @@ function CompliancePage({ selectedIdentity }) {
             </Descriptions.Item>
             <Descriptions.Item label="SBOM ID">
               <Text>{report.sbomID}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Lifecycle State">
+              <Tag color={getLedgerStatusColor(report.lifecycleState)}>{report.lifecycleState || 'UNKNOWN'}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Computed Hash">
               <Text code>{report.computedHash}</Text>
@@ -749,6 +1515,18 @@ function CompliancePage({ selectedIdentity }) {
             <Descriptions.Item label="Ledger Status">
               <Tag color={getLedgerStatusColor(report.ledgerStatus)}>{report.ledgerStatus}</Tag>
             </Descriptions.Item>
+            <Descriptions.Item label="Policy Governance Status">
+              {report.policyStatus === 'PASS' ? (
+                <Tag color="success">PASS</Tag>
+              ) : (
+                <Tag color="error">FAIL: {report.policyReason || 'Unknown policy failure'}</Tag>
+              )}
+            </Descriptions.Item>
+            {report.policyViolations && report.policyViolations.length > 0 && (
+              <Descriptions.Item label="Policy Violations">
+                <ul>{report.policyViolations.map((v, i) => <li key={i}><Text type="danger">{v}</Text></li>)}</ul>
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="History Count">
               <Text>{report.historyCount}</Text>
             </Descriptions.Item>

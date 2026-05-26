@@ -48,6 +48,14 @@ router.get('/sboms/:sbomID/document', async function (req, res) {
       sbomHash: record.sbom_hash,
       fabricTxID: record.fabric_tx_id,
       submitterID: record.submitter_id,
+      recordedBy: record.requested_by || record.submitter_id || null,
+      anchoredAt: record.created_at || null,
+      offChainRef: record.off_chain_ref || null,
+      fabricChannel: record.fabric_channel || null,
+      lifecycleState: record.status || null,
+      policyStatus: record.policy_status,
+      policyReason: record.policy_reason,
+      policyViolations: record.policy_violations,
       sbom: record.sbom_json
     });
   } catch (error) {

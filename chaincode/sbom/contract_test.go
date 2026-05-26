@@ -105,15 +105,19 @@ func TestSBOMRecordInitialization(t *testing.T) {
 		SoftwareName:    "myapp",
 		SoftwareVersion: "1.0.0",
 		Format:          "SPDX",
-		Status:          StatusPending,
-		OffChainRef:     "QmXyz",
-		Signatures:      []string{"sig1", "sig2"},
+		Status:               StatusRegistered,
+		OffChainRef:          "QmXyz",
+		Signatures:           []string{"sig1", "sig2"},
+		PolicyStatus:         "PASS",
+		PolicyReason:         "No vulnerabilities found",
+		PolicyViolations:     []string{},
+		PolicyEvaluationMode: "EMBEDDED_VULNERABILITY",
 	}
 	if record.SBOMID != "sbom-001" {
 		t.Errorf("expected SBOMID %q, got %q", "sbom-001", record.SBOMID)
 	}
-	if record.Status != StatusPending {
-		t.Errorf("expected Status %q, got %q", StatusPending, record.Status)
+	if record.Status != StatusRegistered {
+		t.Errorf("expected Status %q, got %q", StatusRegistered, record.Status)
 	}
 	if len(record.Signatures) != 2 {
 		t.Errorf("expected 2 signatures, got %d", len(record.Signatures))
@@ -145,7 +149,7 @@ func TestVerificationResultMismatch(t *testing.T) {
 		SubmittedHash: "aaa",
 		StoredHash:    "bbb",
 		Match:         false,
-		Status:        StatusPending,
+		Status:        StatusRegistered,
 	}
 	if result.Match {
 		t.Errorf("expected Match to be false")
@@ -194,8 +198,17 @@ func TestHistoryRecordDeleteEntry(t *testing.T) {
 }
 
 func TestStatusConstants(t *testing.T) {
-	if StatusPending != "PENDING" {
-		t.Errorf("expected %q, got %q", "PENDING", StatusPending)
+	if StatusRegistered != "REGISTERED" {
+		t.Errorf("expected %q, got %q", "REGISTERED", StatusRegistered)
+	}
+	if StatusReviewPending != "REVIEW_PENDING" {
+		t.Errorf("expected %q, got %q", "REVIEW_PENDING", StatusReviewPending)
+	}
+	if StatusSecurityReviewed != "SECURITY_REVIEWED" {
+		t.Errorf("expected %q, got %q", "SECURITY_REVIEWED", StatusSecurityReviewed)
+	}
+	if StatusCompliant != "COMPLIANT" {
+		t.Errorf("expected %q, got %q", "COMPLIANT", StatusCompliant)
 	}
 	if StatusApproved != "APPROVED" {
 		t.Errorf("expected %q, got %q", "APPROVED", StatusApproved)
@@ -205,5 +218,8 @@ func TestStatusConstants(t *testing.T) {
 	}
 	if StatusSuperseded != "SUPERSEDED" {
 		t.Errorf("expected %q, got %q", "SUPERSEDED", StatusSuperseded)
+	}
+	if StatusRejected != "REJECTED" {
+		t.Errorf("expected %q, got %q", "REJECTED", StatusRejected)
 	}
 }

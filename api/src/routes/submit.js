@@ -7,6 +7,7 @@ var fabric = require('../config/fabric');
 var sbomRepository = require('../repositories/sbomRepository');
 var canonicalize = require('../utils/canonicalize');
 var hash = require('../utils/hash');
+var policy = require('../utils/policy');
 
 var STRING_FIELDS = [
   'sbomID',
@@ -45,8 +46,13 @@ function validateSignatures(signatures) {
   return null;
 }
 
+function hrMs(start) {
+  return Number(process.hrtime.bigint() - start) / 1e6;
+}
+
 router.post('/submit', async function (req, res) {
   var gateway = null;
+  var totalStart = process.hrtime.bigint();
 
   try {
     var body = req.body;
@@ -106,23 +112,43 @@ router.post('/submit', async function (req, res) {
     var offChainRef = body.offChainRef.trim();
     var signatures = body.signatures.map(function (s) { return s.trim(); });
 
+    // ── Parse SBOM ────────────────────────────────────────────────────────────
+    var parseStart = process.hrtime.bigint();
+    var parsedSBOMJSON;
+    try {
+      parsedSBOMJSON = typeof sbom === 'object' ? sbom : JSON.parse(sbom.trim());
+    } catch (e) {
+      parsedSBOMJSON = { raw: sbom };
+    }
+    var sbomParseTimeMs = hrMs(parseStart);
+
+    // ── Policy evaluation ─────────────────────────────────────────────────────
+    var policyStart = process.hrtime.bigint();
+    var policyResult = policy.evaluateSBOM(parsedSBOMJSON);
+    var policyEvaluationTimeMs = hrMs(policyStart);
+
+    // ── Canonicalization + Hashing ────────────────────────────────────────────
     var canonicalizedSBOM;
     var sbomHash;
 
+    var canonStart = process.hrtime.bigint();
     try {
       canonicalizedSBOM = canonicalize.canonicalizeSBOM(sbom);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    var canonicalizationTimeMs = hrMs(canonStart);
+
+    var hashStart = process.hrtime.bigint();
+    try {
       sbomHash = hash.hashSBOM(canonicalizedSBOM);
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }
+    var hashingTimeMs = hrMs(hashStart);
 
-    var parsedSBOMJSON;
-    try {
-      parsedSBOMJSON = JSON.parse(canonicalizedSBOM);
-    } catch (e) {
-      parsedSBOMJSON = typeof sbom === 'object' ? sbom : { raw: sbom };
-    }
-
+    // ── Database insert ───────────────────────────────────────────────────────
+    var dbStart = process.hrtime.bigint();
     var insertedSBOMDoc;
     try {
       insertedSBOMDoc = await sbomRepository.insertSBOMDocument({
@@ -131,7 +157,7 @@ router.post('/submit', async function (req, res) {
         softwareName: softwareName,
         softwareVersion: softwareVersion,
         format: format,
-        status: 'PENDING',
+        status: 'REGISTERED',
         sbomHash: sbomHash,
         sbomJSON: parsedSBOMJSON,
         requestedBy: req.headers['x-user-id'] || null,
@@ -143,7 +169,11 @@ router.post('/submit', async function (req, res) {
         offChainRef: offChainRef,
         fabricTxID: null,
         signatures: signatures,
-        canonicalizationVersion: 'v1'
+        canonicalizationVersion: 'v1',
+        policyStatus: policyResult.policy_status,
+        policyReason: policyResult.reason,
+        policyViolations: policyResult.violations,
+        policyEvaluationMode: policyResult.evaluation_mode
       });
 
       await sbomRepository.insertArtifactRecord({
@@ -165,7 +195,10 @@ router.post('/submit', async function (req, res) {
         details: dbErr.message,
       });
     }
+    var databaseInsertTimeMs = hrMs(dbStart);
 
+    // ── Fabric submit ─────────────────────────────────────────────────────────
+    var fabricStart = process.hrtime.bigint();
     var result = await fabric.getContract();
     gateway = result.gateway;
     var contract = result.contract;
@@ -174,7 +207,7 @@ router.post('/submit', async function (req, res) {
     try {
       var transaction = contract.createTransaction('SubmitSBOM');
       fabricTxID = transaction.getTransactionId();
-      
+
       await transaction.submit(
         sbomID,
         sbomHash,
@@ -183,7 +216,11 @@ router.post('/submit', async function (req, res) {
         softwareVersion,
         format,
         offChainRef,
-        JSON.stringify(signatures)
+        JSON.stringify(signatures),
+        policyResult.policy_status,
+        policyResult.reason,
+        JSON.stringify(policyResult.violations),
+        policyResult.evaluation_mode
       );
     } catch (fabricErr) {
       await sbomRepository.deleteSBOMDocumentByID(insertedSBOMDoc.id).catch(function(e) {
@@ -191,7 +228,9 @@ router.post('/submit', async function (req, res) {
       });
       throw fabricErr;
     }
+    var fabricSubmitTimeMs = hrMs(fabricStart);
 
+    // ── Fetch submitter ID from history ───────────────────────────────────────
     var submitterID = null;
     try {
       var historyBuffer = await contract.evaluateTransaction('GetHistory', sbomID);
@@ -211,15 +250,30 @@ router.post('/submit', async function (req, res) {
       fabricTxID: fabricTxID,
       offChainRef: offChainRef,
       submitterID: submitterID,
-      status: 'PENDING'
+      status: 'REGISTERED'
     }).catch(function(e) {
       console.error('[TPSR] Failed to finalize SBOM document:', e.message);
     });
+
+    var totalSubmitTimeMs = hrMs(totalStart);
+
+    var performanceMetrics = {
+      sbomParseTimeMs: Math.round(sbomParseTimeMs * 100) / 100,
+      canonicalizationTimeMs: Math.round(canonicalizationTimeMs * 100) / 100,
+      hashingTimeMs: Math.round(hashingTimeMs * 100) / 100,
+      policyEvaluationTimeMs: Math.round(policyEvaluationTimeMs * 100) / 100,
+      databaseInsertTimeMs: Math.round(databaseInsertTimeMs * 100) / 100,
+      fabricSubmitTimeMs: Math.round(fabricSubmitTimeMs * 100) / 100,
+      totalSubmitTimeMs: Math.round(totalSubmitTimeMs * 100) / 100
+    };
+
+    console.log('[TPSR][PERF] submit', JSON.stringify(performanceMetrics));
 
     return res.status(201).json({
       message: 'SBOM submitted successfully',
       sbomID: sbomID,
       hash: sbomHash,
+      performanceMetrics: performanceMetrics
     });
   } catch (err) {
     return res.status(500).json({

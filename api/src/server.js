@@ -18,6 +18,9 @@ var sbomsRoute = require('./routes/sboms');
 var approveRoute = require('./routes/approve');
 var activateRoute = require('./routes/activate');
 var supersedeRoute = require('./routes/supersede');
+var reviewPendingRoute = require('./routes/review-pending');
+var securityReviewedRoute = require('./routes/security-reviewed');
+var rejectRoute = require('./routes/reject');
 
 
 // Startup environment validation
@@ -99,6 +102,15 @@ function getAllowedRoles(method, reqPath) {
   if (method === 'POST' && reqPath === '/supersede') {
     return auth.ROUTE_ROLE_MAP.supersede;
   }
+  if (method === 'POST' && reqPath === '/review-pending') {
+    return auth.ROUTE_ROLE_MAP['review-pending'];
+  }
+  if (method === 'POST' && reqPath === '/security-reviewed') {
+    return auth.ROUTE_ROLE_MAP['security-reviewed'];
+  }
+  if (method === 'POST' && reqPath === '/reject') {
+    return auth.ROUTE_ROLE_MAP.reject;
+  }
   return null;
 }
 
@@ -121,6 +133,9 @@ app.use('/api', sbomsRoute);
 app.use('/api', approveRoute);
 app.use('/api', activateRoute);
 app.use('/api', supersedeRoute);
+app.use('/api', reviewPendingRoute);
+app.use('/api', securityReviewedRoute);
+app.use('/api', rejectRoute);
 
 
 app.use(function (req, res) {

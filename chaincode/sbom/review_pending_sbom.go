@@ -7,7 +7,7 @@ import (
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
-func (c *SBOMContract) ApproveSBOM(ctx contractapi.TransactionContextInterface, sbomID string) error {
+func (c *SBOMContract) MoveToReviewPending(ctx contractapi.TransactionContextInterface, sbomID string) error {
 	if sbomID == "" {
 		return fmt.Errorf("sbomID is required")
 	}
@@ -25,23 +25,21 @@ func (c *SBOMContract) ApproveSBOM(ctx contractapi.TransactionContextInterface, 
 		return fmt.Errorf("failed to unmarshal existing record: %w", err)
 	}
 
-	if record.Status != StatusCompliant {
-		return fmt.Errorf("can only approve SBOMs in COMPLIANT status, current status is %s", record.Status)
+	if record.Status != StatusRegistered && record.Status != "PENDING" {
+		return fmt.Errorf("can only move to REVIEW_PENDING from REGISTERED or PENDING status, current status is %s", record.Status)
 	}
 
-	// Fetch new submitter identity
 	submitterID, err := ctx.GetClientIdentity().GetID()
 	if err != nil {
 		return fmt.Errorf("failed to get client identity: %w", err)
 	}
 
-	// Fetch new transaction timestamp
 	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
 	if err != nil {
 		return fmt.Errorf("failed to get transaction timestamp: %w", err)
 	}
 
-	record.Status = StatusApproved
+	record.Status = StatusReviewPending
 	record.SubmitterID = submitterID
 	record.Timestamp = txTimestamp.Seconds
 

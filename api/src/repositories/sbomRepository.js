@@ -18,13 +18,15 @@ async function insertSBOMDocument(record) {
       status, sbom_hash, sbom_json, submitter_id, requested_by,
       job_name, build_number, git_commit, git_branch, repository_url,
       off_chain_ref, fabric_tx_id, fabric_channel, fabric_chaincode,
-      signatures, canonicalization_version
+      signatures, canonicalization_version,
+      policy_status, policy_reason, policy_violations, policy_evaluation_mode
     ) VALUES (
       $1, $2, $3, $4, $5,
       $6, $7, $8, $9, $10,
       $11, $12, $13, $14, $15,
       $16, $17, $18, $19,
-      $20, $21
+      $20, $21,
+      $22, $23, $24, $25
     ) RETURNING *;
   `;
 
@@ -49,7 +51,11 @@ async function insertSBOMDocument(record) {
     fabricChannel,
     fabricChaincode,
     record.signatures ? JSON.stringify(record.signatures) : '[]',
-    canonicalizationVersion
+    canonicalizationVersion,
+    record.policyStatus || null,
+    record.policyReason || null,
+    record.policyViolations ? JSON.stringify(record.policyViolations) : '[]',
+    record.policyEvaluationMode || null
   ];
 
   var client = await db.pool.connect();
@@ -150,6 +156,45 @@ async function getSBOMDocumentWithArtifactsBySBOMID(sbomID) {
 }
 
 /**
+ * Update the status, optionally fabric_tx_id, and optionally submitter_id of an SBOM document.
+ * @param {string} sbomID
+ * @param {string} status
+ * @param {string} [fabricTxID]
+ * @param {string} [submitterID]
+ * @returns {Promise<Object|null>} The updated row.
+ */
+async function updateSBOMStatus(sbomID, status, fabricTxID, submitterID) {
+  var setClauses = ['status = $2'];
+  var values = [sbomID, status];
+  var paramIndex = 3;
+
+  if (fabricTxID) {
+    setClauses.push('fabric_tx_id = $' + paramIndex);
+    values.push(fabricTxID);
+    paramIndex++;
+  }
+
+  if (submitterID) {
+    setClauses.push('submitter_id = $' + paramIndex);
+    values.push(submitterID);
+    paramIndex++;
+  }
+
+  var query = 'UPDATE sbom_documents SET ' + setClauses.join(', ') + ' WHERE sbom_id = $1 RETURNING *;';
+
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, values);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Update an existing SBOM document record after Fabric submission.
  * @param {Object} record
  * @returns {Promise<Object>} The updated row.
@@ -235,11 +280,13 @@ async function insertVerificationEvent(record) {
     INSERT INTO verification_events (
       sbom_document_id, submitted_hash, stored_hash,
       match, verified_by, verifier_role,
-      verification_mode, fabric_tx_id
+      verification_mode, fabric_tx_id,
+      tamper_detected, tamper_type, affected_components, tamper_report
     ) VALUES (
       $1, $2, $3,
       $4, $5, $6,
-      $7, $8
+      $7, $8,
+      $9, $10, $11, $12
     ) RETURNING *;
   `;
 
@@ -251,7 +298,11 @@ async function insertVerificationEvent(record) {
     record.verifiedBy,
     record.verifierRole,
     record.verificationMode,
-    record.fabricTxID || null
+    record.fabricTxID || null,
+    record.tamperDetected || false,
+    record.tamperType || null,
+    record.affectedComponents ? JSON.stringify(record.affectedComponents) : '[]',
+    record.tamperReport ? JSON.stringify(record.tamperReport) : null
   ];
 
   var client = await db.pool.connect();
@@ -313,39 +364,5 @@ module.exports = {
   listSBOMDocuments: listSBOMDocuments,
   insertVerificationEvent: insertVerificationEvent,
   insertComplianceReport: insertComplianceReport,
-  /**
-   * Update the status, optionally fabric_tx_id, and optionally submitter_id of an SBOM document.
-   * @param {string} sbomID
-   * @param {string} status
-   * @param {string} [fabricTxID]
-   * @param {string} [submitterID]
-   * @returns {Promise<Object>} The updated row.
-   */
-  updateSBOMStatus: async function(sbomID, status, fabricTxID, submitterID) {
-    var setClauses = ['status = $2'];
-    var values = [sbomID, status];
-    var paramIndex = 3;
-
-    if (fabricTxID) {
-      setClauses.push('fabric_tx_id = $' + paramIndex);
-      values.push(fabricTxID);
-      paramIndex++;
-    }
-
-    if (submitterID) {
-      setClauses.push('submitter_id = $' + paramIndex);
-      values.push(submitterID);
-      paramIndex++;
-    }
-
-    var query = 'UPDATE sbom_documents SET ' + setClauses.join(', ') + ' WHERE sbom_id = $1 RETURNING *;';
-
-    var client = await db.pool.connect();
-    try {
-      var result = await client.query(query, values);
-      return result.rows[0];
-    } finally {
-      client.release();
-    }
-  }
+  updateSBOMStatus: updateSBOMStatus
 };

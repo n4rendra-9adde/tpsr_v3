@@ -5,6 +5,7 @@ var router = express.Router();
 
 var fabric = require('../config/fabric');
 var sbomRepository = require('../repositories/sbomRepository');
+var policy = require('../utils/policy');
 
 router.post('/approve', async function (req, res) {
   var gateway = null;
@@ -24,6 +25,29 @@ router.post('/approve', async function (req, res) {
     var record = await sbomRepository.getSBOMDocumentBySBOMID(sbomID);
     if (!record) {
       return res.status(404).json({ error: 'SBOM record not found' });
+    }
+
+    var policyStatus = record.policy_status;
+    var policyReason = record.policy_reason;
+
+    // Handle legacy rows missing policy fields
+    if (!policyStatus) {
+      var policyResult = policy.evaluateSBOM(record.sbom_json);
+      policyStatus = policyResult.policy_status;
+      policyReason = policyResult.reason;
+    }
+
+    if (record.status !== 'COMPLIANT') {
+      return res.status(409).json({
+        error: `Approval denied: SBOM must be in COMPLIANT state. Current state is ${record.status}`
+      });
+    }
+
+    if (policyStatus === 'FAIL') {
+      return res.status(409).json({
+        error: 'Approval denied: Automated compliance policy blocked transition.',
+        details: policyReason
+      });
     }
 
     var result = await fabric.getContract();

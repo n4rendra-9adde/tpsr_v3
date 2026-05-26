@@ -8,7 +8,10 @@ var ROUTE_ROLE_MAP = {
   history: ['security', 'auditor', 'admin'],
   compliance: ['auditor', 'admin'],
   sboms: ['security', 'auditor', 'admin'],
-  approve: ['security', 'admin'],
+  'review-pending': ['security', 'admin'],
+  'security-reviewed': ['security', 'admin'],
+  reject: ['security', 'auditor', 'admin'],
+  approve: ['auditor', 'admin'],
   activate: ['security', 'admin'],
   supersede: ['security', 'admin'],
 };

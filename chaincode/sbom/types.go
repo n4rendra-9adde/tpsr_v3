@@ -18,8 +18,12 @@ type SBOMRecord struct {
 	SoftwareVersion string   `json:"softwareVersion"`
 	Format          string   `json:"format"`
 	Status          string   `json:"status"`
-	OffChainRef     string   `json:"offChainRef"`
-	Signatures      []string `json:"signatures"`
+	OffChainRef          string   `json:"offChainRef"`
+	Signatures           []string `json:"signatures"`
+	PolicyStatus         string   `json:"policyStatus"`
+	PolicyReason         string   `json:"policyReason"`
+	PolicyViolations     []string `json:"policyViolations"`
+	PolicyEvaluationMode string   `json:"policyEvaluationMode"`
 }
 
 type VerificationResult struct {
@@ -38,8 +42,12 @@ type HistoryRecord struct {
 }
 
 const (
-	StatusPending   = "PENDING"
-	StatusApproved  = "APPROVED"
-	StatusActive    = "ACTIVE"
-	StatusSuperseded = "SUPERSEDED"
+	StatusRegistered       = "REGISTERED"
+	StatusReviewPending    = "REVIEW_PENDING"
+	StatusSecurityReviewed = "SECURITY_REVIEWED"
+	StatusCompliant        = "COMPLIANT"
+	StatusApproved         = "APPROVED"
+	StatusActive           = "ACTIVE"
+	StatusSuperseded       = "SUPERSEDED"
+	StatusRejected         = "REJECTED"
 )
