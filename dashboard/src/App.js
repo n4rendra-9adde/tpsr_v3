@@ -3,6 +3,9 @@ import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Sp
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
+// Bypass Ngrok free tier browser warning
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
+
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
 const { TextArea } = Input;
