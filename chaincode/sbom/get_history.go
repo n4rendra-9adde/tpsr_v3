@@ -40,6 +40,7 @@ func (c *SBOMContract) GetHistory(
 			if err := json.Unmarshal(response.Value, &record); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal history record: %w", err)
 			}
+			record.EnsureSlices()
 			entry.Record = &record
 		}
 

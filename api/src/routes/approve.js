@@ -5,6 +5,7 @@ var router = express.Router();
 
 var fabric = require('../config/fabric');
 var sbomRepository = require('../repositories/sbomRepository');
+var trustRepository = require('../repositories/trustRepository');
 var policy = require('../utils/policy');
 
 router.post('/approve', async function (req, res) {
@@ -48,6 +49,34 @@ router.post('/approve', async function (req, res) {
         error: 'Approval denied: Automated compliance policy blocked transition.',
         details: policyReason
       });
+    }
+
+    var trustDecision = await trustRepository.getLatestTrustDecisionBySBOMID(sbomID);
+    if (trustDecision) {
+      // normalizeTrustStatus maps historical UNTRUSTED → REJECTED for read compatibility
+      var normalizedStatus = trustRepository.normalizeTrustStatus(trustDecision.trust_status);
+
+      if (normalizedStatus === 'REJECTED') {
+        return res.status(409).json({
+          error: 'Approval denied: Lifecycle transition blocked — SBOM trust decision is REJECTED. Remediate all blocking violations before approval.',
+          trustStatus: 'REJECTED',
+          reasonCode: trustDecision.reason_code,
+          reasonDescription: trustDecision.reason_description
+        });
+      }
+
+      if (normalizedStatus === 'REVIEW_REQUIRED') {
+        return res.status(409).json({
+          error: 'Approval denied: Lifecycle transition blocked — SBOM trust decision is REVIEW_REQUIRED. Complete the manual review workflow before approval.',
+          trustStatus: 'REVIEW_REQUIRED',
+          reasonCode: trustDecision.reason_code,
+          reasonDescription: trustDecision.reason_description
+        });
+      }
+
+      // TRUSTED and CONDITIONALLY_ACCEPTED are permitted to advance.
+      // CONDITIONALLY_ACCEPTED requires a valid exception, which was already validated
+      // during the trust evaluation that produced this decision.
     }
 
     var result = await fabric.getContract();

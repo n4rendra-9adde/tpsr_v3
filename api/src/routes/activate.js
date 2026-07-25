@@ -5,6 +5,7 @@ var router = express.Router();
 
 var fabric = require('../config/fabric');
 var sbomRepository = require('../repositories/sbomRepository');
+var trustRepository = require('../repositories/trustRepository');
 
 router.post('/activate', async function (req, res) {
   var gateway = null;
@@ -24,6 +25,38 @@ router.post('/activate', async function (req, res) {
     var record = await sbomRepository.getSBOMDocumentBySBOMID(sbomID);
     if (!record) {
       return res.status(404).json({ error: 'SBOM record not found' });
+    }
+
+    if (record.status !== 'APPROVED') {
+      return res.status(409).json({
+        error: `Activation denied: SBOM must be in APPROVED state. Current state is ${record.status}`
+      });
+    }
+
+    var trustDecision = await trustRepository.getLatestTrustDecisionBySBOMID(sbomID);
+    if (trustDecision) {
+      // normalizeTrustStatus maps historical UNTRUSTED → REJECTED for read compatibility
+      var normalizedStatus = trustRepository.normalizeTrustStatus(trustDecision.trust_status);
+
+      if (normalizedStatus === 'REJECTED') {
+        return res.status(409).json({
+          error: 'Activation denied: Lifecycle transition blocked — SBOM trust decision is REJECTED. Remediate all blocking violations before activation.',
+          trustStatus: 'REJECTED',
+          reasonCode: trustDecision.reason_code,
+          reasonDescription: trustDecision.reason_description
+        });
+      }
+
+      if (normalizedStatus === 'REVIEW_REQUIRED') {
+        return res.status(409).json({
+          error: 'Activation denied: Lifecycle transition blocked — SBOM trust decision is REVIEW_REQUIRED. Complete the manual review workflow before activation.',
+          trustStatus: 'REVIEW_REQUIRED',
+          reasonCode: trustDecision.reason_code,
+          reasonDescription: trustDecision.reason_description
+        });
+      }
+
+      // TRUSTED and CONDITIONALLY_ACCEPTED are permitted to advance.
     }
 
     var result = await fabric.getContract();

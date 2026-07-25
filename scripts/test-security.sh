@@ -67,7 +67,10 @@ payload = {
   "softwareVersion": "1.0.0",
   "format": "CycloneDX",
   "offChainRef": "ipfs://tpsr-security-test",
-  "signatures": ["sig-security-1", "sig-security-2"]
+  "signatures": ["sig-security-1", "sig-security-2"],
+  "artifactHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "artifactName": "test-artifact.jar",
+  "artifactType": "JAR"
 }
 with open(sys.argv[4], "w") as f:
   json.dump(payload, f)

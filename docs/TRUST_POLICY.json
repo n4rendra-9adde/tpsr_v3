@@ -1,0 +1,73 @@
+{
+  "policyVersion": "v3.0.0-20260725",
+  "updatedAt": "2026-07-25T17:00:00Z",
+  "description": "Authoritative trust policy governing SLSA provenance builders, Sigstore OIDC issuers, public signing keys, and approved VEX issuers for TPSR v3.",
+  "provenancePolicy": {
+    "requiredSlsaLevel": "SLSA_BUILD_LEVEL_3",
+    "approvedBuilders": [
+      "https://github.com/actions/runner/github-hosted",
+      "https://github.com/org/repo/.github/workflows/build.yml",
+      "https://gitlab.com/gitlab-org/gitlab-runner",
+      "https://tekton.dev/chains/v2"
+    ],
+    "approvedBuildTypes": [
+      "https://actions.github.io/buildtypes/workflow/v1",
+      "https://tekton.dev/attestations/workflow/v2"
+    ]
+  },
+  "signaturePolicy": {
+    "requiredSignatureCount": 1,
+    "allowedOidcIssuers": [
+      "https://token.actions.githubusercontent.com",
+      "https://gitlab.com",
+      "https://accounts.google.com"
+    ],
+    "trustedPublicKeys": {
+      "build-officer@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEb3511L+qM/oD5H1ZqZ9E/s4yL+Q\nKj/E0oO8T5N1J/Z/V1rY1J3G/z5U1W1E1V1E1V1E1V1E1V1E1V1E1V1E1Q==\n-----END PUBLIC KEY-----",
+      "security-release@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEV1E1V1E1V1E1V1E1V1E1V1E1V1E1\nQj/E0oO8T5N1J/Z/V1rY1J3G/z5U1W1E1V1E1V1E1V1E1V1E1V1E1V1E1Q==\n-----END PUBLIC KEY-----"
+    },
+    "rekorTransparencyLog": {
+      "enforceInclusion": true,
+      "rekorUrl": "https://rekor.sigstore.dev"
+    }
+  },
+  "vexPolicy": {
+    "approvedIssuers": [
+      "security-team@tpsr.com",
+      "cve-coordination@tpsr.com",
+      "vendor-security@tpsr.com"
+    ],
+    "maxOverlayValidityDays": 365,
+    "requireImpactStatementForNotAffected": true,
+    "allowedJustifications": [
+      "component_not_present",
+      "vulnerable_code_not_present",
+      "vulnerable_code_not_in_execute_path",
+      "vulnerable_code_cannot_be_controlled_by_adversary",
+      "inline_mitigations_already_exist"
+    ]
+  },
+  "contextRiskMultipliers": {
+    "environments": {
+      "PRODUCTION": 1.5,
+      "STAGING": 1.0,
+      "ISOLATED_EDGE": 0.7,
+      "DEVELOPMENT": 0.5
+    },
+    "networkExposure": {
+      "PUBLIC_INTERNET": 1.5,
+      "INTERNAL_ONLY": 0.8,
+      "AIR_GAPPED": 0.4
+    },
+    "dataSensitivity": {
+      "CONFIDENTIAL": 1.3,
+      "INTERNAL": 1.0,
+      "PUBLIC": 0.8
+    }
+  },
+  "exceptionPolicy": {
+    "allowedRoles": ["security", "admin"],
+    "maxValidityDays": 90,
+    "requireCompensatingControls": true
+  }
+}

@@ -9,21 +9,27 @@
     "test": "jest"
   },
   "dependencies": {
-    "express": "4.18.2",
-    "fabric-network": "2.2.20",
-    "fabric-ca-client": "2.2.20",
-    "crypto-js": "4.2.0",
-    "ipfs-http-client": "56.0.3",
-    "pg": "8.11.3",
-    "dotenv": "16.3.1",
     "cors": "2.8.5",
-    "helmet": "7.1.0",
+    "crypto-js": "4.2.0",
+    "dotenv": "16.3.1",
+    "express": "4.18.2",
     "express-rate-limit": "7.1.5",
-    "winston": "3.11.0",
-    "joi": "17.11.0"
+    "fabric-ca-client": "2.2.20",
+    "fabric-network": "2.2.20",
+    "helmet": "7.1.0",
+    "ipfs-http-client": "56.0.3",
+    "joi": "17.11.0",
+    "pg": "8.11.3",
+    "winston": "3.11.0"
   },
   "devDependencies": {
     "jest": "29.7.0",
-    "nodemon": "3.0.2"
+    "nodemon": "3.0.2",
+    "supertest": "^7.2.2"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/src/**/__tests__/**/*.test.js"
+    ]
   }
 }

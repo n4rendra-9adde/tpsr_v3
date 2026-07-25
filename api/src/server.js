@@ -21,6 +21,14 @@ var supersedeRoute = require('./routes/supersede');
 var reviewPendingRoute = require('./routes/review-pending');
 var securityReviewedRoute = require('./routes/security-reviewed');
 var rejectRoute = require('./routes/reject');
+var provenanceRoute = require('./routes/provenance.routes');
+var signaturesRoute = require('./routes/signatures.routes');
+var vexRoute = require('./routes/vex.routes');
+var contextRoute = require('./routes/context.routes');
+var exceptionsRoute = require('./routes/exceptions.routes');
+var trustRoute = require('./routes/trust.routes');
+var outboxRoute = require('./routes/outbox.routes');
+var outboxWorker = require('./workers/outboxWorker');
 
 
 // Startup environment validation
@@ -111,6 +119,27 @@ function getAllowedRoles(method, reqPath) {
   if (method === 'POST' && reqPath === '/reject') {
     return auth.ROUTE_ROLE_MAP.reject;
   }
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/provenance$/)) {
+    return auth.ROUTE_ROLE_MAP.provenance;
+  }
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/signatures$/)) {
+    return auth.ROUTE_ROLE_MAP.signatures;
+  }
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/vex$/)) {
+    return auth.ROUTE_ROLE_MAP.vex;
+  }
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/context$/)) {
+    return auth.ROUTE_ROLE_MAP.context;
+  }
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/exceptions$/)) {
+    return auth.ROUTE_ROLE_MAP.exceptions;
+  }
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/trust-(evaluation|decision|evidence)$/)) {
+    return auth.ROUTE_ROLE_MAP.trust;
+  }
+  if (reqPath.match(/^\/(v1\/)?admin\/outbox(\/.*)?$/)) {
+    return auth.ROUTE_ROLE_MAP.outbox;
+  }
   return null;
 }
 
@@ -136,6 +165,13 @@ app.use('/api', supersedeRoute);
 app.use('/api', reviewPendingRoute);
 app.use('/api', securityReviewedRoute);
 app.use('/api', rejectRoute);
+app.use('/api', provenanceRoute);
+app.use('/api', signaturesRoute);
+app.use('/api', vexRoute);
+app.use('/api', contextRoute);
+app.use('/api', exceptionsRoute);
+app.use('/api', trustRoute);
+app.use('/api', outboxRoute);
 
 
 app.use(function (req, res) {
@@ -159,10 +195,12 @@ async function startServer() {
 
   var server = app.listen(PORT, function () {
     console.log('TPSR API server running on port ' + PORT);
+    outboxWorker.startWorker(10000, 10, 'outbox-worker-api');
   });
 
   function shutdown(signal) {
     console.log('[TPSR] Received ' + signal + '. Shutting down gracefully...');
+    outboxWorker.stopWorker();
     server.close(function () {
       db.closeDatabasePool()
         .then(function () {

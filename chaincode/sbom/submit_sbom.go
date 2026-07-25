@@ -97,6 +97,8 @@ func (c *SBOMContract) SubmitSBOM(
 		PolicyEvaluationMode: policyEvaluationMode,
 	}
 
+	record.EnsureSlices()
+
 	// H. Marshal to JSON
 	recordBytes, err := json.Marshal(record)
 	if err != nil {

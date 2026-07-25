@@ -29,6 +29,7 @@ func (c *SBOMContract) ListSBOMs(ctx contractapi.TransactionContextInterface) ([
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
 		}
+		sbom.EnsureSlices()
 		sboms = append(sboms, &sbom)
 	}
 

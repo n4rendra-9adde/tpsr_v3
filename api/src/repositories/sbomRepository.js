@@ -353,6 +353,203 @@ async function insertComplianceReport(record) {
   }
 }
 
+async function insertProvenanceAttestation(record) {
+  var query = `
+    INSERT INTO provenance_attestations (
+      sbom_id, artifact_hash, attestation_type, builder_id,
+      slsa_level, payload, attestation_hash, status
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING *;
+  `;
+  var values = [
+    record.sbomId,
+    record.artifactHash,
+    record.attestationType,
+    record.builderId,
+    record.slsaLevel,
+    JSON.stringify(record.payload),
+    record.attestationHash,
+    record.status || 'VALID'
+  ];
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, values);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function getProvenanceBySBOMID(sbomID) {
+  var query = `SELECT * FROM provenance_attestations WHERE sbom_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC;`;
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, [sbomID]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function insertSignatureVerification(record) {
+  var query = `
+    INSERT INTO signature_verifications (
+      sbom_id, artifact_hash, signature_type, signer_identity,
+      verification_status, bundle_json, signature_hash
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING *;
+  `;
+  var values = [
+    record.sbomId,
+    record.artifactHash,
+    record.signatureType,
+    record.signerIdentity,
+    record.verificationStatus || 'VERIFIED',
+    record.bundleJson ? JSON.stringify(record.bundleJson) : null,
+    record.signatureHash
+  ];
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, values);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function getSignaturesBySBOMID(sbomID) {
+  var query = `SELECT * FROM signature_verifications WHERE sbom_id = $1 AND deleted_at IS NULL ORDER BY verified_at DESC;`;
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, [sbomID]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function insertVexStatement(record) {
+  var query = `
+    INSERT INTO vex_statements (
+      sbom_id, vulnerability_id, original_severity, original_cvss,
+      applicability_status, policy_impact, justification, impact_statement,
+      statement_payload, issuer_identity, statement_issued_at,
+      statement_last_updated_at, policy_valid_until
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING *;
+  `;
+  var now = new Date().toISOString();
+  var values = [
+    record.sbomId,
+    record.vulnerabilityId || 'UNKNOWN-CVE',
+    record.originalSeverity || 'UNKNOWN',
+    record.originalCvss || 0,
+    record.status || 'not_affected',
+    record.policyImpact || 'SUPPRESSED',
+    record.justification || null,
+    record.impactStatement || null,
+    JSON.stringify(record.payload || {}),
+    record.issuerIdentity || 'security-team',
+    record.issuedAt || now,
+    record.lastUpdatedAt || now,
+    record.validUntil || new Date(Date.now() + 31536000000).toISOString()
+  ];
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, values);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function getVexStatementsBySBOMID(sbomID) {
+  var query = `SELECT * FROM vex_statements WHERE sbom_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC;`;
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, [sbomID]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function insertDeploymentContext(record) {
+  var query = `
+    INSERT INTO deployment_contexts (
+      sbom_id, environment, network_exposure, data_sensitivity,
+      privilege_level, compensating_controls, risk_multiplier
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING *;
+  `;
+  var values = [
+    record.sbomId,
+    record.environment || 'PROD',
+    record.networkExposure || 'INTERNAL',
+    record.dataSensitivity || 'INTERNAL',
+    record.privilegeLevel || 'STANDARD',
+    JSON.stringify(record.compensatingControls || []),
+    record.riskMultiplier || 1.00
+  ];
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, values);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function getDeploymentContextBySBOMID(sbomID) {
+  var query = `SELECT * FROM deployment_contexts WHERE sbom_id = $1 AND deleted_at IS NULL ORDER BY registered_at DESC;`;
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, [sbomID]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function insertPolicyException(record) {
+  var query = `
+    INSERT INTO policy_exceptions (
+      sbom_id, violation_id, violation_type, justification,
+      compensating_controls, requested_by, approved_by, status, valid_until
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING *;
+  `;
+  var values = [
+    record.sbomId,
+    record.violationId || 'POL-V01',
+    record.violationType || 'VULNERABILITY_THRESHOLD',
+    record.justification || 'Operational necessity with compensating controls',
+    record.compensatingControls || null,
+    record.requestedBy || 'developer',
+    record.approvedBy || 'security-officer',
+    record.status || 'APPROVED',
+    record.validUntil || new Date(Date.now() + 2592000000).toISOString()
+  ];
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, values);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function getPolicyExceptionsBySBOMID(sbomID) {
+  var query = `SELECT * FROM policy_exceptions WHERE sbom_id = $1 AND deleted_at IS NULL AND status = 'APPROVED' AND valid_until > CURRENT_TIMESTAMP ORDER BY created_at DESC;`;
+  var client = await db.pool.connect();
+  try {
+    var result = await client.query(query, [sbomID]);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   insertSBOMDocument: insertSBOMDocument,
   insertArtifactRecord: insertArtifactRecord,
@@ -364,5 +561,15 @@ module.exports = {
   listSBOMDocuments: listSBOMDocuments,
   insertVerificationEvent: insertVerificationEvent,
   insertComplianceReport: insertComplianceReport,
-  updateSBOMStatus: updateSBOMStatus
+  updateSBOMStatus: updateSBOMStatus,
+  insertProvenanceAttestation: insertProvenanceAttestation,
+  getProvenanceBySBOMID: getProvenanceBySBOMID,
+  insertSignatureVerification: insertSignatureVerification,
+  getSignaturesBySBOMID: getSignaturesBySBOMID,
+  insertVexStatement: insertVexStatement,
+  getVexStatementsBySBOMID: getVexStatementsBySBOMID,
+  insertDeploymentContext: insertDeploymentContext,
+  getDeploymentContextBySBOMID: getDeploymentContextBySBOMID,
+  insertPolicyException: insertPolicyException,
+  getPolicyExceptionsBySBOMID: getPolicyExceptionsBySBOMID
 };

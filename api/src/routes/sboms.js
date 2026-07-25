@@ -4,17 +4,26 @@ var express = require('express');
 var router = express.Router();
 
 var sbomRepository = require('../repositories/sbomRepository');
+var trustRepository = require('../repositories/trustRepository');
 
 router.get('/sboms', async function (req, res) {
   try {
     var limit = req.query.limit;
     
     var sboms = await sbomRepository.listSBOMDocuments(limit);
+    var enriched = await Promise.all(sboms.map(async function (item) {
+      var decision = await trustRepository.getLatestTrustDecisionBySBOMID(item.sbom_id);
+      return Object.assign({}, item, {
+        trustStatus: decision ? decision.trust_status : 'UNEVALUATED',
+        trustReasonCode: decision ? decision.reason_code : 'GOV-002',
+        trustReasonDescription: decision ? decision.reason_description : 'v3 trust evaluation not yet executed'
+      });
+    }));
 
     return res.status(200).json({
       message: 'SBOM list retrieved successfully',
-      count: sboms.length,
-      sboms: sboms
+      count: enriched.length,
+      sboms: enriched
     });
   } catch (error) {
     return res.status(500).json({
@@ -41,6 +50,8 @@ router.get('/sboms/:sbomID/document', async function (req, res) {
       return res.send(JSON.stringify(record.sbom_json, null, 2));
     }
 
+    var decision = await trustRepository.getLatestTrustDecisionBySBOMID(sbomID);
+
     return res.status(200).json({
       message: 'SBOM document retrieved successfully',
       sbomID: record.sbom_id,
@@ -56,6 +67,9 @@ router.get('/sboms/:sbomID/document', async function (req, res) {
       policyStatus: record.policy_status,
       policyReason: record.policy_reason,
       policyViolations: record.policy_violations,
+      trustStatus: decision ? decision.trust_status : 'UNEVALUATED',
+      trustReasonCode: decision ? decision.reason_code : 'GOV-002',
+      trustReasonDescription: decision ? decision.reason_description : 'v3 trust evaluation not yet executed',
       sbom: record.sbom_json
     });
   } catch (error) {

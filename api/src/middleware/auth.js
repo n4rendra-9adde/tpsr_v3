@@ -14,6 +14,13 @@ var ROUTE_ROLE_MAP = {
   approve: ['auditor', 'admin'],
   activate: ['security', 'admin'],
   supersede: ['security', 'admin'],
+  provenance: ['developer', 'security', 'admin'],
+  signatures: ['developer', 'security', 'admin'],
+  vex: ['developer', 'security', 'admin'],
+  context: ['developer', 'security', 'admin'],
+  exceptions: ['developer', 'security', 'admin'],
+  trust: ['developer', 'security', 'auditor', 'admin'],
+  outbox: ['security', 'admin'],
 };
 
 function authenticateHeaders(req, res, next) {

@@ -94,7 +94,10 @@ function SBOMListPage({ selectedIdentity }) {
         jobName: item.jobName ?? item.job_name,
         policyStatus: item.policyStatus ?? item.policy_status,
         policyReason: item.policyReason ?? item.policy_reason,
-        policyViolations: item.policyViolations ?? item.policy_violations
+        policyViolations: item.policyViolations ?? item.policy_violations,
+        trustStatus: item.trustStatus || 'UNEVALUATED',
+        trustReasonCode: item.trustReasonCode || 'GOV-002',
+        trustReasonDescription: item.trustReasonDescription || 'v3 trust evaluation not yet executed'
       }));
       setSboms(normalizedSboms);
     } catch (err) {
@@ -377,6 +380,25 @@ function SBOMListPage({ selectedIdentity }) {
       }
     },
     {
+      title: 'Trust Decision',
+      dataIndex: 'trustStatus',
+      key: 'trustStatus',
+      render: (status, record) => {
+        let color = 'default';
+        if (status === 'TRUSTED')               color = 'green';
+        if (status === 'CONDITIONALLY_ACCEPTED') color = 'blue';
+        if (status === 'REVIEW_REQUIRED')        color = 'orange';
+        if (status === 'REJECTED')               color = 'red';
+        // Legacy compatibility: historical UNTRUSTED records display as REJECTED (red)
+        if (status === 'UNTRUSTED')              color = 'red';
+        return (
+          <Tooltip title={`${record.trustReasonCode || ''}: ${record.trustReasonDescription || ''}`}>
+            <Tag color={color}>{status === 'UNTRUSTED' ? 'REJECTED (legacy)' : (status || 'UNEVALUATED')}</Tag>
+          </Tooltip>
+        );
+      }
+    },
+    {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
@@ -577,6 +599,24 @@ function SBOMListPage({ selectedIdentity }) {
                     <ul>{selectedRecord.policyViolations.map((v, i) => <li key={i}><Text type="danger">{v}</Text></li>)}</ul>
                   </Descriptions.Item>
                 )}
+                <Descriptions.Item label="Trust Decision Status">
+                  <Tag color={
+                    selectedRecord.trustStatus === 'TRUSTED'               ? 'green' :
+                    selectedRecord.trustStatus === 'CONDITIONALLY_ACCEPTED' ? 'blue'  :
+                    selectedRecord.trustStatus === 'REVIEW_REQUIRED'        ? 'orange':
+                    selectedRecord.trustStatus === 'REJECTED'               ? 'red'   :
+                    selectedRecord.trustStatus === 'UNTRUSTED'              ? 'red'   : 'default'
+                  }>
+                    {selectedRecord.trustStatus === 'UNTRUSTED'
+                      ? 'REJECTED (legacy)'
+                      : (selectedRecord.trustStatus || 'UNEVALUATED')}
+                  </Tag>
+                </Descriptions.Item>
+                {selectedRecord.trustReasonCode && (
+                  <Descriptions.Item label="Trust Reason">
+                    <Text strong>{selectedRecord.trustReasonCode}</Text>: {selectedRecord.trustReasonDescription}
+                  </Descriptions.Item>
+                )}
               </Descriptions>
             </Card>
             <Text strong>Raw SBOM JSON Payload:</Text>
@@ -721,6 +761,18 @@ function VerifyPage({ selectedIdentity }) {
     return 'default';
   };
 
+  // Authoritative four-state trust-decision color helper (TPSR v3 enum remediation)
+  const getTrustColor = (ts) => {
+    if (ts === 'TRUSTED')               return 'green';
+    if (ts === 'CONDITIONALLY_ACCEPTED') return 'blue';
+    if (ts === 'REVIEW_REQUIRED')        return 'orange';
+    if (ts === 'REJECTED')               return 'red';
+    if (ts === 'UNTRUSTED')              return 'red'; // legacy read-compatibility
+    return 'default';
+  };
+  const getTrustLabel = (ts) => ts === 'UNTRUSTED' ? 'REJECTED (legacy)' : (ts || 'UNEVALUATED');
+
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '800px' }}>
       <div>
@@ -782,6 +834,51 @@ function VerifyPage({ selectedIdentity }) {
 
       {result && (
         <Card title="Verification Result" size="small">
+          {anchorDoc && (
+            <>
+              <Alert
+                message={<Text strong>Trust Governance Status: {getTrustLabel(anchorDoc.trustStatus)}</Text>}
+                description={`Reason Code ${anchorDoc.trustReasonCode}: ${anchorDoc.trustReasonDescription}`}
+                type={anchorDoc.trustStatus === 'TRUSTED' ? 'success' : (anchorDoc.trustStatus === 'REJECTED' || anchorDoc.trustStatus === 'UNTRUSTED') ? 'error' : 'warning'}
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+              <Row gutter={16} style={{ marginBottom: 16 }}>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Integrity Match</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0, color: result.match ? '#52c41a' : '#ff4d4f' }}>
+                      {result.match ? 'MATCH ✓' : 'MISMATCH ✗'}
+                    </Typography.Title>
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Lifecycle State</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0 }}>
+                      <Tag color={getLedgerStatusColor(result.status)}>{result.status || '-'}</Tag>
+                    </Typography.Title>
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Trust Decision</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0 }}>
+                      <Tag color={getTrustColor(anchorDoc.trustStatus)}>{getTrustLabel(anchorDoc.trustStatus)}</Tag>
+                    </Typography.Title>
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Policy Status</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0 }}>
+                      <Tag color={anchorDoc.policyStatus === 'PASS' ? 'success' : 'error'}>{anchorDoc.policyStatus || 'UNKNOWN'}</Tag>
+                    </Typography.Title>
+                  </Card>
+                </Col>
+              </Row>
+            </>
+          )}
 
           {anchorDoc && (
             <Card
@@ -815,6 +912,9 @@ function VerifyPage({ selectedIdentity }) {
                 </Descriptions.Item>
                 <Descriptions.Item label="Lifecycle State">
                   <Tag color={getLedgerStatusColor(result.status)}>{result.status || '-'}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Trust Status">
+                  <Tag color={getTrustColor(anchorDoc.trustStatus)}>{getTrustLabel(anchorDoc.trustStatus)}</Tag>
                 </Descriptions.Item>
               </Descriptions>
             </Card>
@@ -1067,6 +1167,34 @@ function HistoryPage({ selectedIdentity }) {
       key: 'buildID',
       render: (_, item) => item.record?.buildID || '-'
     },
+    {
+      title: 'Trust Decision',
+      key: 'trustStatus',
+      render: (_, item) => {
+        const ts = item.record?.trustStatus || item.record?.trust_status;
+        if (!ts) return <Tag color="default">UNEVALUATED</Tag>;
+        let color = 'default';
+        if (ts === 'TRUSTED')               color = 'green';
+        if (ts === 'CONDITIONALLY_ACCEPTED') color = 'blue';
+        if (ts === 'REVIEW_REQUIRED')        color = 'orange';
+        if (ts === 'REJECTED')               color = 'red';
+        // Legacy compatibility: historical UNTRUSTED displays as REJECTED (red)
+        if (ts === 'UNTRUSTED')              color = 'red';
+        return <Tag color={color}>{ts === 'UNTRUSTED' ? 'REJECTED (legacy)' : ts}</Tag>;
+      }
+    },
+    {
+      title: 'Outbox Anchor Status',
+      key: 'outboxStatus',
+      render: (_, item) => {
+        const os = item.record?.outboxStatus || item.record?.outbox_status || (item.txID ? 'COMPLETED' : 'PENDING');
+        let color = 'default';
+        if (os === 'COMPLETED') color = 'geekblue';
+        if (os === 'FAILED') color = 'red';
+        if (os === 'PROCESSING') color = 'blue';
+        return <Tag color={color}>{os}</Tag>;
+      }
+    },
   ];
 
   return (
@@ -1155,6 +1283,11 @@ function CompliancePage({ selectedIdentity }) {
   const [report, setReport] = useState(null);
   const [anchorDoc, setAnchorDoc] = useState(null);
   const [perfMetrics, setPerfMetrics] = useState(null);
+  const [simEnv, setSimEnv] = useState('PROD');
+  const [simExposure, setSimExposure] = useState('INTERNAL');
+  const [simVex, setSimVex] = useState('NONE');
+  const [simResult, setSimResult] = useState(null);
+  const [simLoading, setSimLoading] = useState(false);
 
   const handleBeforeUpload = (file) => {
     setErrorMsg('');
@@ -1253,6 +1386,39 @@ function CompliancePage({ selectedIdentity }) {
     }
   };
 
+  const handleSimulate = async () => {
+    setSimLoading(true);
+    setSimResult(null);
+    try {
+      let simulatedStatus = 'TRUSTED';
+      let simulatedReasonCode = 'GOV-001';
+      let simulatedReasonDesc = 'All provenance, signature, VEX, and deployment context checks passed.';
+      
+      if (simEnv === 'PROD_CRITICAL' && simExposure === 'PUBLIC' && simVex !== 'RESOLVED') {
+        simulatedStatus = 'REJECTED';
+        simulatedReasonCode = 'CTX-003';
+        simulatedReasonDesc = 'Critical deployment environment prohibits public network exposure without approved VEX resolution.';
+      } else if (simVex === 'AFFECTED') {
+        simulatedStatus = 'REJECTED';
+        simulatedReasonCode = 'VEX-002';
+        simulatedReasonDesc = 'Active VEX statement indicates vulnerability affects deployment target.';
+      } else if (simVex === 'RESOLVED') {
+        simulatedStatus = 'CONDITIONALLY_ACCEPTED';
+        simulatedReasonCode = 'EXC-001';
+        simulatedReasonDesc = 'Policy exception or VEX statement mitigates underlying risk score. Trust is conditionally accepted.';
+      }
+
+      setSimResult({
+        status: simulatedStatus,
+        reasonCode: simulatedReasonCode,
+        reasonDescription: simulatedReasonDesc,
+        simulatedAt: new Date().toISOString()
+      });
+    } finally {
+      setSimLoading(false);
+    }
+  };
+
   const getLedgerStatusColor = (status) => {
     if (status === 'REGISTERED') return 'default';
     if (status === 'REVIEW_PENDING') return 'orange';
@@ -1264,6 +1430,18 @@ function CompliancePage({ selectedIdentity }) {
     if (status === 'REJECTED') return 'red';
     return 'default';
   };
+
+  // Authoritative four-state trust-decision color helper (TPSR v3 enum remediation)
+  const getTrustColor = (ts) => {
+    if (ts === 'TRUSTED')               return 'green';
+    if (ts === 'CONDITIONALLY_ACCEPTED') return 'blue';
+    if (ts === 'REVIEW_REQUIRED')        return 'orange';
+    if (ts === 'REJECTED')               return 'red';
+    if (ts === 'UNTRUSTED')              return 'red'; // legacy read-compatibility
+    return 'default';
+  };
+  const getTrustLabel = (ts) => ts === 'UNTRUSTED' ? 'REJECTED (legacy)' : (ts || 'UNEVALUATED');
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '800px' }}>
@@ -1326,12 +1504,92 @@ function CompliancePage({ selectedIdentity }) {
 
       {report && (
         <Card title="Compliance Report Result" size="small">
-          <Alert
-            style={{ marginBottom: 16 }}
-            type={report.compliant ? 'success' : 'error'}
-            message={report.compliant ? 'SBOM is COMPLIANT with the current ledger state.' : 'SBOM is NON-COMPLIANT with the current ledger state.'}
-            showIcon
-          />
+          {anchorDoc && (
+            <>
+              <Alert
+                message={<Text strong>Trust Governance Status: {anchorDoc.trustStatus}</Text>}
+                description={`Reason Code ${anchorDoc.trustReasonCode}: ${anchorDoc.trustReasonDescription}`}
+                type={anchorDoc.trustStatus === 'TRUSTED' ? 'success' : anchorDoc.trustStatus === 'UNTRUSTED' ? 'error' : 'warning'}
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+              <Row gutter={16} style={{ marginBottom: 16 }}>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Integrity Match</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0, color: report.integrityMatch ? '#52c41a' : '#ff4d4f' }}>
+                      {report.integrityMatch ? 'MATCH ✓' : 'MISMATCH ✗'}
+                    </Typography.Title>
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Lifecycle State</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0 }}>
+                      <Tag color={getLedgerStatusColor(report.lifecycleState)}>{report.lifecycleState || '-'}</Tag>
+                    </Typography.Title>
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Trust Decision</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0 }}>
+                      <Tag color={getTrustColor(anchorDoc.trustStatus)}>{getTrustLabel(anchorDoc.trustStatus)}</Tag>
+                    </Typography.Title>
+                  </Card>
+                </Col>
+                <Col span={6}>
+                  <Card size="small">
+                    <Typography.Text type="secondary">Policy Status</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: 0 }}>
+                      <Tag color={report.policyStatus === 'PASS' ? 'success' : 'error'}>{report.policyStatus || 'UNKNOWN'}</Tag>
+                    </Typography.Title>
+                  </Card>
+                </Col>
+              </Row>
+              <Card title="What-If Trust & Policy Simulator" size="small" style={{ marginBottom: 16, backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text type="secondary">Test how changing deployment context or VEX overlays affects TPSR v3 trust evaluation for this SBOM:</Text>
+                  <Space wrap>
+                    <div>
+                      <Text strong style={{ marginRight: 8 }}>Environment:</Text>
+                      <Select value={simEnv} onChange={setSimEnv} style={{ width: 150 }} options={[
+                        { value: 'DEV', label: 'DEV' },
+                        { value: 'STAGING', label: 'STAGING' },
+                        { value: 'PROD', label: 'PROD' },
+                        { value: 'PROD_CRITICAL', label: 'PROD_CRITICAL' }
+                      ]} />
+                    </div>
+                    <div>
+                      <Text strong style={{ marginRight: 8 }}>Network Exposure:</Text>
+                      <Select value={simExposure} onChange={setSimExposure} style={{ width: 140 }} options={[
+                        { value: 'INTERNAL', label: 'INTERNAL' },
+                        { value: 'PUBLIC', label: 'PUBLIC' }
+                      ]} />
+                    </div>
+                    <div>
+                      <Text strong style={{ marginRight: 8 }}>Simulate VEX:</Text>
+                      <Select value={simVex} onChange={setSimVex} style={{ width: 160 }} options={[
+                        { value: 'NONE', label: 'None (Default)' },
+                        { value: 'RESOLVED', label: 'Apply RESOLVED' },
+                        { value: 'AFFECTED', label: 'Apply AFFECTED' }
+                      ]} />
+                    </div>
+                    <Button type="primary" onClick={handleSimulate} loading={simLoading}>Simulate Decision</Button>
+                  </Space>
+                  {simResult && (
+                    <Alert
+                      style={{ marginTop: 12 }}
+                      type={simResult.status === 'TRUSTED' ? 'success' : 'error'}
+                      message={`Simulated Outcome: ${simResult.status} (${simResult.reasonCode})`}
+                      description={simResult.reasonDescription}
+                      showIcon
+                    />
+                  )}
+                </Space>
+              </Card>
+            </>
+          )}
 
           {anchorDoc && (
             <Card

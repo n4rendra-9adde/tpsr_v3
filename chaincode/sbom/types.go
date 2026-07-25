@@ -24,6 +24,30 @@ type SBOMRecord struct {
 	PolicyReason         string   `json:"policyReason"`
 	PolicyViolations     []string `json:"policyViolations"`
 	PolicyEvaluationMode string   `json:"policyEvaluationMode"`
+	TrustStatus          string   `json:"trustStatus,omitempty"`
+	TrustReasonCode      string   `json:"trustReasonCode,omitempty"`
+	TrustReasonDesc      string   `json:"trustReasonDesc,omitempty"`
+	TrustEvaluatedAt     int64    `json:"trustEvaluatedAt,omitempty"`
+	TrustEvaluatedBy     string   `json:"trustEvaluatedBy,omitempty"`
+	ProvenanceHash       string   `json:"provenanceHash,omitempty"`
+	SignatureHashes      []string `json:"signatureHashes"`
+	ActiveVexIds         []string `json:"activeVexIds"`
+	EffectiveRiskScore   float64  `json:"effectiveRiskScore,omitempty"`
+}
+
+func (r *SBOMRecord) EnsureSlices() {
+	if r.Signatures == nil {
+		r.Signatures = []string{}
+	}
+	if r.PolicyViolations == nil {
+		r.PolicyViolations = []string{}
+	}
+	if r.SignatureHashes == nil {
+		r.SignatureHashes = []string{}
+	}
+	if r.ActiveVexIds == nil {
+		r.ActiveVexIds = []string{}
+	}
 }
 
 type VerificationResult struct {
@@ -41,6 +65,56 @@ type HistoryRecord struct {
 	Record    *SBOMRecord `json:"record,omitempty"`
 }
 
+type RecordTrustEvidenceInput struct {
+	Version        string `json:"version"`
+	SBOMID         string `json:"sbomID"`
+	EvidenceType   string `json:"evidenceType"`
+	EvidenceHash   string `json:"evidenceHash"`
+	EvidenceId     string `json:"evidenceId"`
+	EvidencePayload string `json:"evidencePayload,omitempty"`
+}
+
+type RecordTrustDecisionInput struct {
+	Version            string   `json:"version"`
+	SBOMID             string   `json:"sbomID"`
+	DecisionId         string   `json:"decisionId"`
+	TrustStatus        string   `json:"trustStatus"`
+	ReasonCode         string   `json:"reasonCode"`
+	ReasonDescription  string   `json:"reasonDescription"`
+	PolicyVersion      string   `json:"policyVersion"`
+	IdempotencyKey     string   `json:"idempotencyKey"`
+	ProvenanceHash     string   `json:"provenanceHash,omitempty"`
+	SignatureHashes    []string `json:"signatureHashes,omitempty"`
+	ActiveVexIds       []string `json:"activeVexIds,omitempty"`
+	EffectiveRiskScore float64  `json:"effectiveRiskScore,omitempty"`
+}
+
+type TrustEvidenceRecord struct {
+	EvidenceId      string `json:"evidenceId"`
+	SBOMID          string `json:"sbomID"`
+	EvidenceType    string `json:"evidenceType"`
+	EvidenceHash    string `json:"evidenceHash"`
+	EvidencePayload string `json:"evidencePayload,omitempty"`
+	RecordedAt      int64  `json:"recordedAt"`
+	RecordedBy      string `json:"recordedBy"`
+}
+
+type TrustDecisionPointer struct {
+	DecisionId         string   `json:"decisionId"`
+	SBOMID             string   `json:"sbomID"`
+	TrustStatus        string   `json:"trustStatus"`
+	ReasonCode         string   `json:"reasonCode"`
+	ReasonDescription  string   `json:"reasonDescription"`
+	PolicyVersion      string   `json:"policyVersion"`
+	IdempotencyKey     string   `json:"idempotencyKey"`
+	ProvenanceHash     string   `json:"provenanceHash,omitempty"`
+	SignatureHashes    []string `json:"signatureHashes,omitempty"`
+	ActiveVexIds       []string `json:"activeVexIds,omitempty"`
+	EffectiveRiskScore float64  `json:"effectiveRiskScore,omitempty"`
+	RecordedAt         int64    `json:"recordedAt"`
+	RecordedBy         string   `json:"recordedBy"`
+}
+
 const (
 	StatusRegistered       = "REGISTERED"
 	StatusReviewPending    = "REVIEW_PENDING"
@@ -50,4 +124,19 @@ const (
 	StatusActive           = "ACTIVE"
 	StatusSuperseded       = "SUPERSEDED"
 	StatusRejected         = "REJECTED"
+
+	// Authoritative TPSR v3 trust decisions (four-state model)
+	TrustStatusTrusted              = "TRUSTED"
+	TrustStatusConditionallyAccepted = "CONDITIONALLY_ACCEPTED"
+	TrustStatusReviewRequired       = "REVIEW_REQUIRED"
+	TrustStatusRejected             = "REJECTED"
+
+	// UNEVALUATED is allowed only as a cached/presentation status for records
+	// that have not undergone authoritative TPSR v3 evaluation.
+	TrustStatusUnevaluated = "UNEVALUATED"
+
+	// TrustStatusUntrustedLegacy is a READ-ONLY compatibility alias for historical
+	// records stored before the v3 enum migration. It must never be written as an
+	// authoritative decision. New evaluations must use TrustStatusRejected.
+	TrustStatusUntrustedLegacy = "UNTRUSTED"
 )
