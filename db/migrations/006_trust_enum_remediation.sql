@@ -51,6 +51,9 @@ END $$;
 -- it from the IN list below.
 
 ALTER TABLE trust_decision_history
+  DROP CONSTRAINT IF EXISTS chk_trust_decision_history_trust_status;
+
+ALTER TABLE trust_decision_history
   ADD CONSTRAINT chk_trust_decision_history_trust_status
   CHECK (trust_status IN (
     'TRUSTED',

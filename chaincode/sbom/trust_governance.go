@@ -85,6 +85,20 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 		return fmt.Errorf("missing required fields in RecordTrustDecisionInput: sbomID, decisionId, and trustStatus are required")
 	}
 
+	// Enforce the authoritative four-state trust-decision enum at the ledger boundary.
+	// Any caller submitting UNTRUSTED, UNEVALUATED, or an arbitrary string is rejected here.
+	switch input.TrustStatus {
+	case TrustStatusTrusted, TrustStatusConditionallyAccepted, TrustStatusReviewRequired, TrustStatusRejected:
+		// Valid authoritative decision — proceed
+	default:
+		return fmt.Errorf(
+			"invalid trust decision value %q: only TRUSTED, CONDITIONALLY_ACCEPTED, REVIEW_REQUIRED, or REJECTED are accepted; "+
+				"UNTRUSTED is not an authoritative v3 decision (use REJECTED instead); UNEVALUATED is not an authoritative decision",
+			input.TrustStatus,
+		)
+	}
+
+
 	// Read existing SBOM record
 	sbomBytes, err := ctx.GetStub().GetState(input.SBOMID)
 	if err != nil {

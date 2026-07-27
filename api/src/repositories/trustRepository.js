@@ -30,6 +30,16 @@ function normalizeTrustStatus(status) {
 
 
 async function insertTrustDecision(record) {
+  // Validate the authoritative trust-decision enum before any DB write.
+  const AUTHORITATIVE_DECISIONS = ['TRUSTED', 'CONDITIONALLY_ACCEPTED', 'REVIEW_REQUIRED', 'REJECTED'];
+  if (!AUTHORITATIVE_DECISIONS.includes(record.trustStatus)) {
+    throw new Error(
+      `insertTrustDecision: invalid trustStatus '${record.trustStatus}'. ` +
+      `Only TRUSTED, CONDITIONALLY_ACCEPTED, REVIEW_REQUIRED, or REJECTED are permitted. ` +
+      `UNTRUSTED is not an authoritative v3 decision. Use REJECTED instead.`
+    );
+  }
+
   const query = `
     INSERT INTO trust_decision_history (
       sbom_id, trust_status, reason_code, reason_description,
@@ -39,7 +49,7 @@ async function insertTrustDecision(record) {
   `;
   const values = [
     record.sbomId,
-    record.trustStatus || 'PENDING',
+    record.trustStatus,
     record.reasonCode || 'TRST-000',
     record.reasonDescription || 'Trust evaluation recorded',
     JSON.stringify(record.evidenceSummary || {}),

@@ -1507,9 +1507,9 @@ function CompliancePage({ selectedIdentity }) {
           {anchorDoc && (
             <>
               <Alert
-                message={<Text strong>Trust Governance Status: {anchorDoc.trustStatus}</Text>}
+                message={<Text strong>Trust Governance Status: {getTrustLabel(anchorDoc.trustStatus)}</Text>}
                 description={`Reason Code ${anchorDoc.trustReasonCode}: ${anchorDoc.trustReasonDescription}`}
-                type={anchorDoc.trustStatus === 'TRUSTED' ? 'success' : anchorDoc.trustStatus === 'UNTRUSTED' ? 'error' : 'warning'}
+                type={anchorDoc.trustStatus === 'TRUSTED' ? 'success' : (anchorDoc.trustStatus === 'REJECTED' || anchorDoc.trustStatus === 'UNTRUSTED') ? 'error' : 'warning'}
                 showIcon
                 style={{ marginBottom: 16 }}
               />

@@ -85,25 +85,20 @@ async function handleEvaluateTrust(req, res) {
       }
     });
 
-    // HTTP status code semantics for the four-state trust-decision model:
-    //   201 Created   — TRUSTED or CONDITIONALLY_ACCEPTED (evaluation completed, decision is affirmative)
-    //   202 Accepted  — REVIEW_REQUIRED (evaluation completed, manual review is pending)
-    //   200 OK        — REJECTED (evaluation completed, decision is definitive rejection)
-    let statusCode = 200;
-    if (evalResult.trustStatus === 'TRUSTED' || evalResult.trustStatus === 'CONDITIONALLY_ACCEPTED') {
-      statusCode = 201;
-    } else if (evalResult.trustStatus === 'REVIEW_REQUIRED') {
-      statusCode = 202;
-    }
-
-    return res.status(statusCode).json({
+    // HTTP status code: 201 Created for all new authoritative evaluation records.
+    // The trust decision (TRUSTED, CONDITIONALLY_ACCEPTED, REVIEW_REQUIRED, REJECTED)
+    // is communicated via the response body `trustStatus` field — not the HTTP status code.
+    // Using different 2xx codes to encode business trust outcomes would violate REST
+    // resource-creation semantics and break standard API clients and monitoring tools.
+    // 201: a new trust_decision_history record was successfully created.
+    return res.status(201).json({
       message: evalResult.trustStatus === 'TRUSTED'
         ? 'Trust evaluation passed — all mandatory governance criteria satisfied.'
         : evalResult.trustStatus === 'CONDITIONALLY_ACCEPTED'
           ? 'Trust evaluation conditionally accepted — valid policy exception covers remaining violation.'
           : evalResult.trustStatus === 'REVIEW_REQUIRED'
             ? 'Trust evaluation requires manual review — evidence is incomplete or ambiguous.'
-            : 'Trust evaluation rejected — mandatory governance check failed.',
+            : 'Trust evaluation completed — mandatory governance check failed (decision: REJECTED).',
       decisionId: dbDecision.id,
       outboxId: outboxRecord.id,
       sbomId: sbomId.trim(),

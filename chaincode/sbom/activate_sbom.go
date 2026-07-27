@@ -33,7 +33,14 @@ func (c *SBOMContract) ActivateSBOM(ctx contractapi.TransactionContextInterface,
 	// REJECTED and legacy UNTRUSTED records are both hard-blocked.
 	// REVIEW_REQUIRED requires completed manual review workflow before activation.
 	// UNEVALUATED records must complete authoritative v3 evaluation first.
-	// CONDITIONALLY_ACCEPTED requires valid exception (validated at API layer before this call).
+	//
+	// CONDITIONALLY_ACCEPTED: BLOCKED in Group 1.
+	// Chaincode cannot verify that the conditional exception evidence is
+	// current, anchored, and validly scoped on the Fabric ledger.
+	// This gate will be relaxed in the Fabric governance remediation group
+	// once exception evidence anchoring and on-chain verification are implemented.
+	// API layer also blocks CONDITIONALLY_ACCEPTED activation separately.
+	//
 	// TRUSTED records proceed normally.
 	switch record.TrustStatus {
 	case TrustStatusRejected, TrustStatusUntrustedLegacy:
@@ -42,7 +49,12 @@ func (c *SBOMContract) ActivateSBOM(ctx contractapi.TransactionContextInterface,
 		return fmt.Errorf("lifecycle transition blocked: SBOM trust decision is REVIEW_REQUIRED (reason code: %s) — complete the manual review workflow before activation", record.TrustReasonCode)
 	case TrustStatusUnevaluated:
 		return fmt.Errorf("lifecycle transition blocked: SBOM has not undergone authoritative TPSR v3 trust evaluation — submit evidence and request evaluation before activation")
-	case TrustStatusTrusted, TrustStatusConditionallyAccepted:
+	case TrustStatusConditionallyAccepted:
+		return fmt.Errorf("lifecycle transition blocked: SBOM trust decision is CONDITIONALLY_ACCEPTED — " +
+			"conditional activation requires anchored exception evidence verification on the Fabric ledger, " +
+			"which is not yet implemented (pending Fabric governance remediation). " +
+			"Remediate the underlying policy violation to advance to TRUSTED, or await the governance remediation.")
+	case TrustStatusTrusted:
 		// Permitted to advance; fall through
 	}
 

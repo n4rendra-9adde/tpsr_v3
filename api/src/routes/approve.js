@@ -74,9 +74,23 @@ router.post('/approve', async function (req, res) {
         });
       }
 
-      // TRUSTED and CONDITIONALLY_ACCEPTED are permitted to advance.
-      // CONDITIONALLY_ACCEPTED requires a valid exception, which was already validated
-      // during the trust evaluation that produced this decision.
+      // CONDITIONALLY_ACCEPTED: blocked in Group 1.
+      // Conditional approval requires anchored exception evidence verification on the Fabric
+      // ledger, which is not yet implemented (pending Fabric governance remediation group).
+      // Remediate the underlying policy violation to advance to TRUSTED, or await the remediation.
+      if (normalizedStatus === 'CONDITIONALLY_ACCEPTED') {
+        return res.status(409).json({
+          error: 'Approval denied: Lifecycle transition blocked — SBOM trust decision is CONDITIONALLY_ACCEPTED. ' +
+            'Conditional lifecycle advancement requires anchored exception evidence on the Fabric ledger, ' +
+            'which is not yet implemented. Remediate the underlying policy violation to advance to TRUSTED.',
+          trustStatus: 'CONDITIONALLY_ACCEPTED',
+          reasonCode: trustDecision.reason_code,
+          reasonDescription: trustDecision.reason_description,
+          blockedUntil: 'Fabric governance remediation (conditional exception anchoring)'
+        });
+      }
+
+      // Only TRUSTED is permitted to advance at this time.
     }
 
     var result = await fabric.getContract();
