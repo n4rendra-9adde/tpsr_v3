@@ -29,7 +29,8 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);
 
     const mockContract = { submitTransaction: jest.fn().mockResolvedValue(Buffer.from('tx-999')) };
-    fabric.getContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
+    fabric.getVendorContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
+    fabric.getSecurityGovernanceContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
     fabric.disconnectGateway.mockImplementation(() => {});
 
     trustRepository.updateOutboxRecordStatus.mockResolvedValue({ ...mockRecord, status: 'COMPLETED' });
@@ -52,7 +53,8 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);
 
     const mockContract = { submitTransaction: jest.fn().mockRejectedValue(new Error('Peer connection timeout')) };
-    fabric.getContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
+    fabric.getVendorContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
+    fabric.getSecurityGovernanceContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
     fabric.disconnectGateway.mockImplementation(() => {});
 
     trustRepository.updateOutboxRecordStatus.mockResolvedValue({ ...mockRecord, status: 'RETRY_PENDING' });
@@ -74,13 +76,14 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
     const mockRecord = {
       id: 'outbox-103',
       sbom_id: 'sbom-103',
-      payload: { evidenceType: null, trustStatus: 'TRUSTED' },
+      payload: { trustStatus: 'TRUSTED' }, // evidenceType is null, so it's a decision
       retry_count: 4
     };
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);
 
     const mockContract = { submitTransaction: jest.fn().mockRejectedValue(new Error('Persistent MVCC read conflict')) };
-    fabric.getContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
+    fabric.getVendorContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
+    fabric.getSecurityGovernanceContract.mockResolvedValue({ gateway: { disconnect: jest.fn() }, contract: mockContract });
     fabric.disconnectGateway.mockImplementation(() => {});
 
     trustRepository.updateOutboxRecordStatus.mockResolvedValue({ ...mockRecord, status: 'FAILED_REQUIRES_REVIEW' });

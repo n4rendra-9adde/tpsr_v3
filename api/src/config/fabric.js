@@ -37,26 +37,30 @@ async function getWallet() {
   return Wallets.newFileSystemWallet(resolvedWalletPath);
 }
 
-async function connectGateway() {
-  const identity = process.env.FABRIC_IDENTITY;
-  if (!identity) {
-    throw new Error('FABRIC_IDENTITY is required');
+async function connectGateway(identityAlias) {
+  if (!identityAlias) {
+    throw new Error('identityAlias is required');
   }
 
   const connectionProfile = readConnectionProfile();
   const wallet = await getWallet();
 
+  const identityExists = await wallet.get(identityAlias);
+  if (!identityExists) {
+    throw new Error(`An identity for the alias "${identityAlias}" does not exist in the wallet`);
+  }
+
   const gateway = new Gateway();
   await gateway.connect(connectionProfile, {
     wallet,
-    identity,
+    identity: identityAlias,
     discovery: { enabled: false },
   });
 
   return gateway;
 }
 
-async function getContract() {
+async function getContractForIdentity(identityAlias) {
   const channelName = process.env.FABRIC_CHANNEL_NAME;
   const chaincodeName = process.env.FABRIC_CHAINCODE_NAME;
 
@@ -67,7 +71,7 @@ async function getContract() {
     throw new Error('FABRIC_CHAINCODE_NAME is required');
   }
 
-  const gateway = await connectGateway();
+  const gateway = await connectGateway(identityAlias);
   const network = await gateway.getNetwork(channelName);
   const contract = network.getContract(chaincodeName);
 
@@ -76,6 +80,28 @@ async function getContract() {
     network,
     contract,
   };
+}
+
+async function getContract() {
+  return getContractForIdentity(process.env.FABRIC_VENDOR_IDENTITY || process.env.FABRIC_IDENTITY);
+}
+
+async function getVendorContract() {
+  const identity = process.env.FABRIC_VENDOR_IDENTITY;
+  if (!identity) throw new Error('FABRIC_VENDOR_IDENTITY is required');
+  return getContractForIdentity(identity);
+}
+
+async function getSecurityGovernanceContract() {
+  const identity = process.env.FABRIC_SECURITY_IDENTITY;
+  if (!identity) throw new Error('FABRIC_SECURITY_IDENTITY is required');
+  return getContractForIdentity(identity);
+}
+
+async function getAuditorContract() {
+  const identity = process.env.FABRIC_AUDITOR_IDENTITY;
+  if (!identity) throw new Error('FABRIC_AUDITOR_IDENTITY is required');
+  return getContractForIdentity(identity);
 }
 
 function disconnectGateway(gateway) {
@@ -89,5 +115,8 @@ module.exports = {
   getWallet,
   connectGateway,
   getContract,
+  getVendorContract,
+  getSecurityGovernanceContract,
+  getAuditorContract,
   disconnectGateway,
 };
