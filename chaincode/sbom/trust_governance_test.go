@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-
 func TestTrustGovernanceTypes(t *testing.T) {
 	record := &SBOMRecord{
 		SBOMID: "test-sbom-001",
@@ -200,4 +199,29 @@ func indexOf(s, substr string) int {
 		}
 	}
 	return -1
+}
+
+func TestDigestValidation(t *testing.T) {
+	valid := "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	if err := validateSHA256Digest(valid); err != nil {
+		t.Errorf("Valid digest rejected: %v", err)
+	}
+
+	invalid := []string{
+		"",
+		"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",        // missing prefix
+		"sha256:E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855", // uppercase
+		"sha256:abc", // short
+		"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855a", // long
+		"sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", // space
+	}
+	for _, inv := range invalid {
+		if err := validateSHA256Digest(inv); err == nil {
+			t.Errorf("Invalid digest accepted: %s", inv)
+		}
+	}
+
+	if err := validateOptionalSHA256Digest(""); err != nil {
+		t.Errorf("Valid optional empty digest rejected: %v", err)
+	}
 }

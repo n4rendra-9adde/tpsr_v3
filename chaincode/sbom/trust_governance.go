@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -21,16 +22,18 @@ func (c *SBOMContract) RecordTrustEvidence(ctx contractapi.TransactionContextInt
 		return fmt.Errorf("missing required fields in RecordTrustEvidenceInput: sbomID, evidenceId, and evidenceHash are required")
 	}
 
-	// Verify that target SBOM exists
-	sbomBytes, err := ctx.GetStub().GetState(input.SBOMID)
-	if err != nil {
-		return fmt.Errorf("failed to read target SBOM %s from world state: %v", input.SBOMID, err)
-	}
-	if sbomBytes == nil {
-		return fmt.Errorf("target SBOM %s does not exist on the ledger", input.SBOMID)
+	if err := validateSHA256Digest(input.EvidenceHash); err != nil {
+		return fmt.Errorf("invalid evidenceHash: %v", err)
 	}
 
-	// Get submitter identity
+	mspID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return fmt.Errorf("failed to get client MSP ID: %v", err)
+	}
+	if mspID != "VendorMSP" && mspID != "SecurityMSP" && mspID != "AuditorMSP" {
+		return fmt.Errorf("unauthorized MSP %s for RecordTrustEvidence: only participating MSPs are allowed", mspID)
+	}
+
 	submitter, err := ctx.GetClientIdentity().GetID()
 	if err != nil {
 		submitter = "unknown"
@@ -38,6 +41,17 @@ func (c *SBOMContract) RecordTrustEvidence(ctx contractapi.TransactionContextInt
 	timestamp, err := ctx.GetStub().GetTxTimestamp()
 	if err != nil {
 		return fmt.Errorf("failed to get tx timestamp: %v", err)
+	}
+
+	// Store under composite key: tpsr.trust.evidence~sbomID~evidenceId
+	key, err := ctx.GetStub().CreateCompositeKey("tpsr.trust.evidence", []string{input.SBOMID, input.EvidenceId})
+	if err != nil {
+		return fmt.Errorf("failed to create composite key for trust evidence: %v", err)
+	}
+
+	existingBytes, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return fmt.Errorf("failed to get existing state: %v", err)
 	}
 
 	record := &TrustEvidenceRecord{
@@ -50,15 +64,29 @@ func (c *SBOMContract) RecordTrustEvidence(ctx contractapi.TransactionContextInt
 		RecordedBy:      submitter,
 	}
 
+	if existingBytes != nil {
+		var existing TrustEvidenceRecord
+		if err := json.Unmarshal(existingBytes, &existing); err != nil {
+			return fmt.Errorf("failed to unmarshal existing evidence: %v", err)
+		}
+		if existing.EvidenceType == record.EvidenceType && existing.EvidenceHash == record.EvidenceHash && existing.EvidencePayload == record.EvidencePayload {
+			return nil // Idempotent success
+		}
+		return fmt.Errorf("duplicate evidence ID with conflicting payload")
+	}
+
+	// Verify that target SBOM exists
+	sbomBytes, err := ctx.GetStub().GetState(input.SBOMID)
+	if err != nil {
+		return fmt.Errorf("failed to read target SBOM %s from world state: %v", input.SBOMID, err)
+	}
+	if sbomBytes == nil {
+		return fmt.Errorf("target SBOM %s does not exist on the ledger", input.SBOMID)
+	}
+
 	recordBytes, err := json.Marshal(record)
 	if err != nil {
 		return fmt.Errorf("failed to marshal TrustEvidenceRecord: %v", err)
-	}
-
-	// Store under composite key: tpsr.trust.evidence~sbomID~evidenceId
-	key, err := ctx.GetStub().CreateCompositeKey("tpsr.trust.evidence", []string{input.SBOMID, input.EvidenceId})
-	if err != nil {
-		return fmt.Errorf("failed to create composite key for trust evidence: %v", err)
 	}
 
 	if err := ctx.GetStub().PutState(key, recordBytes); err != nil {
@@ -85,6 +113,23 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 		return fmt.Errorf("missing required fields in RecordTrustDecisionInput: sbomID, decisionId, and trustStatus are required")
 	}
 
+	if err := validateOptionalSHA256Digest(input.ProvenanceHash); err != nil {
+		return fmt.Errorf("invalid provenanceHash: %v", err)
+	}
+	for _, h := range input.SignatureHashes {
+		if err := validateSHA256Digest(h); err != nil {
+			return fmt.Errorf("invalid signatureHash: %v", err)
+		}
+	}
+
+	mspID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return fmt.Errorf("failed to get client MSP ID: %v", err)
+	}
+	if mspID != "SecurityMSP" && mspID != "AuditorMSP" {
+		return fmt.Errorf("unauthorized MSP %s for RecordTrustDecision: only governance MSPs are allowed", mspID)
+	}
+
 	// Enforce the authoritative four-state trust-decision enum at the ledger boundary.
 	// Any caller submitting UNTRUSTED, UNEVALUATED, or an arbitrary string is rejected here.
 	switch input.TrustStatus {
@@ -98,6 +143,44 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 		)
 	}
 
+	submitter, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		submitter = "unknown"
+	}
+	timestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get tx timestamp: %v", err)
+	}
+
+	key, err := ctx.GetStub().CreateCompositeKey("tpsr.trust.decision", []string{input.SBOMID, input.DecisionId})
+	if err != nil {
+		return fmt.Errorf("failed to create composite key for trust decision: %v", err)
+	}
+
+	existingDecisionBytes, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return fmt.Errorf("failed to get existing decision state: %v", err)
+	}
+
+	if existingDecisionBytes != nil {
+		var existing TrustDecisionPointer
+		if err := json.Unmarshal(existingDecisionBytes, &existing); err != nil {
+			return fmt.Errorf("failed to unmarshal existing decision: %v", err)
+		}
+		// Compare canonical payload hashes (all important fields)
+		if existing.TrustStatus == input.TrustStatus &&
+			existing.ReasonCode == input.ReasonCode &&
+			existing.ReasonDescription == input.ReasonDescription &&
+			existing.PolicyVersion == input.PolicyVersion &&
+			existing.IdempotencyKey == input.IdempotencyKey &&
+			existing.ProvenanceHash == input.ProvenanceHash &&
+			reflect.DeepEqual(existing.SignatureHashes, input.SignatureHashes) &&
+			reflect.DeepEqual(existing.ActiveVexIds, input.ActiveVexIds) &&
+			existing.EffectiveRiskScore == input.EffectiveRiskScore {
+			return nil // Idempotent success
+		}
+		return fmt.Errorf("duplicate decision ID with conflicting payload")
+	}
 
 	// Read existing SBOM record
 	sbomBytes, err := ctx.GetStub().GetState(input.SBOMID)
@@ -113,15 +196,6 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 		return fmt.Errorf("failed to unmarshal target SBOM record: %v", err)
 	}
 	sbom.EnsureSlices()
-
-	submitter, err := ctx.GetClientIdentity().GetID()
-	if err != nil {
-		submitter = "unknown"
-	}
-	timestamp, err := ctx.GetStub().GetTxTimestamp()
-	if err != nil {
-		return fmt.Errorf("failed to get tx timestamp: %v", err)
-	}
 
 	// Update trust governance fields on SBOMRecord
 	sbom.TrustStatus = input.TrustStatus
@@ -177,11 +251,6 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 		return fmt.Errorf("failed to marshal TrustDecisionPointer: %v", err)
 	}
 
-	key, err := ctx.GetStub().CreateCompositeKey("tpsr.trust.decision", []string{input.SBOMID, input.DecisionId})
-	if err != nil {
-		return fmt.Errorf("failed to create composite key for trust decision: %v", err)
-	}
-
 	if err := ctx.GetStub().PutState(key, pointerBytes); err != nil {
 		return fmt.Errorf("failed to put TrustDecisionPointer into world state: %v", err)
 	}
@@ -189,6 +258,26 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 	ctx.GetStub().SetEvent("TrustDecisionRecorded", pointerBytes)
 
 	return nil
+}
+
+// GetTrustDecision retrieves an exact immutable decision record by SBOM ID and Decision ID.
+func (c *SBOMContract) GetTrustDecision(ctx contractapi.TransactionContextInterface, sbomID string, decisionId string) (*TrustDecisionPointer, error) {
+	key, err := ctx.GetStub().CreateCompositeKey("tpsr.trust.decision", []string{sbomID, decisionId})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create composite key: %v", err)
+	}
+	bytes, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if bytes == nil {
+		return nil, fmt.Errorf("trust decision not found")
+	}
+	var pointer TrustDecisionPointer
+	if err := json.Unmarshal(bytes, &pointer); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal trust decision: %v", err)
+	}
+	return &pointer, nil
 }
 
 // GetTrustEvidence retrieves all trust evidence records recorded for an SBOM.

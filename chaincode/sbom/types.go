@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
@@ -9,15 +12,15 @@ type SBOMContract struct {
 }
 
 type SBOMRecord struct {
-	SBOMID          string   `json:"sbomID"`
-	Hash            string   `json:"hash"`
-	Timestamp       int64    `json:"timestamp"`
-	SubmitterID     string   `json:"submitterID"`
-	BuildID         string   `json:"buildID"`
-	SoftwareName    string   `json:"softwareName"`
-	SoftwareVersion string   `json:"softwareVersion"`
-	Format          string   `json:"format"`
-	Status          string   `json:"status"`
+	SBOMID               string   `json:"sbomID"`
+	Hash                 string   `json:"hash"`
+	Timestamp            int64    `json:"timestamp"`
+	SubmitterID          string   `json:"submitterID"`
+	BuildID              string   `json:"buildID"`
+	SoftwareName         string   `json:"softwareName"`
+	SoftwareVersion      string   `json:"softwareVersion"`
+	Format               string   `json:"format"`
+	Status               string   `json:"status"`
 	OffChainRef          string   `json:"offChainRef"`
 	Signatures           []string `json:"signatures"`
 	PolicyStatus         string   `json:"policyStatus"`
@@ -66,11 +69,11 @@ type HistoryRecord struct {
 }
 
 type RecordTrustEvidenceInput struct {
-	Version        string `json:"version"`
-	SBOMID         string `json:"sbomID"`
-	EvidenceType   string `json:"evidenceType"`
-	EvidenceHash   string `json:"evidenceHash"`
-	EvidenceId     string `json:"evidenceId"`
+	Version         string `json:"version"`
+	SBOMID          string `json:"sbomID"`
+	EvidenceType    string `json:"evidenceType"`
+	EvidenceHash    string `json:"evidenceHash"`
+	EvidenceId      string `json:"evidenceId"`
 	EvidencePayload string `json:"evidencePayload,omitempty"`
 }
 
@@ -126,10 +129,10 @@ const (
 	StatusRejected         = "REJECTED"
 
 	// Authoritative TPSR v3 trust decisions (four-state model)
-	TrustStatusTrusted              = "TRUSTED"
+	TrustStatusTrusted               = "TRUSTED"
 	TrustStatusConditionallyAccepted = "CONDITIONALLY_ACCEPTED"
-	TrustStatusReviewRequired       = "REVIEW_REQUIRED"
-	TrustStatusRejected             = "REJECTED"
+	TrustStatusReviewRequired        = "REVIEW_REQUIRED"
+	TrustStatusRejected              = "REJECTED"
 
 	// UNEVALUATED is allowed only as a cached/presentation status for records
 	// that have not undergone authoritative TPSR v3 evaluation.
@@ -140,3 +143,31 @@ const (
 	// authoritative decision. New evaluations must use TrustStatusRejected.
 	TrustStatusUntrustedLegacy = "UNTRUSTED"
 )
+
+// validateSHA256Digest enforces canonical SHA-256 formatting.
+func validateSHA256Digest(digest string) error {
+	if digest == "" {
+		return fmt.Errorf("digest cannot be empty")
+	}
+	if !strings.HasPrefix(digest, "sha256:") {
+		return fmt.Errorf("digest must start with 'sha256:' prefix")
+	}
+	hexPart := strings.TrimPrefix(digest, "sha256:")
+	if len(hexPart) != 64 {
+		return fmt.Errorf("digest hexadecimal part must be exactly 64 characters long")
+	}
+	for _, c := range hexPart {
+		if !(c >= '0' && c <= '9') && !(c >= 'a' && c <= 'f') {
+			return fmt.Errorf("digest hexadecimal part must contain only lowercase hex characters [0-9a-f]")
+		}
+	}
+	return nil
+}
+
+// validateOptionalSHA256Digest validates a SHA-256 digest only if it is not empty.
+func validateOptionalSHA256Digest(digest string) error {
+	if digest == "" {
+		return nil
+	}
+	return validateSHA256Digest(digest)
+}

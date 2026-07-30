@@ -97,14 +97,14 @@ func TestErrHistoryIteration(t *testing.T) {
 
 func TestSBOMRecordInitialization(t *testing.T) {
 	record := SBOMRecord{
-		SBOMID:          "sbom-001",
-		Hash:            "abc123",
-		Timestamp:       1700000000,
-		SubmitterID:     "user1",
-		BuildID:         "build-42",
-		SoftwareName:    "myapp",
-		SoftwareVersion: "1.0.0",
-		Format:          "SPDX",
+		SBOMID:               "sbom-001",
+		Hash:                 "abc123",
+		Timestamp:            1700000000,
+		SubmitterID:          "user1",
+		BuildID:              "build-42",
+		SoftwareName:         "myapp",
+		SoftwareVersion:      "1.0.0",
+		Format:               "SPDX",
 		Status:               StatusRegistered,
 		OffChainRef:          "QmXyz",
 		Signatures:           []string{"sig1", "sig2"},

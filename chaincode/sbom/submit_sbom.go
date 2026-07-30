@@ -80,13 +80,13 @@ func (c *SBOMContract) SubmitSBOM(
 
 	// G. Build the SBOM record
 	record := SBOMRecord{
-		SBOMID:          sbomID,
-		Hash:            hash,
-		Timestamp:       timestamp,
-		SubmitterID:     submitterID,
-		BuildID:         buildID,
-		SoftwareName:    softwareName,
-		SoftwareVersion: softwareVersion,
+		SBOMID:               sbomID,
+		Hash:                 hash,
+		Timestamp:            timestamp,
+		SubmitterID:          submitterID,
+		BuildID:              buildID,
+		SoftwareName:         softwareName,
+		SoftwareVersion:      softwareVersion,
 		Format:               format,
 		Status:               StatusRegistered,
 		OffChainRef:          offChainRef,
