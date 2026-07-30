@@ -59,8 +59,7 @@ ALTER TABLE trust_decision_history
     'TRUSTED',
     'CONDITIONALLY_ACCEPTED',
     'REVIEW_REQUIRED',
-    'REJECTED',
-    'UNTRUSTED'   -- legacy read-only; new evaluations must not write this value
+    'REJECTED'
   ));
 
 -- Add idempotency_key column to ledger_outbox for outbox-level idempotency tracking

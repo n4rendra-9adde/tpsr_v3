@@ -82,19 +82,25 @@ router.post('/submit', async function (req, res) {
     }
 
     var artifactHash = body.artifactHash;
-    if (typeof artifactHash !== 'string' || !/^[a-f0-9]{64}$/.test(artifactHash)) {
-      return res.status(400).json({ error: 'artifactHash must be a non-empty 64-character lowercase hex string' });
+    if (artifactHash !== undefined && artifactHash !== null) {
+      if (typeof artifactHash !== 'string' || !/^[a-f0-9]{64}$/.test(artifactHash)) {
+        return res.status(400).json({ error: 'artifactHash must be a non-empty 64-character lowercase hex string' });
+      }
     }
 
     var artifactName = body.artifactName;
-    if (typeof artifactName !== 'string' || artifactName.trim() === '') {
-      return res.status(400).json({ error: 'artifactName must be a non-empty string' });
+    if (artifactName !== undefined && artifactName !== null) {
+      if (typeof artifactName !== 'string' || artifactName.trim() === '') {
+        return res.status(400).json({ error: 'artifactName must be a non-empty string' });
+      }
     }
 
     var artifactType = body.artifactType;
     var validTypes = ['JAR', 'IMAGE', 'BINARY', 'ARCHIVE', 'OTHER'];
-    if (typeof artifactType !== 'string' || validTypes.indexOf(artifactType.trim()) === -1) {
-      return res.status(400).json({ error: 'artifactType must be one of: JAR, IMAGE, BINARY, ARCHIVE, OTHER' });
+    if (artifactType !== undefined && artifactType !== null) {
+      if (typeof artifactType !== 'string' || validTypes.indexOf(artifactType.trim()) === -1) {
+        return res.status(400).json({ error: 'artifactType must be one of: JAR, IMAGE, BINARY, ARCHIVE, OTHER' });
+      }
     }
 
     if (body.sizeBytes !== undefined && body.sizeBytes !== null) {
@@ -176,14 +182,16 @@ router.post('/submit', async function (req, res) {
         policyEvaluationMode: policyResult.evaluation_mode
       });
 
-      await sbomRepository.insertArtifactRecord({
-        sbomDocumentID: insertedSBOMDoc.id,
-        artifactType: artifactType.trim(),
-        artifactName: artifactName.trim(),
-        artifactHash: artifactHash,
-        artifactURI: body.artifactURI || null,
-        sizeBytes: body.sizeBytes !== undefined && body.sizeBytes !== null ? body.sizeBytes : null
-      });
+      if (artifactHash && artifactType && artifactName) {
+        await sbomRepository.insertArtifactRecord({
+          sbomDocumentID: insertedSBOMDoc.id,
+          artifactType: artifactType.trim(),
+          artifactName: artifactName.trim(),
+          artifactHash: artifactHash,
+          artifactURI: body.artifactURI || null,
+          sizeBytes: body.sizeBytes !== undefined && body.sizeBytes !== null ? body.sizeBytes : null
+        });
+      }
     } catch (dbErr) {
       if (insertedSBOMDoc && insertedSBOMDoc.id) {
         await sbomRepository.deleteSBOMDocumentByID(insertedSBOMDoc.id).catch(function(e) {

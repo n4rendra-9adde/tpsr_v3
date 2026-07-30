@@ -35,8 +35,8 @@ router.post('/activate', async function (req, res) {
 
     var trustDecision = await trustRepository.getLatestTrustDecisionBySBOMID(sbomID);
     if (trustDecision) {
-      // normalizeTrustStatus maps historical UNTRUSTED → REJECTED for read compatibility
-      var normalizedStatus = trustRepository.normalizeTrustStatus(trustDecision.trust_status);
+      var normalizedResult = trustRepository.normalizeTrustStatus(trustDecision.trust_status);
+      var normalizedStatus = normalizedResult.trustDecision;
 
       if (normalizedStatus === 'REJECTED') {
         return res.status(409).json({

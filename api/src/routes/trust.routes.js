@@ -20,6 +20,9 @@ async function handleEvaluateTrust(req, res) {
     if (idempotencyKey) {
       const cached = await trustRepository.getTrustDecisionByIdempotencyKey(idempotencyKey.trim());
       if (cached) {
+        if (cached.sbom_id !== sbomId.trim()) {
+          return res.status(409).json({ error: 'Idempotency key reused with a different request context (sbomId mismatch)' });
+        }
         return res.status(200).json({
           message: 'Trust evaluation retrieved from cache (idempotent request)',
           decisionId: cached.id,

@@ -249,39 +249,40 @@ describe('G. Historical UNTRUSTED normalization — read-only, never emitted', (
   const { normalizeTrustStatus } = require('../../repositories/trustRepository');
 
   test('G.1 normalizeTrustStatus maps UNTRUSTED → REJECTED at read time', () => {
-    expect(normalizeTrustStatus('UNTRUSTED')).toBe('REJECTED');
+    expect(normalizeTrustStatus('UNTRUSTED')).toEqual({
+      trustDecision: 'REJECTED',
+      legacyDecision: 'UNTRUSTED',
+      legacyNormalized: true
+    });
   });
   test('G.2 normalizeTrustStatus passes TRUSTED through unchanged', () => {
-    expect(normalizeTrustStatus('TRUSTED')).toBe('TRUSTED');
+    expect(normalizeTrustStatus('TRUSTED')).toEqual({ trustDecision: 'TRUSTED' });
   });
   test('G.3 normalizeTrustStatus passes CONDITIONALLY_ACCEPTED through unchanged', () => {
-    expect(normalizeTrustStatus('CONDITIONALLY_ACCEPTED')).toBe('CONDITIONALLY_ACCEPTED');
+    expect(normalizeTrustStatus('CONDITIONALLY_ACCEPTED')).toEqual({ trustDecision: 'CONDITIONALLY_ACCEPTED' });
   });
   test('G.4 normalizeTrustStatus passes REVIEW_REQUIRED through unchanged', () => {
-    expect(normalizeTrustStatus('REVIEW_REQUIRED')).toBe('REVIEW_REQUIRED');
+    expect(normalizeTrustStatus('REVIEW_REQUIRED')).toEqual({ trustDecision: 'REVIEW_REQUIRED' });
   });
   test('G.5 normalizeTrustStatus passes REJECTED through unchanged', () => {
-    expect(normalizeTrustStatus('REJECTED')).toBe('REJECTED');
+    expect(normalizeTrustStatus('REJECTED')).toEqual({ trustDecision: 'REJECTED' });
   });
   test('G.6 normalizeTrustStatus passes UNEVALUATED through unchanged', () => {
-    expect(normalizeTrustStatus('UNEVALUATED')).toBe('UNEVALUATED');
+    expect(normalizeTrustStatus('UNEVALUATED')).toEqual({ trustDecision: 'UNEVALUATED' });
   });
   test('G.7 normalizeTrustStatus returns UNEVALUATED for null', () => {
-    expect(normalizeTrustStatus(null)).toBe('UNEVALUATED');
+    expect(normalizeTrustStatus(null)).toEqual({ trustDecision: 'UNEVALUATED' });
   });
   test('G.8 normalizeTrustStatus returns UNEVALUATED for undefined', () => {
-    expect(normalizeTrustStatus(undefined)).toBe('UNEVALUATED');
+    expect(normalizeTrustStatus(undefined)).toEqual({ trustDecision: 'UNEVALUATED' });
   });
   test('G.9 normalizeTrustStatus returns UNEVALUATED for empty string (not TRUSTED)', () => {
     const result = normalizeTrustStatus('');
-    expect(result).toBe('UNEVALUATED');
-    expect(result).not.toBe('TRUSTED');
+    expect(result).toEqual({ trustDecision: 'UNEVALUATED' });
   });
-  test('G.10 normalizeTrustStatus returns unknown value unchanged (not silently promoted to TRUSTED)', () => {
+  test('G.10 normalizeTrustStatus returns UNEVALUATED for unknown value', () => {
     const result = normalizeTrustStatus('SOME_UNKNOWN_STATE');
-    expect(result).not.toBe('TRUSTED');
-    expect(result).not.toBe('REJECTED'); // Does not silently demote either
-    expect(result).toBe('SOME_UNKNOWN_STATE'); // Pass-through
+    expect(result).toEqual({ trustDecision: 'UNEVALUATED' });
   });
   test('G.11 evaluateTrust never emits UNTRUSTED as trustStatus', async () => {
     // Test every code path

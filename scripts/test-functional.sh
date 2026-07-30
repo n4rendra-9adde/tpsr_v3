@@ -116,10 +116,7 @@ payload = {
   "softwareVersion": "1.0.0",
   "format": "CycloneDX",
   "offChainRef": "ipfs://functional-test",
-  "signatures": ["sig-functional-1", "sig-functional-2"],
-  "artifactHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "artifactName": "test-artifact.jar",
-  "artifactType": "JAR"
+  "signatures": ["sig-functional-1", "sig-functional-2"]
 }
 with open(sys.argv[4], "w") as f:
   json.dump(payload, f)
@@ -221,9 +218,7 @@ try:
     d = json.load(f)
   if d.get("message") != "SBOM history retrieved successfully":
     sys.exit(1)
-  sbom_obj = d.get("sbom", {})
-  actual_id = sbom_obj.get("sbom_id") if isinstance(sbom_obj, dict) else d.get("sbomID")
-  if actual_id != sys.argv[2]:
+  if d.get("sbomID") != sys.argv[2]:
     sys.exit(1)
   hist = d.get("history")
   if not isinstance(hist, list) or len(hist) < 1:

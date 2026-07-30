@@ -22,10 +22,22 @@ const db = require('../config/database');
  * @returns {string} Normalized trust status
  */
 function normalizeTrustStatus(status) {
-  if (status === 'UNTRUSTED') {
-    return 'REJECTED';
+  if (!status) {
+    return { trustDecision: 'UNEVALUATED' };
   }
-  return status || 'UNEVALUATED';
+  var upperTs = status.toUpperCase();
+  if (upperTs === 'UNTRUSTED') {
+    return {
+      trustDecision: 'REJECTED',
+      legacyDecision: 'UNTRUSTED',
+      legacyNormalized: true
+    };
+  }
+  // If it's a known authoritative state, return it directly
+  if (['TRUSTED', 'CONDITIONALLY_ACCEPTED', 'REVIEW_REQUIRED', 'REJECTED', 'UNEVALUATED'].includes(upperTs)) {
+    return { trustDecision: upperTs };
+  }
+  return { trustDecision: 'UNEVALUATED' };
 }
 
 

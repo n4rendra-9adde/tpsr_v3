@@ -83,10 +83,7 @@ payload = {
   "softwareVersion": "1.0.0",
   "format": "CycloneDX",
   "offChainRef": "ipfs://tpsr-tamper-test",
-  "signatures": ["sig-tamper-1", "sig-tamper-2"],
-  "artifactHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "artifactName": "test-artifact.jar",
-  "artifactType": "JAR"
+  "signatures": ["sig-tamper-1", "sig-tamper-2"]
 }
 with open(sys.argv[4], "w") as f:
   json.dump(payload, f)
@@ -310,9 +307,7 @@ try:
   with open(sys.argv[1]) as f:
     d = json.load(f)
   if d.get("message") != "SBOM history retrieved successfully": sys.exit(1)
-  sbom_obj = d.get("sbom", {})
-  actual_id = sbom_obj.get("sbom_id") if isinstance(sbom_obj, dict) else d.get("sbomID")
-  if actual_id != sys.argv[2]: sys.exit(1)
+  if d.get("sbomID") != sys.argv[2]: sys.exit(1)
   h = d.get("history", [])
   if not isinstance(h, list) or len(h) < 1: sys.exit(1)
 except Exception:

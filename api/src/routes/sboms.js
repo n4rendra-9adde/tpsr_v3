@@ -13,11 +13,16 @@ router.get('/sboms', async function (req, res) {
     var sboms = await sbomRepository.listSBOMDocuments(limit);
     var enriched = await Promise.all(sboms.map(async function (item) {
       var decision = await trustRepository.getLatestTrustDecisionBySBOMID(item.sbom_id);
-      return Object.assign({}, item, {
-        trustStatus: decision ? decision.trust_status : 'UNEVALUATED',
+      var normalized = trustRepository.normalizeTrustStatus(decision ? decision.trust_status : null);
+      var result = Object.assign({}, item, {
+        trustStatus: normalized.trustDecision,
         trustReasonCode: decision ? decision.reason_code : 'GOV-002',
         trustReasonDescription: decision ? decision.reason_description : 'v3 trust evaluation not yet executed'
       });
+      if (normalized.legacyNormalized) {
+        result.legacyNormalized = true;
+      }
+      return result;
     }));
 
     return res.status(200).json({
@@ -51,8 +56,9 @@ router.get('/sboms/:sbomID/document', async function (req, res) {
     }
 
     var decision = await trustRepository.getLatestTrustDecisionBySBOMID(sbomID);
+    var normalized = trustRepository.normalizeTrustStatus(decision ? decision.trust_status : null);
 
-    return res.status(200).json({
+    var responsePayload = {
       message: 'SBOM document retrieved successfully',
       sbomID: record.sbom_id,
       format: record.format,
@@ -67,11 +73,18 @@ router.get('/sboms/:sbomID/document', async function (req, res) {
       policyStatus: record.policy_status,
       policyReason: record.policy_reason,
       policyViolations: record.policy_violations,
-      trustStatus: decision ? decision.trust_status : 'UNEVALUATED',
+      trustStatus: normalized.trustDecision,
       trustReasonCode: decision ? decision.reason_code : 'GOV-002',
       trustReasonDescription: decision ? decision.reason_description : 'v3 trust evaluation not yet executed',
       sbom: record.sbom_json
-    });
+    };
+
+    if (normalized.legacyNormalized) {
+      responsePayload.legacyNormalized = true;
+      responsePayload.legacyDecision = normalized.legacyDecision;
+    }
+
+    return res.status(200).json(responsePayload);
   } catch (error) {
     return res.status(500).json({
       error: 'Failed to retrieve SBOM document',
