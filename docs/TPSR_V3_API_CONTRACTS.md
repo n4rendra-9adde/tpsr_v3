@@ -392,3 +392,11 @@ This document defines the authoritative OpenAPI 3.0 compatible request/response 
   "requeuedBy": "tpsr-security-admin"
 }
 ```
+
+## Trust Decision Compatibility (TPSR v3)
+- UNTRUSTED is deprecated.
+- New authoritative writes reject UNTRUSTED.
+- Historical UNTRUSTED reads normalize to REJECTED.
+- Audit responses may include `legacyDecision: UNTRUSTED`.
+- `legacyNormalized` identifies compatibility projection.
+- Newly generated REJECTED records do not receive the legacy marker.

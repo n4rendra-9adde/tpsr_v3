@@ -23,7 +23,7 @@ const db = require('../config/database');
  */
 function normalizeTrustStatus(status) {
   if (!status) {
-    return { trustDecision: 'UNEVALUATED' };
+    return { trustDecision: 'UNEVALUATED', legacyNormalized: false };
   }
   var upperTs = status.toUpperCase();
   if (upperTs === 'UNTRUSTED') {
@@ -35,9 +35,9 @@ function normalizeTrustStatus(status) {
   }
   // If it's a known authoritative state, return it directly
   if (['TRUSTED', 'CONDITIONALLY_ACCEPTED', 'REVIEW_REQUIRED', 'REJECTED', 'UNEVALUATED'].includes(upperTs)) {
-    return { trustDecision: upperTs };
+    return { trustDecision: upperTs, legacyNormalized: false };
   }
-  return { trustDecision: 'UNEVALUATED' };
+  return { trustDecision: 'UNEVALUATED', legacyNormalized: false };
 }
 
 

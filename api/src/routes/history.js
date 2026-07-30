@@ -41,6 +41,8 @@ router.get('/history/:sbomID', async function (req, res) {
       sbomID
     );
 
+    var trustRepository = require('../repositories/trustRepository');
+    
     var resultString = resultBuffer.toString('utf8');
     var historyArray;
     
@@ -49,12 +51,27 @@ router.get('/history/:sbomID', async function (req, res) {
       if (!Array.isArray(historyArray)) {
         throw new Error('history is not an array');
       }
+      
+      // Apply compatibility mapper to history items
+      historyArray = historyArray.map(item => {
+        if (item && item.record && typeof item.record.trustStatus !== 'undefined') {
+          var normalized = trustRepository.normalizeTrustStatus(item.record.trustStatus);
+          item.record.trustStatus = normalized.trustDecision;
+          if (normalized.legacyNormalized) {
+            item.record.legacyNormalized = true;
+            item.record.legacyDecision = normalized.legacyDecision;
+          }
+        }
+        return item;
+      });
+      
     } catch (parseErr) {
       return res.status(500).json({ error: 'Failed to parse SBOM history response' });
     }
 
     return res.status(200).json({
       message: 'SBOM history retrieved successfully',
+      sbomID: sbomID,
       sbom: pgResult.document,
       artifacts: pgResult.artifacts,
       history: historyArray
