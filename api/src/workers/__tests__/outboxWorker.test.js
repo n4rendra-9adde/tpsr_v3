@@ -22,8 +22,8 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
   test('processOutboxBatch: Anchors record to Fabric and updates status to COMPLETED when contract succeeds', async () => {
     const mockRecord = {
       id: 'outbox-101',
-      sbom_id: 'sbom-101',
-      payload: JSON.stringify({ evidenceType: 'TRUST_DECISION_V1', trustStatus: 'TRUSTED' }),
+      action: 'RECORD_TRUST_DECISION',
+      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0' },
       retry_count: 0
     };
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);
@@ -39,16 +39,16 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
 
     expect(stats.claimed).toBe(1);
     expect(stats.completed).toBe(1);
-    expect(mockContract.submitTransaction).toHaveBeenCalledWith('RecordTrustEvidence', expect.any(String));
+    expect(mockContract.submitTransaction).toHaveBeenCalledWith('RecordTrustDecision', expect.any(String));
     expect(trustRepository.updateOutboxRecordStatus).toHaveBeenCalledWith('outbox-101', 'COMPLETED', null, 'tx-999', null);
   });
 
   test('processOutboxBatch: Schedules retry with exponential backoff when Fabric transaction fails', async () => {
     const mockRecord = {
       id: 'outbox-102',
-      sbom_id: 'sbom-102',
-      payload: { evidenceType: 'TRUST_DECISION_V1', trustStatus: 'REJECTED' },
-      retry_count: 1
+      action: 'RECORD_TRUST_DECISION',
+      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0' },
+      retry_count: 1,
     };
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);
 
@@ -75,8 +75,8 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
   test('processOutboxBatch: Promotes record to FAILED_REQUIRES_REVIEW after exhausting max retries', async () => {
     const mockRecord = {
       id: 'outbox-103',
-      sbom_id: 'sbom-103',
-      payload: { trustStatus: 'TRUSTED' }, // evidenceType is null, so it's a decision
+      action: 'RECORD_TRUST_DECISION',
+      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0' },
       retry_count: 4
     };
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);

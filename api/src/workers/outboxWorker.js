@@ -11,17 +11,15 @@ let workerInterval = null;
 let isRunning = false;
 
 // Cache gateways to reuse connections during the batch
-async function getContractForAction(txName, gateways) {
+async function getContractForAction(action, gateways) {
   let fabricRes;
   try {
-    if (txName === 'RecordTrustDecision') {
+    if (action === 'RECORD_TRUST_DECISION') {
       fabricRes = await fabric.getSecurityGovernanceContract();
-    } else if (txName === 'RecordTrustEvidence') {
-      // Typically vendors submit their own evidence, but it could be others. 
-      // For Group 1 prototype, we use Vendor for evidence unless specified.
+    } else if (action === 'RECORD_TRUST_EVIDENCE') {
       fabricRes = await fabric.getVendorContract();
     } else {
-      fabricRes = await fabric.getVendorContract();
+      throw new Error(`Unknown action: ${action}`);
     }
   } catch (err) {
     throw new Error(`CONFIGURATION_REQUIRES_REVIEW: ${err.message}`);
@@ -71,9 +69,36 @@ async function processOutboxBatch(batchSize = 10, workerId = 'outbox-worker-1', 
         payloadObj = JSON.parse(payloadObj);
       }
 
-      const txName = payloadObj.evidenceType ? 'RecordTrustEvidence' : 'RecordTrustDecision';
+      const action = record.action;
       
-      const contract = await getContractForAction(txName, gateways);
+      if (!action || (action !== 'RECORD_TRUST_DECISION' && action !== 'RECORD_TRUST_EVIDENCE')) {
+         throw new Error(`OUTBOX_ACTION_PAYLOAD_MISMATCH: Unknown or missing action '${action}'`);
+      }
+      
+      if (action === 'RECORD_TRUST_DECISION') {
+        const required = ['version', 'sbomID', 'decisionId', 'trustStatus', 'reasonCode', 'reasonDescription', 'policyVersion'];
+        for (const req of required) {
+          if (!payloadObj[req]) {
+            throw new Error(`OUTBOX_ACTION_PAYLOAD_MISMATCH: Missing required field ${req} for RECORD_TRUST_DECISION`);
+          }
+        }
+        if (payloadObj.evidenceType) {
+          throw new Error('OUTBOX_ACTION_PAYLOAD_MISMATCH: decision payload cannot contain evidenceType');
+        }
+      } else if (action === 'RECORD_TRUST_EVIDENCE') {
+        const required = ['version', 'sbomID', 'evidenceId', 'evidenceType', 'evidenceHash'];
+        for (const req of required) {
+          if (!payloadObj[req]) {
+            throw new Error(`OUTBOX_ACTION_PAYLOAD_MISMATCH: Missing required field ${req} for RECORD_TRUST_EVIDENCE`);
+          }
+        }
+        if (payloadObj.trustStatus) {
+           throw new Error('OUTBOX_ACTION_PAYLOAD_MISMATCH: evidence payload cannot contain trustStatus');
+        }
+      }
+
+      const txName = action === 'RECORD_TRUST_DECISION' ? 'RecordTrustDecision' : 'RecordTrustEvidence';
+      const contract = await getContractForAction(action, gateways);
       const chaincodePayload = JSON.stringify(payloadObj);
 
       const resultBuffer = await contract.submitTransaction(txName, chaincodePayload);
@@ -91,11 +116,11 @@ async function processOutboxBatch(batchSize = 10, workerId = 'outbox-worker-1', 
       console.warn(`[TPSR][OUTBOX] Record ${record.id} failed transaction: ${err.message}`);
       
       // Check if it is a configuration error (missing identity, unauthorized)
-      if (err.message.includes('CONFIGURATION_REQUIRES_REVIEW') || err.message.includes('unauthorized MSP')) {
+      if (err.message.includes('CONFIGURATION_REQUIRES_REVIEW') || err.message.includes('unauthorized MSP') || err.message.includes('OUTBOX_ACTION_PAYLOAD_MISMATCH')) {
         await trustRepository.updateOutboxRecordStatus(
           record.id,
           'FAILED_REQUIRES_REVIEW',
-          `Identity configuration error: ${err.message}`,
+          `${err.message.includes('OUTBOX_ACTION_PAYLOAD_MISMATCH') ? 'Payload validation error' : 'Identity configuration error'}: ${err.message}`,
           null,
           null
         );

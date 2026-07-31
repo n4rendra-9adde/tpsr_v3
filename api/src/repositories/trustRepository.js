@@ -168,15 +168,20 @@ async function getContextEvaluationsBySBOMID(sbomID) {
  * Ledger outbox methods
  */
 async function insertOutboxRecord(record) {
+  if (record.action !== 'RECORD_TRUST_DECISION' && record.action !== 'RECORD_TRUST_EVIDENCE') {
+    throw new Error(`Unsupported outbox action: ${record.action}`);
+  }
+
   const query = `
     INSERT INTO ledger_outbox (
-      sbom_id, decision_id, payload, status, next_attempt_at
-    ) VALUES ($1, $2, $3, $4, $5)
+      sbom_id, decision_id, action, payload, status, next_attempt_at
+    ) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *;
   `;
   const values = [
     record.sbomId,
     record.decisionId,
+    record.action,
     JSON.stringify(record.payload || {}),
     record.status || 'PENDING',
     record.nextAttemptAt || new Date().toISOString()
@@ -199,7 +204,7 @@ async function claimPendingOutboxRecords(batchSize = 10, workerId = 'worker-1') 
     await client.query('BEGIN');
 
     const selectQuery = `
-      SELECT id FROM ledger_outbox
+      SELECT id, action, payload FROM ledger_outbox
       WHERE status IN ('PENDING', 'RETRY_PENDING')
         AND next_attempt_at <= CURRENT_TIMESTAMP
         AND deleted_at IS NULL

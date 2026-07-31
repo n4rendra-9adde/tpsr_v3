@@ -76,15 +76,17 @@ async function handleEvaluateTrust(req, res) {
     const outboxRecord = await trustRepository.insertOutboxRecord({
       sbomId: sbomId.trim(),
       decisionId: dbDecision.id,
+      action: 'RECORD_TRUST_DECISION',
       payload: {
         version: "3.0",
         sbomID: sbomId.trim(),
-        evidenceType: "TRUST_DECISION_V1",
+        decisionId: dbDecision.id,
         trustStatus: evalResult.trustStatus,
         reasonCode: evalResult.reasonCode,
         reasonDescription: evalResult.reasonDescription,
-        evidenceSummary: evalResult.evidenceSummary,
-        decisionId: dbDecision.id
+        policyVersion: evalResult.policyVersion || '3.0',
+        idempotencyKey: idempotencyKey ? idempotencyKey.trim() : null,
+        evidenceSummary: evalResult.evidenceSummary
       }
     });
 
