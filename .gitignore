@@ -31,3 +31,4 @@ Thumbs.db
 # Chaincode binaries and packages
 chaincode/sbom/sbom
 *.tar.gz
+bin/cosign

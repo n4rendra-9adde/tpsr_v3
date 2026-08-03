@@ -395,8 +395,9 @@ async function insertSignatureVerification(record) {
   var query = `
     INSERT INTO signature_verifications (
       sbom_id, artifact_hash, signature_type, signer_identity,
-      verification_status, bundle_json, signature_hash
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      verification_status, bundle_json, signature_hash,
+      public_key_fingerprint, verification_mode, failure_reason
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *;
   `;
   var values = [
@@ -406,7 +407,10 @@ async function insertSignatureVerification(record) {
     record.signerIdentity,
     record.verificationStatus || 'VERIFIED',
     record.bundleJson ? JSON.stringify(record.bundleJson) : null,
-    record.signatureHash
+    record.signatureHash,
+    record.publicKeyFingerprint || null,
+    record.verificationMode || 'offline-keyed',
+    record.failureReason || null
   ];
   var client = await db.pool.connect();
   try {

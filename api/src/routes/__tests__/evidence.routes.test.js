@@ -78,7 +78,7 @@ describe('TPSR v3 Evidence Governance Routes Unit Tests', () => {
     expect(res.body.evidenceId).toBe(501);
   });
 
-  test('POST /api/v1/sbom/:sbomId/signatures: Records valid simulated keyless signature and returns 201', async () => {
+  test('POST /api/v1/sbom/:sbomId/signatures: Rejects synthetic/simulated signature and returns 422', async () => {
     sbomRepository.getSBOMDocumentBySBOMID.mockResolvedValue({
       id: 102,
       sbom_id: 'test-sbom-102',
@@ -112,10 +112,10 @@ describe('TPSR v3 Evidence Governance Routes Unit Tests', () => {
       .set('x-user-role', 'security')
       .send(body);
 
-    expect(res.status).toBe(201);
-    expect(res.body.status).toBe('VERIFIED');
-    expect(res.body.reasonCode).toBe('SIG-001');
-    expect(res.body.verificationId).toBe(601);
+    expect(res.status).toBe(422);
+    expect(res.status).toBe(422);
+    expect(res.body.status).toBe('INVALID');
+    expect(res.body.reasonCode).toBe('SIG-010');
   });
 
   test('GET /api/v1/sbom/:sbomId/provenance: Retrieves provenance list for an SBOM', async () => {

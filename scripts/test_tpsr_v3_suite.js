@@ -120,13 +120,12 @@ async function main() {
       publicKey: 'bad-key'
     });
     assert.strictEqual(res.status, 'INVALID');
-    assert.strictEqual(res.reasonCode, 'SIG-002');
+    assert.strictEqual(res.reasonCode, 'SIG-001');
   });
 
-  await runAsyncTest('2.2 Verify keyless OIDC SAN matching compliance', async () => {
+  await runAsyncTest('2.2 Verify KEYLESS mode is unsupported', async () => {
     const fakeHash = '1111111111111111111111111111111111111111111111111111111111111111';
     const bundleJson = {
-      simulated: true,
       verificationMaterial: { content: 'test-cert' },
       messageSignature: { messageDigest: { digest: fakeHash } }
     };
@@ -135,11 +134,10 @@ async function main() {
       artifactHash: fakeHash,
       bundleJson: bundleJson,
       expectedIssuer: 'https://token.actions.githubusercontent.com',
-      expectedSubject: 'https://github.com/org/repo/.github/workflows/build.yml@refs/heads/main',
-      simulated: true
+      expectedSubject: 'https://github.com/org/repo/.github/workflows/build.yml@refs/heads/main'
     });
-    assert.strictEqual(res.status, 'VERIFIED');
-    assert.strictEqual(res.reasonCode, 'SIG-001');
+    assert.strictEqual(res.verificationStatus, 'FAILED');
+    assert.strictEqual(res.reasonCode, 'SIG-009');
   });
 
   console.log('\n--- Stage 3: VEX Applicability & Risk Overlay Validation ---');

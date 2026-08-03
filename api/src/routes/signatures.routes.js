@@ -27,8 +27,22 @@ async function handleRecordSignature(req, res) {
       return res.status(404).json({ error: `SBOM document not found for ID: ${sbomId}` });
     }
 
-    const artifactHash = body.artifactHash || pgDocument.sbom_hash;
-    const verificationResult = await verifySignature({ ...body, artifactHash });
+    const trueArtifactHash = pgDocument.sbom_hash;
+    const submittedHash = body.artifactHash ? body.artifactHash.toLowerCase().trim() : trueArtifactHash;
+
+    // Artifact Digest Binding: Reject if the submitted hash does not match the registered artifact hash
+    if (submittedHash !== trueArtifactHash) {
+      return res.status(422).json({
+        message: 'Signature verification failed',
+        status: 'FAILED',
+        reasonCode: 'SIG-005',
+        reasonDescription: 'Signed target digest mismatch. Submitted artifact hash does not match registered artifact.',
+        sbomId: sbomId.trim()
+      });
+    }
+
+    // Force verifySignature to use the strictly bound registered hash
+    const verificationResult = await verifySignature({ ...body, artifactHash: trueArtifactHash });
 
     const fallbackHash = crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
     const sigHash = verificationResult.signatureHash || fallbackHash;
@@ -36,12 +50,15 @@ async function handleRecordSignature(req, res) {
 
     const dbRecord = await sbomRepository.insertSignatureVerification({
       sbomId: sbomId.trim(),
-      artifactHash: artifactHash,
+      artifactHash: trueArtifactHash,
       signatureType: body.signatureType,
       signerIdentity: signerId,
       verificationStatus: verificationResult.status,
       bundleJson: body.bundleJson || null,
-      signatureHash: sigHash
+      signatureHash: sigHash,
+      publicKeyFingerprint: verificationResult.publicKeyFingerprint,
+      verificationMode: verificationResult.verificationMode,
+      failureReason: verificationResult.failureReason
     });
 
     // Attempt to anchor signature evidence on Fabric ledger asynchronously / best-effort
@@ -79,7 +96,7 @@ async function handleRecordSignature(req, res) {
       sbomId: sbomId.trim(),
       status: verificationResult.status,
       reasonCode: verificationResult.reasonCode,
-      reasonDescription: verificationResult.reasonDescription,
+      reasonDescription: verificationResult.failureReason,
       signerIdentity: signerId,
       signatureHash: sigHash,
       ledgerStatus: ledgerStatus,

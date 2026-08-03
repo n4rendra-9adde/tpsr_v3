@@ -87,22 +87,32 @@ async function main() {
   });
 
   // 2. Signature Benchmarking
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const { execSync } = require('child_process');
+
   const fakeHash = 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0';
-  const bundleJson = {
-    simulated: true,
-    verificationMaterial: { content: 'cert-content' },
-    messageSignature: { messageDigest: { digest: fakeHash } }
-  };
-  results.signature = await benchmark('Sigstore Keyless Verification', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tpsr-bench-'));
+  const cosignBin = path.join(__dirname, '../bin/cosign');
+  
+  fs.writeFileSync(path.join(tmpDir, 'blob.txt'), fakeHash, 'utf8');
+  execSync(`env COSIGN_PASSWORD="" ${cosignBin} generate-key-pair`, { cwd: tmpDir });
+  execSync(`env COSIGN_PASSWORD="" ${cosignBin} sign-blob --key cosign.key --yes --tlog-upload=false --output-signature sig.bin blob.txt`, { cwd: tmpDir });
+  
+  const testPubKey = fs.readFileSync(path.join(tmpDir, 'cosign.pub'));
+  const testSigValue = fs.readFileSync(path.join(tmpDir, 'sig.bin'), 'base64');
+  
+  results.signature = await benchmark('Sigstore Offline-Keyed Verification', async () => {
     await cosignEngine.verifySignature({
-      signatureType: 'KEYLESS',
+      signatureType: 'OFFLINE_KEYED',
       artifactHash: fakeHash,
-      bundleJson: bundleJson,
-      expectedIssuer: 'https://token.actions.githubusercontent.com',
-      expectedSubject: 'https://github.com/org/repo/.github/workflows/build.yml@refs/heads/main',
-      simulated: true
+      signatureValue: testSigValue,
+      publicKey: testPubKey
     });
   }, true);
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 
   // 3. VEX Overlay Benchmarking
   const sampleVulns = [
