@@ -54,7 +54,7 @@ async function connectGateway(identityAlias) {
   await gateway.connect(connectionProfile, {
     wallet,
     identity: identityAlias,
-    discovery: { enabled: false },
+    discovery: { enabled: true, asLocalhost: true },
   });
 
   return gateway;

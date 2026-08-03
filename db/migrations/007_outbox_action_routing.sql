@@ -4,7 +4,24 @@
 BEGIN;
 
 ALTER TABLE ledger_outbox
-ADD COLUMN IF NOT EXISTS action VARCHAR(50) NOT NULL DEFAULT 'RECORD_TRUST_DECISION';
+ADD COLUMN IF NOT EXISTS action VARCHAR(50);
+
+-- Safely backfill using payload signatures if action is still NULL
+UPDATE ledger_outbox 
+SET action = 'RECORD_TRUST_DECISION'
+WHERE action IS NULL 
+  AND payload ? 'trustStatus' 
+  AND payload ? 'reasonCode';
+
+UPDATE ledger_outbox 
+SET action = 'RECORD_TRUST_EVIDENCE'
+WHERE action IS NULL 
+  AND payload ? 'evidenceId' 
+  AND payload ? 'evidenceHash';
+
+-- This enforces action must be supplied by the application going forward,
+-- and halts the migration if any ambiguous rows could not be guessed securely.
+ALTER TABLE ledger_outbox ALTER COLUMN action SET NOT NULL;
 
 DO $$ 
 BEGIN
@@ -14,8 +31,5 @@ BEGIN
         CHECK (action IN ('RECORD_TRUST_DECISION', 'RECORD_TRUST_EVIDENCE'));
     END IF;
 END $$;
-
--- Remove default to enforce explicit specification in new inserts
-ALTER TABLE ledger_outbox ALTER COLUMN action DROP DEFAULT;
 
 COMMIT;
