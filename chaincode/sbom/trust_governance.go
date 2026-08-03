@@ -261,7 +261,14 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 }
 
 // GetTrustDecision retrieves an exact immutable decision record by SBOM ID and Decision ID.
-func (c *SBOMContract) GetTrustDecision(ctx contractapi.TransactionContextInterface, sbomID string, decisionId string) (*TrustDecisionPointer, error) {
+func (c *SBOMContract) GetTrustDecision(ctx contractapi.TransactionContextInterface, sbomID string, decisionId string) (*TrustDecisionResponse, error) {
+	if sbomID == "" {
+		return nil, fmt.Errorf("sbomID is required")
+	}
+	if decisionId == "" {
+		return nil, fmt.Errorf("decisionId is required")
+	}
+
 	key, err := ctx.GetStub().CreateCompositeKey("tpsr.trust.decision", []string{sbomID, decisionId})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create composite key: %v", err)
@@ -277,7 +284,32 @@ func (c *SBOMContract) GetTrustDecision(ctx contractapi.TransactionContextInterf
 	if err := json.Unmarshal(bytes, &pointer); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal trust decision: %v", err)
 	}
-	return &pointer, nil
+
+	// Normalize sparse fields to satisfy stable return schema
+	resp := &TrustDecisionResponse{
+		DecisionId:         pointer.DecisionId,
+		SBOMID:             pointer.SBOMID,
+		TrustStatus:        pointer.TrustStatus,
+		ReasonCode:         pointer.ReasonCode,
+		ReasonDescription:  pointer.ReasonDescription,
+		PolicyVersion:      pointer.PolicyVersion,
+		IdempotencyKey:     pointer.IdempotencyKey,
+		ProvenanceHash:     pointer.ProvenanceHash,
+		SignatureHashes:    pointer.SignatureHashes,
+		ActiveVexIds:       pointer.ActiveVexIds,
+		EffectiveRiskScore: pointer.EffectiveRiskScore,
+		RecordedAt:         pointer.RecordedAt,
+		RecordedBy:         pointer.RecordedBy,
+	}
+
+	if resp.SignatureHashes == nil {
+		resp.SignatureHashes = []string{}
+	}
+	if resp.ActiveVexIds == nil {
+		resp.ActiveVexIds = []string{}
+	}
+
+	return resp, nil
 }
 
 // GetTrustEvidence retrieves all trust evidence records recorded for an SBOM.

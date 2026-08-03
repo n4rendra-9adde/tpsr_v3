@@ -242,6 +242,58 @@ async function claimPendingOutboxRecords(batchSize = 10, workerId = 'worker-1') 
   }
 }
 
+async function adminRequeueOutboxRecord(outboxId, actor, reason) {
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const selectQuery = `SELECT * FROM ledger_outbox WHERE id = $1 FOR UPDATE`;
+    const res = await client.query(selectQuery, [outboxId]);
+    if (res.rows.length === 0) {
+      throw new Error(`Outbox record not found: ${outboxId}`);
+    }
+    const record = res.rows[0];
+
+    // Log the event
+    const eventQuery = `
+      INSERT INTO ledger_outbox_events 
+      (outbox_id, decision_id, event_type, previous_status, new_status, attempt_number, error_message, actor, reason)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `;
+    await client.query(eventQuery, [
+      outboxId, 
+      record.decision_id, 
+      'ADMIN_REQUEUED', 
+      record.status, 
+      'RETRY_PENDING', 
+      record.retry_count, 
+      record.error_message, 
+      actor, 
+      reason
+    ]);
+
+    // Update outbox state for safe requeue
+    const updateQuery = `
+      UPDATE ledger_outbox
+      SET status = 'RETRY_PENDING',
+          locked_at = NULL,
+          locked_by = NULL,
+          next_attempt_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *;
+    `;
+    const updateRes = await client.query(updateQuery, [outboxId]);
+
+    await client.query('COMMIT');
+    return updateRes.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function updateOutboxRecordStatus(id, status, errorMsg = null, txId = null, nextAttemptAt = null) {
   const query = `
     UPDATE ledger_outbox
@@ -305,6 +357,7 @@ module.exports = {
   insertOutboxRecord,
   claimPendingOutboxRecords,
   updateOutboxRecordStatus,
+  adminRequeueOutboxRecord,
   getOutboxRecordsBySBOMID,
   getOutboxRecordByID
 };

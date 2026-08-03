@@ -118,6 +118,26 @@ type TrustDecisionPointer struct {
 	RecordedBy         string   `json:"recordedBy"`
 }
 
+// TrustDecisionResponse is a stable query-return contract that preserves the shape
+// of the stored TrustDecisionPointer but guarantees that optional or sparse fields
+// are always present in the generated Fabric Contract API schema and response payload.
+// Empty slices and zero values are returned explicitly, meaning "not supplied", not "verified".
+type TrustDecisionResponse struct {
+	DecisionId         string   `json:"decisionId"`
+	SBOMID             string   `json:"sbomID"`
+	TrustStatus        string   `json:"trustStatus"`
+	ReasonCode         string   `json:"reasonCode"`
+	ReasonDescription  string   `json:"reasonDescription"`
+	PolicyVersion      string   `json:"policyVersion"`
+	IdempotencyKey     string   `json:"idempotencyKey"`
+	ProvenanceHash     string   `json:"provenanceHash"`
+	SignatureHashes    []string `json:"signatureHashes"`
+	ActiveVexIds       []string `json:"activeVexIds"`
+	EffectiveRiskScore float64  `json:"effectiveRiskScore"`
+	RecordedAt         int64    `json:"recordedAt"`
+	RecordedBy         string   `json:"recordedBy"`
+}
+
 const (
 	StatusRegistered       = "REGISTERED"
 	StatusReviewPending    = "REVIEW_PENDING"
