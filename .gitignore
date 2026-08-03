@@ -27,3 +27,7 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Chaincode binaries and packages
+chaincode/sbom/sbom
+*.tar.gz

@@ -7,10 +7,54 @@ import (
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
+func mapToSBOMResponse(r *SBOMRecord) *SBOMRecordResponse {
+	resp := &SBOMRecordResponse{
+		SBOMID:               r.SBOMID,
+		Hash:                 r.Hash,
+		Timestamp:            r.Timestamp,
+		SubmitterID:          r.SubmitterID,
+		BuildID:              r.BuildID,
+		SoftwareName:         r.SoftwareName,
+		SoftwareVersion:      r.SoftwareVersion,
+		Format:               r.Format,
+		Status:               r.Status,
+		OffChainRef:          r.OffChainRef,
+		Signatures:           r.Signatures,
+		PolicyStatus:         r.PolicyStatus,
+		PolicyReason:         r.PolicyReason,
+		PolicyViolations:     r.PolicyViolations,
+		PolicyEvaluationMode: r.PolicyEvaluationMode,
+		TrustStatus:          r.TrustStatus,
+		TrustReasonCode:      r.TrustReasonCode,
+		TrustReasonDesc:      r.TrustReasonDesc,
+		TrustEvaluatedAt:     r.TrustEvaluatedAt,
+		TrustEvaluatedBy:     r.TrustEvaluatedBy,
+		ProvenanceHash:       r.ProvenanceHash,
+		SignatureHashes:      r.SignatureHashes,
+		ActiveVexIds:         r.ActiveVexIds,
+		EffectiveRiskScore:   r.EffectiveRiskScore,
+	}
+
+	if resp.Signatures == nil {
+		resp.Signatures = []string{}
+	}
+	if resp.PolicyViolations == nil {
+		resp.PolicyViolations = []string{}
+	}
+	if resp.SignatureHashes == nil {
+		resp.SignatureHashes = []string{}
+	}
+	if resp.ActiveVexIds == nil {
+		resp.ActiveVexIds = []string{}
+	}
+
+	return resp
+}
+
 func (c *SBOMContract) GetHistory(
 	ctx contractapi.TransactionContextInterface,
 	sbomID string,
-) ([]*HistoryRecord, error) {
+) ([]*HistoryRecordResponse, error) {
 	if sbomID == "" {
 		return nil, fmt.Errorf("sbomID is required")
 	}
@@ -21,7 +65,7 @@ func (c *SBOMContract) GetHistory(
 	}
 	defer iterator.Close()
 
-	var history []*HistoryRecord
+	var history []*HistoryRecordResponse
 
 	for iterator.HasNext() {
 		response, err := iterator.Next()
@@ -29,7 +73,7 @@ func (c *SBOMContract) GetHistory(
 			return nil, fmt.Errorf("failed to iterate history: %w", err)
 		}
 
-		entry := &HistoryRecord{
+		entry := &HistoryRecordResponse{
 			TxID:      response.TxId,
 			Timestamp: response.Timestamp.Seconds,
 			IsDelete:  response.IsDelete,
@@ -41,7 +85,7 @@ func (c *SBOMContract) GetHistory(
 				return nil, fmt.Errorf("failed to unmarshal history record: %w", err)
 			}
 			record.EnsureSlices()
-			entry.Record = &record
+			entry.Record = mapToSBOMResponse(&record)
 		}
 
 		history = append(history, entry)

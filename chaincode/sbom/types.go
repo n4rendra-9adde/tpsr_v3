@@ -191,3 +191,37 @@ func validateOptionalSHA256Digest(digest string) error {
 	}
 	return validateSHA256Digest(digest)
 }
+
+type SBOMRecordResponse struct {
+	SBOMID               string   `json:"sbomID"`
+	Hash                 string   `json:"hash"`
+	Timestamp            int64    `json:"timestamp"`
+	SubmitterID          string   `json:"submitterID"`
+	BuildID              string   `json:"buildID"`
+	SoftwareName         string   `json:"softwareName"`
+	SoftwareVersion      string   `json:"softwareVersion"`
+	Format               string   `json:"format"`
+	Status               string   `json:"status"`
+	OffChainRef          string   `json:"offChainRef"`
+	Signatures           []string `json:"signatures"`
+	PolicyStatus         string   `json:"policyStatus"`
+	PolicyReason         string   `json:"policyReason"`
+	PolicyViolations     []string `json:"policyViolations"`
+	PolicyEvaluationMode string   `json:"policyEvaluationMode"`
+	TrustStatus          string   `json:"trustStatus"`
+	TrustReasonCode      string   `json:"trustReasonCode"`
+	TrustReasonDesc      string   `json:"trustReasonDesc"`
+	TrustEvaluatedAt     int64    `json:"trustEvaluatedAt"`
+	TrustEvaluatedBy     string   `json:"trustEvaluatedBy"`
+	ProvenanceHash       string   `json:"provenanceHash"`
+	SignatureHashes      []string `json:"signatureHashes"`
+	ActiveVexIds         []string `json:"activeVexIds"`
+	EffectiveRiskScore   float64  `json:"effectiveRiskScore"`
+}
+
+type HistoryRecordResponse struct {
+	TxID      string              `json:"txID"`
+	Timestamp int64               `json:"timestamp"`
+	IsDelete  bool                `json:"isDelete"`
+	Record    *SBOMRecordResponse `json:"record"`
+}

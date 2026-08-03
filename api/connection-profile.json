@@ -74,9 +74,15 @@
         "orderer0.orderer.tpsr.com"
       ],
       "peers": {
-        "peer0.vendor.tpsr.com": {},
-        "peer0.security.tpsr.com": {},
-        "peer0.auditor.tpsr.com": {}
+        "peer0.vendor.tpsr.com": {
+          "endorsingPeer": true
+        },
+        "peer0.security.tpsr.com": {
+          "endorsingPeer": true
+        },
+        "peer0.auditor.tpsr.com": {
+          "endorsingPeer": true
+        }
       }
     }
   }

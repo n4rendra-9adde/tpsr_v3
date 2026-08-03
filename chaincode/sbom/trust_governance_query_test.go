@@ -8,10 +8,10 @@ import (
 
 func TestGetTrustDecisionQuerySchema(t *testing.T) {
 	// Simple testing context rather than using full contractapi mock dependencies
-	
+
 	decisionId := "decision-123"
 	sbomID := "sbom-123"
-	
+
 	// 1. Complete decision with all optional values populated
 	t.Run("Complete Decision", func(t *testing.T) {
 		pointer := &TrustDecisionPointer{
@@ -29,12 +29,12 @@ func TestGetTrustDecisionQuerySchema(t *testing.T) {
 			RecordedAt:         123456,
 			RecordedBy:         "secadmin",
 		}
-		
+
 		// Simulate GetTrustDecision logic:
 		bytes, _ := json.Marshal(pointer)
 		var p TrustDecisionPointer
 		json.Unmarshal(bytes, &p)
-		
+
 		resp := &TrustDecisionResponse{
 			DecisionId:         p.DecisionId,
 			SBOMID:             p.SBOMID,
@@ -56,11 +56,19 @@ func TestGetTrustDecisionQuerySchema(t *testing.T) {
 		if resp.ActiveVexIds == nil {
 			resp.ActiveVexIds = []string{}
 		}
-		
-		if resp.ProvenanceHash != "prov-hash" { t.Fatalf("wrong prov hash") }
-		if len(resp.SignatureHashes) != 1 || resp.SignatureHashes[0] != "sig1" { t.Fatalf("wrong sig hashes") }
-		if len(resp.ActiveVexIds) != 1 || resp.ActiveVexIds[0] != "vex1" { t.Fatalf("wrong vex ids") }
-		if resp.EffectiveRiskScore != 4.5 { t.Fatalf("wrong score") }
+
+		if resp.ProvenanceHash != "prov-hash" {
+			t.Fatalf("wrong prov hash")
+		}
+		if len(resp.SignatureHashes) != 1 || resp.SignatureHashes[0] != "sig1" {
+			t.Fatalf("wrong sig hashes")
+		}
+		if len(resp.ActiveVexIds) != 1 || resp.ActiveVexIds[0] != "vex1" {
+			t.Fatalf("wrong vex ids")
+		}
+		if resp.EffectiveRiskScore != 4.5 {
+			t.Fatalf("wrong score")
+		}
 	})
 
 	// 2. Sparse decision with omitted arrays and fields (simulating v6.0 record)
@@ -78,10 +86,10 @@ func TestGetTrustDecisionQuerySchema(t *testing.T) {
 			RecordedBy:        "secadmin",
 		}
 		bytes, _ := json.Marshal(pointer)
-		
+
 		var p TrustDecisionPointer
 		json.Unmarshal(bytes, &p)
-		
+
 		resp := &TrustDecisionResponse{
 			DecisionId:         p.DecisionId,
 			SBOMID:             p.SBOMID,
@@ -103,12 +111,20 @@ func TestGetTrustDecisionQuerySchema(t *testing.T) {
 		if resp.ActiveVexIds == nil {
 			resp.ActiveVexIds = []string{}
 		}
-		
-		if resp.ProvenanceHash != "" { t.Fatalf("expected empty prov hash") }
-		if len(resp.SignatureHashes) != 0 { t.Fatalf("expected empty sig hashes, got %v", resp.SignatureHashes) }
-		if len(resp.ActiveVexIds) != 0 { t.Fatalf("expected empty vex ids") }
-		if resp.EffectiveRiskScore != 0.0 { t.Fatalf("expected 0 score") }
-		
+
+		if resp.ProvenanceHash != "" {
+			t.Fatalf("expected empty prov hash")
+		}
+		if len(resp.SignatureHashes) != 0 {
+			t.Fatalf("expected empty sig hashes, got %v", resp.SignatureHashes)
+		}
+		if len(resp.ActiveVexIds) != 0 {
+			t.Fatalf("expected empty vex ids")
+		}
+		if resp.EffectiveRiskScore != 0.0 {
+			t.Fatalf("expected 0 score")
+		}
+
 		// Finally, test marshaling it back to ensure slices are in the JSON output!
 		outBytes, _ := json.Marshal(resp)
 		outStr := string(outBytes)

@@ -7,14 +7,14 @@ import (
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
-func (c *SBOMContract) ListSBOMs(ctx contractapi.TransactionContextInterface) ([]*SBOMRecord, error) {
+func (c *SBOMContract) ListSBOMs(ctx contractapi.TransactionContextInterface) ([]*SBOMRecordResponse, error) {
 	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	defer resultsIterator.Close()
 
-	var sboms []*SBOMRecord
+	var sboms []*SBOMRecordResponse
 	for resultsIterator.HasNext() {
 		response, err := resultsIterator.Next()
 		if err != nil {
@@ -30,11 +30,17 @@ func (c *SBOMContract) ListSBOMs(ctx contractapi.TransactionContextInterface) ([
 			return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
 		}
 		sbom.EnsureSlices()
-		sboms = append(sboms, &sbom)
+
+		// Skip non-SBOM records (e.g. TrustDecisionPointers)
+		if sbom.SBOMID == "" || sbom.Format == "" {
+			continue
+		}
+
+		sboms = append(sboms, mapToSBOMResponse(&sbom))
 	}
 
 	if sboms == nil {
-		sboms = make([]*SBOMRecord, 0)
+		sboms = make([]*SBOMRecordResponse, 0)
 	}
 
 	return sboms, nil
