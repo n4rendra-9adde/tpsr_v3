@@ -10,8 +10,8 @@ export function VexApplicabilityTable({ vulnerabilities }) {
     { title: 'Vulnerability ID', dataIndex: 'vulnerabilityId', key: 'vulnerabilityId' },
     { title: 'Original CVSS', dataIndex: 'originalCvssScore', key: 'originalCvssScore', render: (t) => t || '-' },
     { title: 'Original Severity', dataIndex: 'originalSeverity', key: 'originalSeverity', render: (t) => t || '-' },
-    { title: 'Component', dataIndex: 'component', key: 'component', render: (t) => t || '-' },
-    { title: 'Package / Release', dataIndex: 'packageRelease', key: 'packageRelease', render: (t) => t || '-' },
+    { title: 'Component', dataIndex: 'componentIdentity', key: 'componentIdentity', render: (t) => t || '-' },
+    { title: 'Package / Release', dataIndex: 'packageOrRelease', key: 'packageOrRelease', render: (t) => t || '-' },
     { 
       title: 'VEX Status', 
       dataIndex: 'vexStatus', 

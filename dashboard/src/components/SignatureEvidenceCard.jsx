@@ -13,7 +13,7 @@ export function SignatureEvidenceCard({ signatureData }) {
   }
 
   const {
-    signatureStatus,
+    verificationStatus,
     verificationMode,
     signatureType,
     targetType,
@@ -22,23 +22,23 @@ export function SignatureEvidenceCard({ signatureData }) {
     publicKeyFingerprint,
     transparencyLogVerified,
     verifiedAt,
-    reasonCode,
+    reasonCodes,
     failureReason
   } = signatureData;
 
-  const isVerified = signatureStatus === 'VERIFIED';
+  const isVerified = verificationStatus === 'VERIFIED';
 
   return (
     <Card title="Signature Verification" size="small" style={{ marginBottom: 16 }}>
       {failureReason && (
         <Alert type="error" showIcon message={failureReason} style={{ marginBottom: 16 }} />
       )}
-      {verificationMode === 'offline-keyed' && transparencyLogVerified === false && (
+      {verificationMode === 'offline-keyed' && (
         <Alert type="info" showIcon message="Transparency log not checked in offline-keyed mode" style={{ marginBottom: 16 }} />
       )}
       <Descriptions column={2} bordered size="small">
         <Descriptions.Item label="Verification Status">
-          <Tag color={isVerified ? 'green' : 'red'}>{signatureStatus || 'FAILED'}</Tag>
+          <Tag color={isVerified ? 'green' : 'red'}>{verificationStatus || 'FAILED'}</Tag>
         </Descriptions.Item>
         <Descriptions.Item label="Verification Mode">{verificationMode || 'Not available'}</Descriptions.Item>
         <Descriptions.Item label="Signature Type">{signatureType || 'Not available'}</Descriptions.Item>
@@ -57,7 +57,7 @@ export function SignatureEvidenceCard({ signatureData }) {
           {verifiedAt ? new Date(verifiedAt).toLocaleString() : 'Not available'}
         </Descriptions.Item>
         <Descriptions.Item label="Reason Codes">
-          {reasonCode ? <Text strong>{reasonCode}</Text> : 'Not available'}
+          {reasonCodes ? <Text strong>{reasonCodes}</Text> : 'Not available'}
         </Descriptions.Item>
       </Descriptions>
     </Card>

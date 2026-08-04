@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Tamper-Proof SBOM Registry Web Dashboard",
   "private": true,
-  "homepage": "https://n4rendra-9adde.github.io/tpsr_v2",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
@@ -23,6 +22,8 @@
     "recharts": "2.10.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "gh-pages": "^6.3.0",
     "tailwindcss": "3.4.0"
   },

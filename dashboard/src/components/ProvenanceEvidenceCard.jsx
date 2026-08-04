@@ -20,12 +20,12 @@ export function ProvenanceEvidenceCard({ provenanceData }) {
     sourceRepository,
     sourceCommit,
     buildType,
-    startedTimestamp,
-    finishedTimestamp,
+    startedOn,
+    finishedOn,
     freshnessStatus,
     replayStatus,
     envelopeSignatureStatus,
-    digestManifestBindingStatus,
+    bindingStatus,
     policyVersion,
     reasonCodes
   } = provenanceData;
@@ -48,10 +48,10 @@ export function ProvenanceEvidenceCard({ provenanceData }) {
         </Descriptions.Item>
         <Descriptions.Item label="Build Type">{buildType || 'Not available'}</Descriptions.Item>
         <Descriptions.Item label="Started Timestamp">
-          {startedTimestamp ? new Date(startedTimestamp).toLocaleString() : 'Not available'}
+          {startedOn ? new Date(startedOn).toLocaleString() : 'Not available'}
         </Descriptions.Item>
         <Descriptions.Item label="Finished Timestamp">
-          {finishedTimestamp ? new Date(finishedTimestamp).toLocaleString() : 'Not available'}
+          {finishedOn ? new Date(finishedOn).toLocaleString() : 'Not available'}
         </Descriptions.Item>
         <Descriptions.Item label="Freshness Status">
           {freshnessStatus ? <Tag color={freshnessStatus === 'PASS' ? 'green' : 'red'}>{freshnessStatus}</Tag> : 'Not available'}
@@ -63,7 +63,7 @@ export function ProvenanceEvidenceCard({ provenanceData }) {
           {envelopeSignatureStatus ? <Tag color={envelopeSignatureStatus === 'PASS' ? 'green' : 'red'}>{envelopeSignatureStatus}</Tag> : 'Not available'}
         </Descriptions.Item>
         <Descriptions.Item label="Digest-manifest Binding Status">
-          {digestManifestBindingStatus ? <Tag color={digestManifestBindingStatus === 'PASS' ? 'green' : 'red'}>{digestManifestBindingStatus}</Tag> : 'Not available'}
+          {bindingStatus ? <Tag color={bindingStatus === 'PASS' ? 'green' : 'red'}>{bindingStatus}</Tag> : 'Not available'}
         </Descriptions.Item>
         <Descriptions.Item label="Policy Version">{policyVersion || 'Not available'}</Descriptions.Item>
         <Descriptions.Item label="Reason Codes">

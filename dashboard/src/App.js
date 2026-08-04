@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Space, Button, Alert, Descriptions, Modal, message, Upload, Tooltip } from 'antd';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useSbomEvidence } from './hooks/useSbomEvidence';
+import { EvidenceApiDiagnostics } from './components';
 import axios from 'axios';
 import { 
   TrustDecisionBadge, 
@@ -623,10 +625,18 @@ function VerifyPage({ selectedIdentity }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [anchorDoc, setAnchorDoc] = useState(null);
   const [perfMetrics, setPerfMetrics] = useState(null);
-  const [signatureData, setSignatureData] = useState(null);
-  const [provenanceData, setProvenanceData] = useState(null);
+
+  const {
+    loading: evidenceLoading,
+    error: evidenceError,
+    documentData: anchorDoc,
+    signatureData,
+    provenanceData,
+    diagnostics,
+    fetchEvidence,
+    reset: resetEvidence
+  } = useSbomEvidence();
 
   const handleBeforeUpload = (file) => {
     setErrorMsg('');
@@ -672,17 +682,14 @@ function VerifyPage({ selectedIdentity }) {
     setSbomContent('');
     setErrorMsg('');
     setResult(null);
-    setAnchorDoc(null);
     setPerfMetrics(null);
-    setVexData(null);
-    setSignatureData(null);
-    setProvenanceData(null);
+    resetEvidence();
   };
 
   const handleVerify = async () => {
     setErrorMsg('');
     setResult(null);
-    setAnchorDoc(null);
+    resetEvidence();
 
     const idTrimmed = sbomID.trim();
     const contentTrimmed = sbomContent.trim();
@@ -698,25 +705,15 @@ function VerifyPage({ selectedIdentity }) {
 
     setLoading(true);
     try {
-      const [verifyResp, docResp, sigResp, provResp] = await Promise.allSettled([
-        axios.post(
-          `${API_BASE_URL}/verify`,
-          { sbomID: idTrimmed, sbom: contentTrimmed },
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        ),
-        axios.get(
-          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/document`,
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        ),
-        axios.get(
-          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/signatures`,
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        ),
-        axios.get(
-          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/provenance`,
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        )
-      ]);
+      const verifyPromise = axios.post(
+        `${API_BASE_URL}/verify`,
+        { sbomID: idTrimmed, sbom: contentTrimmed },
+        { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+      );
+      
+      const evidencePromise = fetchEvidence(idTrimmed, selectedIdentity);
+
+      const [verifyResp] = await Promise.allSettled([verifyPromise, evidencePromise]);
 
       if (verifyResp.status === 'fulfilled') {
         setResult(verifyResp.value.data.verification);
@@ -726,21 +723,6 @@ function VerifyPage({ selectedIdentity }) {
       } else {
         const err = verifyResp.reason;
         setErrorMsg(err.response?.data?.error || err.response?.data?.message || err.message || 'Verification failed');
-      }
-
-      if (docResp.status === 'fulfilled') {
-        setAnchorDoc(docResp.value.data);
-      }
-      if (vexResp.status === 'fulfilled') {
-        setVexData(vexResp.value.data.vexStatements || []);
-      }
-      if (sigResp.status === 'fulfilled') {
-        const sigs = sigResp.value.data.signatures || [];
-        if (sigs.length > 0) setSignatureData(sigs[0]);
-      }
-      if (provResp.status === 'fulfilled') {
-        const provs = provResp.value.data.attestations || [];
-        if (provs.length > 0) setProvenanceData(provs[0]);
       }
     } finally {
       setLoading(false);
@@ -830,6 +812,8 @@ function VerifyPage({ selectedIdentity }) {
         </Space>
       </Card>
 
+      <EvidenceApiDiagnostics diagnostics={diagnostics} />
+      {evidenceError && <Alert type="error" showIcon message={evidenceError} style={{marginBottom: 16}} />}
       {result && (
         <Card title="Verification Result" size="small">
           {anchorDoc && (
@@ -1259,16 +1243,22 @@ function CompliancePage({ selectedIdentity }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
-  const [anchorDoc, setAnchorDoc] = useState(null);
   const [perfMetrics, setPerfMetrics] = useState(null);
-  const [signatureData, setSignatureData] = useState(null);
-  const [provenanceData, setProvenanceData] = useState(null);
   const [simEnv, setSimEnv] = useState('PROD');
   const [simExposure, setSimExposure] = useState('INTERNAL');
   const [simVex, setSimVex] = useState('NONE');
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
-  const [vexData, setVexData] = useState(null);
+
+  const {
+    loading: evidenceLoading,
+    error: evidenceError,
+    documentData: anchorDoc,
+    vexData,
+    diagnostics,
+    fetchEvidence,
+    reset: resetEvidence
+  } = useSbomEvidence();
 
   const handleBeforeUpload = (file) => {
     setErrorMsg('');
@@ -1314,17 +1304,14 @@ function CompliancePage({ selectedIdentity }) {
     setSbomContent('');
     setErrorMsg('');
     setReport(null);
-    setAnchorDoc(null);
     setPerfMetrics(null);
-    setVexData(null);
-    setSignatureData(null);
-    setProvenanceData(null);
+    resetEvidence();
   };
 
   const handleGenerate = async () => {
     setErrorMsg('');
     setReport(null);
-    setAnchorDoc(null);
+    resetEvidence();
 
     const idTrimmed = sbomID.trim();
     const contentTrimmed = sbomContent.trim();
@@ -1340,25 +1327,14 @@ function CompliancePage({ selectedIdentity }) {
 
     setLoading(true);
     try {
-      const [reportResp, docResp, vexResp] = await Promise.allSettled([
-        axios.post(
-          `${API_BASE_URL}/compliance-report`,
-          { sbomID: idTrimmed, sbom: contentTrimmed },
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        ),
-        axios.get(
-          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/document`,
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        ),
-        axios.get(
-          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/signatures`,
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        ),
-        axios.get(
-          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/provenance`,
-          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
-        )
-      ]);
+      const reportPromise = axios.post(
+        `${API_BASE_URL}/compliance-report`,
+        { sbomID: idTrimmed, sbom: contentTrimmed },
+        { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+      );
+      const evidencePromise = fetchEvidence(idTrimmed, selectedIdentity);
+
+      const [reportResp] = await Promise.allSettled([reportPromise, evidencePromise]);
 
       if (reportResp.status === 'fulfilled') {
         setReport(reportResp.value.data.report);
@@ -1368,21 +1344,6 @@ function CompliancePage({ selectedIdentity }) {
       } else {
         const err = reportResp.reason;
         setErrorMsg(err.response?.data?.error || err.response?.data?.message || err.message || 'Compliance report generation failed');
-      }
-
-      if (docResp.status === 'fulfilled') {
-        setAnchorDoc(docResp.value.data);
-      }
-      if (vexResp.status === 'fulfilled') {
-        setVexData(vexResp.value.data.vexStatements || []);
-      }
-      if (sigResp.status === 'fulfilled') {
-        const sigs = sigResp.value.data.signatures || [];
-        if (sigs.length > 0) setSignatureData(sigs[0]);
-      }
-      if (provResp.status === 'fulfilled') {
-        const provs = provResp.value.data.attestations || [];
-        if (provs.length > 0) setProvenanceData(provs[0]);
       }
     } finally {
       setLoading(false);
@@ -1505,6 +1466,8 @@ function CompliancePage({ selectedIdentity }) {
         </Space>
       </Card>
 
+      <EvidenceApiDiagnostics diagnostics={diagnostics} />
+      {evidenceError && <Alert type="error" showIcon message={evidenceError} style={{marginBottom: 16}} />}
       {report && (
         <Card title="Compliance Report Result" size="small">
           {anchorDoc && (
@@ -1758,7 +1721,7 @@ function CompliancePage({ selectedIdentity }) {
 
           
           <Card title="VEX Applicability Analysis" size="small" style={{ marginBottom: 16 }}>
-            <VexApplicabilityTable vulnerabilities={report.vulnerabilities || []} />
+            <VexApplicabilityTable vulnerabilities={vexData || report.vulnerabilities || []} />
           </Card>
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="Compliance Status">
