@@ -72,37 +72,48 @@ async function main() {
 
   const results = {};
 
-  // 1. Provenance Benchmarking
-  const sampleAttestation = {
-    _type: 'https://in-toto.io/Statement/v0.1',
-    predicateType: 'https://slsa.dev/provenance/v1',
-    subject: [{ name: 'bench-app', digest: { sha256: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0' } }],
-    predicate: {
-      buildDefinition: { buildType: 'https://slsa.dev/container-based-build/v0.1' },
-      runDetails: { builder: { id: 'https://github.com/actions/runner/github-hosted' } }
-    }
-  };
-  results.provenance = await benchmark('SLSA Provenance Verification', () => {
-    provenanceEngine.verifyProvenance(sampleAttestation, 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0');
-  });
-
-  // 2. Signature Benchmarking
   const fs = require('fs');
   const path = require('path');
   const os = require('os');
+  const crypto = require('crypto');
   const { execSync } = require('child_process');
 
-  const fakeHash = 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0';
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tpsr-bench-'));
   const cosignBin = path.join(__dirname, '../bin/cosign');
-  
+
+  // Setup keys and files
+  const fakeHash = 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0';
   fs.writeFileSync(path.join(tmpDir, 'blob.txt'), fakeHash, 'utf8');
   execSync(`env COSIGN_PASSWORD="" ${cosignBin} generate-key-pair`, { cwd: tmpDir });
-  execSync(`env COSIGN_PASSWORD="" ${cosignBin} sign-blob --key cosign.key --yes --tlog-upload=false --output-signature sig.bin blob.txt`, { cwd: tmpDir });
   
-  const testPubKey = fs.readFileSync(path.join(tmpDir, 'cosign.pub'));
+  const testPubKey = fs.readFileSync(path.join(tmpDir, 'cosign.pub'), 'utf8');
+  
+  // Signature Bench Setup
+  execSync(`env COSIGN_PASSWORD="" ${cosignBin} sign-blob --key cosign.key --yes --tlog-upload=false --output-signature sig.bin blob.txt`, { cwd: tmpDir });
   const testSigValue = fs.readFileSync(path.join(tmpDir, 'sig.bin'), 'base64');
   
+  // Provenance Bench Setup
+  const predicate = {
+    buildDefinition: {
+      buildType: 'https://actions.github.io/buildtypes/workflow/v1',
+      externalParameters: { source: { uri: 'https://github.com/org/repo' } }
+    },
+    runDetails: {
+      builder: { id: 'https://github.com/actions/runner/github-hosted' },
+      metadata: { startedOn: new Date().toISOString(), finishedOn: new Date().toISOString() }
+    }
+  };
+  fs.writeFileSync(path.join(tmpDir, 'predicate.json'), JSON.stringify(predicate));
+  execSync(`env COSIGN_PASSWORD="" ${cosignBin} attest-blob --key cosign.key --predicate predicate.json --type slsaprovenance1 --yes --tlog-upload=false --output-signature envelope.json blob.txt`, { cwd: tmpDir });
+  const benchEnvelope = JSON.parse(fs.readFileSync(path.join(tmpDir, 'envelope.json'), 'utf8'));
+  const benchDummyHash = crypto.createHash('sha256').update(fakeHash).digest('hex');
+
+  // 1. Provenance Benchmarking
+  results.provenance = await benchmark('SLSA Provenance Verification', async () => {
+    await provenanceEngine.verifyProvenance(benchEnvelope, benchDummyHash, 'OFFLINE_KEYED', testPubKey);
+  }, true);
+
+  // 2. Signature Benchmarking
   results.signature = await benchmark('Sigstore Offline-Keyed Verification', async () => {
     await cosignEngine.verifySignature({
       signatureType: 'OFFLINE_KEYED',

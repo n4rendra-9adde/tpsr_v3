@@ -17,10 +17,11 @@ async function handleRecordProvenance(req, res) {
   }
 
   const body = req.body || {};
-  const attestationPayload = body.attestationPayload || body.attestation || (body._type ? body : null);
-
-  if (!attestationPayload || typeof attestationPayload !== 'object') {
-    return res.status(400).json({ error: 'attestationPayload JSON object is required' });
+  // Now expecting envelope, signatureType, publicKey, expectedArtifactHash
+  const envelope = body.envelope || body.attestationPayload || body.attestation || (body._type ? body : null);
+  
+  if (!envelope || typeof envelope !== 'object') {
+    return res.status(400).json({ error: 'envelope or attestationPayload JSON object is required' });
   }
 
   try {
@@ -29,21 +30,44 @@ async function handleRecordProvenance(req, res) {
       return res.status(404).json({ error: `SBOM document not found for ID: ${sbomId}` });
     }
 
-    const artifactHash = body.artifactHash || pgDocument.sbom_hash;
-    const verificationResult = verifyProvenance(attestationPayload, artifactHash);
+    const expectedArtifactHash = body.expectedArtifactHash || pgDocument.sbom_hash;
+    
+    // Check if the user is providing explicit offline keys, else try to use policy or fallbacks
+    const signatureType = body.signatureType || 'OFFLINE_KEYED';
+    const publicKey = body.publicKey || null;
 
-    const attestationHash = crypto.createHash('sha256').update(JSON.stringify(attestationPayload)).digest('hex');
-    const statementType = attestationPayload._type || attestationPayload.type || 'https://in-toto.io/Statement/v1';
+    const verificationResult = await verifyProvenance(envelope, expectedArtifactHash, signatureType, publicKey);
 
+    const attestationHash = crypto.createHash('sha256').update(JSON.stringify(envelope)).digest('hex');
+    const statementType = verificationResult.normalizedOutput?._type || 'https://in-toto.io/Statement/v1';
+
+    // Insert new enhanced record
     const dbRecord = await sbomRepository.insertProvenanceAttestation({
       sbomId: sbomId.trim(),
-      artifactHash: artifactHash,
+      artifactHash: expectedArtifactHash,
       attestationType: statementType,
       builderId: verificationResult.builderId || 'unknown-builder',
       slsaLevel: verificationResult.slsaLevel || 'SLSA_BUILD_LEVEL_0',
-      payload: attestationPayload,
+      payload: envelope, // Storing original envelope
       attestationHash: attestationHash,
-      status: verificationResult.status
+      status: verificationResult.status,
+      // Enhanced Fields
+      envelopeHash: verificationResult.envelopeHash,
+      predicateType: verificationResult.predicateType,
+      predicateVersion: verificationResult.predicateVersion,
+      sourceRepository: verificationResult.sourceRepository,
+      sourceCommit: verificationResult.sourceCommit,
+      buildType: verificationResult.buildType,
+      externalParameters: verificationResult.externalParameters,
+      buildStartedOn: verificationResult.buildStartedOn,
+      buildFinishedOn: verificationResult.buildFinishedOn,
+      signatureStatus: verificationResult.signatureStatus || 'UNVERIFIED',
+      verificationStatus: verificationResult.status,
+      publicKeyFingerprint: verificationResult.publicKeyFingerprint,
+      signerIdentity: verificationResult.signerIdentity,
+      policyVersion: verificationResult.policyVersion,
+      trustPolicyHash: verificationResult.trustPolicyHash,
+      reasonCodes: verificationResult.reasonCodes || [verificationResult.reasonCode]
     });
 
     // Attempt to anchor evidence on Fabric ledger asynchronously / best-effort
@@ -60,7 +84,7 @@ async function handleRecordProvenance(req, res) {
         evidenceType: "SLSA_PROVENANCE_V1",
         evidenceHash: attestationHash,
         evidenceId: dbRecord.id,
-        evidencePayload: JSON.stringify(attestationPayload).slice(0, 1000) // truncated for ledger brevity
+        evidencePayload: JSON.stringify(envelope).slice(0, 1000) // truncated for ledger brevity
       });
 
       await contract.submitTransaction('RecordTrustEvidence', chaincodePayload);
@@ -81,12 +105,11 @@ async function handleRecordProvenance(req, res) {
       sbomId: sbomId.trim(),
       status: verificationResult.status,
       slsaLevel: verificationResult.slsaLevel,
-      reasonCode: verificationResult.reasonCode,
-      reasonDescription: verificationResult.reasonDescription,
+      reasonCodes: verificationResult.reasonCodes || [verificationResult.reasonCode],
       builderId: verificationResult.builderId,
       attestationHash: attestationHash,
       ledgerStatus: ledgerStatus,
-      createdAt: dbRecord.created_at
+      createdAt: dbRecord.created_at || new Date().toISOString()
     });
   } catch (err) {
     console.error('[TPSR] Error recording provenance:', err);

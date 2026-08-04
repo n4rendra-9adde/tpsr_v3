@@ -357,8 +357,13 @@ async function insertProvenanceAttestation(record) {
   var query = `
     INSERT INTO provenance_attestations (
       sbom_id, artifact_hash, attestation_type, builder_id,
-      slsa_level, payload, attestation_hash, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      slsa_level, payload, attestation_hash, status,
+      envelope_hash, predicate_type, predicate_version,
+      source_repository, source_commit, build_type,
+      external_parameters, build_started_on, build_finished_on,
+      signature_status, verification_status, public_key_fingerprint,
+      signer_identity, policy_version, trust_policy_hash, reason_codes, verified_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
     RETURNING *;
   `;
   var values = [
@@ -369,7 +374,24 @@ async function insertProvenanceAttestation(record) {
     record.slsaLevel,
     JSON.stringify(record.payload),
     record.attestationHash,
-    record.status || 'VALID'
+    record.status || 'VALID',
+    record.envelopeHash || null,
+    record.predicateType || null,
+    record.predicateVersion || null,
+    record.sourceRepository || null,
+    record.sourceCommit || null,
+    record.buildType || null,
+    record.externalParameters ? JSON.stringify(record.externalParameters) : null,
+    record.buildStartedOn || null,
+    record.buildFinishedOn || null,
+    record.signatureStatus || 'UNVERIFIED',
+    record.verificationStatus || 'FAILED',
+    record.publicKeyFingerprint || null,
+    record.signerIdentity || null,
+    record.policyVersion || null,
+    record.trustPolicyHash || null,
+    record.reasonCodes ? JSON.stringify(record.reasonCodes) : null,
+    record.status === 'VALID' ? new Date().toISOString() : null
   ];
   var client = await db.pool.connect();
   try {
@@ -438,8 +460,14 @@ async function insertVexStatement(record) {
       sbom_id, vulnerability_id, original_severity, original_cvss,
       applicability_status, policy_impact, justification, impact_statement,
       statement_payload, issuer_identity, statement_issued_at,
-      statement_last_updated_at, policy_valid_until
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      statement_last_updated_at, policy_valid_until,
+      statement_hash, public_key_fingerprint, signature_status,
+      format, format_version, product_identifiers, release_identifiers,
+      component_identifiers, vulnerability_identifiers, applicability_disposition,
+      policy_blocking_status, reason_codes, trust_policy_hash, action_statement,
+      verified_at, policy_version, verification_mode, transparency_log_status,
+      digest_manifest_reference, statement_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
     RETURNING *;
   `;
   var now = new Date().toISOString();
@@ -456,7 +484,27 @@ async function insertVexStatement(record) {
     record.issuerIdentity || 'security-team',
     record.issuedAt || now,
     record.lastUpdatedAt || now,
-    record.validUntil || new Date(Date.now() + 31536000000).toISOString()
+    record.validUntil || new Date(Date.now() + 31536000000).toISOString(),
+    record.statementHash || null,
+    record.publicKeyFingerprint || null,
+    record.signatureStatus || null,
+    record.format || 'OpenVEX',
+    record.formatVersion || 'v0.2.0',
+    record.productIdentifiers ? JSON.stringify(record.productIdentifiers) : null,
+    record.releaseIdentifiers ? JSON.stringify(record.releaseIdentifiers) : null,
+    record.componentIdentifiers ? JSON.stringify(record.componentIdentifiers) : null,
+    record.vulnerabilityIdentifiers ? JSON.stringify(record.vulnerabilityIdentifiers) : null,
+    record.applicabilityDisposition || null,
+    record.policyBlockingStatus || null,
+    record.reasonCodes ? JSON.stringify(record.reasonCodes) : null,
+    record.trustPolicyHash || null,
+    record.actionStatement || null,
+    record.verifiedAt || null,
+    record.policyVersion || null,
+    record.verificationMode || null,
+    record.transparencyLogStatus || null,
+    record.digestManifestReference ? JSON.stringify(record.digestManifestReference) : null,
+    record.statementId || null
   ];
   var client = await db.pool.connect();
   try {

@@ -1,165 +1,225 @@
-/**
- * TPSR v3 VEX Applicability Overlay Engine
- * Implements OpenVEX / CycloneDX VEX applicability analysis while preserving raw CVSS scores.
- */
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { execFile } = require('child_process');
+const util = require('util');
+const execFileAsync = util.promisify(execFile);
 
-const VALID_STATUSES = ['affected', 'not_affected', 'under_investigation', 'fixed'];
-const VALID_JUSTIFICATIONS = [
-  'component_not_present',
-  'vulnerable_code_not_present',
-  'vulnerable_code_not_in_execute_path',
-  'vulnerable_code_cannot_be_controlled_by_adversary',
-  'inline_mitigations_already_exist'
-];
+// Read Trust Policy
+const trustPolicyPath = path.join(__dirname, '../../../docs/TRUST_POLICY.json');
+let trustPolicy = {};
+let trustPolicyHash = '';
+try {
+  const tpContent = fs.readFileSync(trustPolicyPath, 'utf8');
+  trustPolicy = JSON.parse(tpContent);
+  trustPolicyHash = crypto.createHash('sha256').update(tpContent).digest('hex');
+} catch (err) {
+  console.warn('Failed to load TRUST_POLICY.json', err);
+}
 
-/**
- * Evaluates a single VEX statement against a vulnerability
- * @param {Object} vex - The VEX statement object
- * @returns {Object} Evaluation result with status, reasonCode, reasonDescription, and effectiveSeverity
- */
-function evaluateVexStatement(vex) {
-  const result = {
-    isValid: false,
-    status: 'under_investigation',
-    reasonCode: 'VEX-004',
-    reasonDescription: 'VEX statement under investigation or unverified',
-    justification: null,
-    impactStatement: null,
-    evaluatedAt: new Date().toISOString()
-  };
+const vexPolicy = trustPolicy.vexPolicy || {};
+const VALID_JUSTIFICATIONS = vexPolicy.allowedJustifications || [];
 
-  if (!vex || typeof vex !== 'object') {
-    result.reasonCode = 'VEX-002';
-    result.reasonDescription = 'VEX statement payload is missing or invalid';
-    return result;
-  }
+async function verifyVexSignature(envelope, publicKey) {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tpsr-vex-'));
+  try {
+    const envPath = path.join(tmpDir, 'envelope.json');
+    const pubPath = path.join(tmpDir, 'cosign.pub');
+    // Using a dummy target since we use verify-blob-attestation
+    const dummyPath = path.join(tmpDir, 'dummy.txt');
+    fs.writeFileSync(dummyPath, 'vex-target-placeholder');
 
-  const status = (vex.status || '').toLowerCase().trim();
-  if (!VALID_STATUSES.includes(status)) {
-    result.reasonCode = 'VEX-002';
-    result.reasonDescription = `Invalid VEX status: ${vex.status}`;
-    return result;
-  }
-  result.status = status;
+    fs.writeFileSync(envPath, JSON.stringify(envelope));
+    fs.writeFileSync(pubPath, publicKey);
 
-  if (status === 'not_affected') {
-    const justification = (vex.justification || '').toLowerCase().trim();
-    const impactStatement = (vex.impactStatement || vex.impact_statement || '').trim();
-
-    if (!VALID_JUSTIFICATIONS.includes(justification)) {
-      result.reasonCode = 'VEX-002';
-      result.reasonDescription = `Missing or invalid justification for not_affected VEX status: ${vex.justification || 'none'}`;
-      return result;
+    const cosignBin = path.resolve(__dirname, '../../../bin/cosign');
+    if (!fs.existsSync(cosignBin)) {
+      throw new Error('Cosign binary not found at ' + cosignBin);
     }
 
+    const args = [
+      'verify-blob-attestation',
+      '--key', pubPath,
+      '--signature', envPath,
+      '--insecure-ignore-tlog=true',
+      '--check-claims=false', // Custom claims checked by our engine
+      '--type', 'https://openvex.dev/ns/v0.2.0',
+      dummyPath
+    ];
+
+    await execFileAsync(cosignBin, args, {
+      env: { ...process.env, COSIGN_PASSWORD: '' }
+    });
+
+    const pubDer = crypto.createPublicKey(publicKey).export({ type: 'spki', format: 'der' });
+    const pubFingerprint = crypto.createHash('sha256').update(pubDer).digest('hex');
+
+    return { signatureStatus: 'VERIFIED', publicKeyFingerprint: pubFingerprint };
+  } catch (err) {
+    throw { reasonCode: 'VEX-010', message: 'VEX signature invalid' };
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+async function verifyVexDocument(envelope, signatureType, publicKey, targetContext) {
+  const result = {
+    isValid: false,
+    applicabilityDisposition: 'VEX_INVALID',
+    policyBlockingStatus: 'BLOCKING',
+    reasonCode: 'VEX-012',
+    reasonCodes: [],
+    verifiedAt: new Date().toISOString()
+  };
+
+  if (envelope?.payloadType !== 'application/vnd.in-toto+json') {
+    result.reasonCode = 'VEX-011';
+    result.reasonCodes.push('VEX-011');
+    return result;
+  }
+
+  let payloadStr = envelope.payload;
+  if (!payloadStr) {
+    result.reasonCodes.push('VEX-012');
+    return result;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(payloadStr, 'base64').toString('utf8'));
+  } catch (err) {
+    result.reasonCodes.push('VEX-012');
+    return result;
+  }
+
+  if (payload.predicateType !== 'https://openvex.dev/ns/v0.2.0') {
+    result.reasonCode = 'VEX-011';
+    result.reasonCodes.push('VEX-011');
+    return result;
+  }
+
+  result.statementHash = crypto.createHash('sha256').update(JSON.stringify(envelope)).digest('hex');
+  result.format = 'OpenVEX';
+  result.formatVersion = 'v0.2.0';
+  result.policyVersion = trustPolicy.policyVersion;
+  result.trustPolicyHash = trustPolicyHash;
+
+  // Verify Signature
+  if (signatureType === 'OFFLINE_KEYED') {
+    try {
+      const sigResult = await verifyVexSignature(envelope, publicKey);
+      result.signatureStatus = sigResult.signatureStatus;
+      result.publicKeyFingerprint = sigResult.publicKeyFingerprint;
+      result.verificationMode = 'offline-keyed';
+      result.transparencyLogStatus = 'false';
+    } catch (err) {
+      result.reasonCode = err.reasonCode || 'VEX-010';
+      result.reasonCodes.push(result.reasonCode);
+      return result;
+    }
+  } else {
+    result.reasonCode = 'VEX-010';
+    result.reasonCodes.push('VEX-010');
+    return result;
+  }
+
+  const predicate = payload.predicate || {};
+  const statements = predicate.statements || [];
+  
+  if (statements.length === 0) {
+    result.reasonCode = 'VEX-012';
+    result.reasonCodes.push('VEX-012');
+    return result;
+  }
+  
+  // Use first statement for simplicity in this normalized model, ideally loop/conflict resolution
+  const stmt = statements[0];
+  
+  result.vulnerabilityIdentifiers = [stmt.vulnerability?.name || stmt.vulnerability?.['@id']].filter(Boolean);
+  result.productIdentifiers = (stmt.products || []).map(p => p['@id'] || p).filter(Boolean);
+  
+  // Strict matching
+  if (targetContext) {
+    // Vuln match
+    if (targetContext.vulnerabilityId && !result.vulnerabilityIdentifiers.includes(targetContext.vulnerabilityId)) {
+      result.reasonCode = 'VEX-005';
+      result.reasonCodes.push('VEX-005');
+      return result;
+    }
+    // Product match (if provided in targetContext)
+    if (targetContext.productIdentifier && !result.productIdentifiers.includes(targetContext.productIdentifier)) {
+      result.reasonCode = 'VEX-004';
+      result.reasonCodes.push('VEX-004');
+      return result;
+    }
+  }
+
+  // Freshness
+  const issued = predicate.timestamp ? new Date(predicate.timestamp) : null;
+  if (issued) {
+    const ageDays = (Date.now() - issued.getTime()) / (1000 * 60 * 60 * 24);
+    if (ageDays > (vexPolicy.maxOverlayValidityDays || 365)) {
+      result.reasonCode = 'VEX-007';
+      result.reasonCodes.push('VEX-007');
+      return result;
+    }
+    // future clock skew checking
+    if (issued.getTime() > Date.now() + 10 * 60 * 1000) {
+      result.reasonCode = 'VEX-007';
+      result.reasonCodes.push('VEX-007');
+      return result;
+    }
+  }
+
+  result.vexStatus = stmt.status;
+  result.justification = stmt.justification;
+  result.impactStatement = stmt.impact_statement;
+  result.actionStatement = stmt.action_statement;
+
+  if (stmt.status === 'not_affected') {
+    if (!VALID_JUSTIFICATIONS.includes(stmt.justification)) {
+      result.reasonCode = 'VEX-006';
+      result.reasonCodes.push('VEX-006');
+      return result;
+    }
+    if (vexPolicy.requireImpactStatementForNotAffected && !stmt.impact_statement) {
+      result.reasonCode = 'VEX-006';
+      result.reasonCodes.push('VEX-006');
+      return result;
+    }
     result.isValid = true;
-    result.justification = justification;
-    result.impactStatement = impactStatement || `Mitigated by ${justification}`;
+    result.applicabilityDisposition = 'NOT_AFFECTED';
+    result.policyBlockingStatus = 'NON_BLOCKING';
     result.reasonCode = 'VEX-001';
-    result.reasonDescription = `VEX justification approved - vulnerability not applicable (${justification})`;
-    return result;
-  }
-
-  if (status === 'fixed') {
+    result.reasonCodes.push('VEX-001');
+  } else if (stmt.status === 'under_investigation') {
     result.isValid = true;
+    result.applicabilityDisposition = 'UNDER_INVESTIGATION';
+    result.policyBlockingStatus = 'REVIEW_REQUIRED';
+    result.reasonCode = 'VEX-002';
+    result.reasonCodes.push('VEX-002');
+  } else if (stmt.status === 'affected') {
+    result.isValid = true;
+    result.applicabilityDisposition = 'APPLICABLE';
+    result.policyBlockingStatus = 'BLOCKING';
+    result.reasonCode = 'VEX-008';
+    result.reasonCodes.push('VEX-008');
+  } else if (stmt.status === 'fixed') {
+    // For fixed we should strictly match release, assuming matched above via productIdentifier
+    result.isValid = true;
+    result.applicabilityDisposition = 'FIXED_FOR_RELEASE';
+    result.policyBlockingStatus = 'NON_BLOCKING';
     result.reasonCode = 'VEX-001';
-    result.reasonDescription = 'VEX statement verified - vulnerability has been remediated in this version';
-    return result;
+    result.reasonCodes.push('VEX-001');
+  } else {
+    result.reasonCode = 'VEX-012';
+    result.reasonCodes.push('VEX-012');
   }
 
-  if (status === 'affected') {
-    result.isValid = true;
-    result.reasonCode = 'VEX-003';
-    result.reasonDescription = 'VEX confirms component is affected; active remediation or exception required';
-    return result;
-  }
-
-  result.isValid = true;
   return result;
 }
 
-/**
- * Applies VEX overlays onto an array of component vulnerabilities while preserving raw CVSS scores
- * @param {Array<Object>} vulnerabilities - Array of vulnerability objects (e.g. from SBOM or scanner)
- * @param {Array<Object>} vexStatements - Array of active VEX statement records
- * @returns {Object} Overlay summary with updated vulnerabilities, effectiveRiskScore, and activeVexIds
- */
-function applyVexOverlays(vulnerabilities = [], vexStatements = []) {
-  const activeVexIds = [];
-  let totalRawCvss = 0;
-  let totalEffectiveScore = 0;
-  let highestEffectiveSeverity = 'NONE';
-
-  const severityMap = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };
-  const revSeverityMap = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-
-  const updatedVulnerabilities = vulnerabilities.map(vuln => {
-    const vulnCopy = { ...vuln };
-    const vulnId = vulnCopy.id || vulnCopy.cve || vulnCopy.vulnerabilityId;
-    const rawCvss = Number(vulnCopy.cvssScore || vulnCopy.cvss || 0);
-    totalRawCvss += rawCvss;
-
-    // Find matching VEX statement
-    const matchingVex = vexStatements.find(v => {
-      const targetId = v.vulnerability_id || v.vulnerabilityId || v.cve || v.sub;
-      return targetId && targetId.toLowerCase() === (vulnId || '').toLowerCase();
-    });
-
-    vulnCopy.rawCvssScore = rawCvss;
-    vulnCopy.rawSeverity = vulnCopy.severity || 'UNKNOWN';
-
-    if (matchingVex) {
-      if (matchingVex.id || matchingVex.vex_id) {
-        activeVexIds.push(matchingVex.id || matchingVex.vex_id);
-      }
-      const evalResult = evaluateVexStatement(matchingVex);
-      vulnCopy.vexStatus = evalResult.status;
-      vulnCopy.vexReasonCode = evalResult.reasonCode;
-      vulnCopy.vexReasonDescription = evalResult.reasonDescription;
-      vulnCopy.vexJustification = evalResult.justification;
-
-      if (evalResult.status === 'not_affected' || evalResult.status === 'fixed') {
-        // PRESERVE rawCvssScore, but reduce effective risk to 0 for policy evaluation
-        vulnCopy.effectiveCvssScore = 0;
-        vulnCopy.effectiveSeverity = 'NONE';
-        vulnCopy.suppressedByVex = true;
-      } else {
-        vulnCopy.effectiveCvssScore = rawCvss;
-        vulnCopy.effectiveSeverity = vulnCopy.rawSeverity;
-        vulnCopy.suppressedByVex = false;
-      }
-    } else {
-      vulnCopy.vexStatus = 'unevaluated';
-      vulnCopy.effectiveCvssScore = rawCvss;
-      vulnCopy.effectiveSeverity = vulnCopy.rawSeverity;
-      vulnCopy.suppressedByVex = false;
-    }
-
-    totalEffectiveScore += vulnCopy.effectiveCvssScore;
-    const effSevNum = severityMap[(vulnCopy.effectiveSeverity || '').toUpperCase()] || 0;
-    if (effSevNum > severityMap[highestEffectiveSeverity]) {
-      highestEffectiveSeverity = revSeverityMap[effSevNum];
-    }
-
-    return vulnCopy;
-  });
-
-  const effectiveRiskScore = updatedVulnerabilities.length > 0 ? Math.round((totalEffectiveScore / updatedVulnerabilities.length) * 100) / 100 : 0;
-
-  return {
-    vulnerabilities: updatedVulnerabilities,
-    totalRawCvssScore: Math.round(totalRawCvss * 100) / 100,
-    totalEffectiveCvssScore: Math.round(totalEffectiveScore * 100) / 100,
-    effectiveRiskScore: effectiveRiskScore,
-    highestEffectiveSeverity: highestEffectiveSeverity,
-    activeVexIds: Array.from(new Set(activeVexIds)),
-    appliedAt: new Date().toISOString()
-  };
-}
-
 module.exports = {
-  evaluateVexStatement,
-  applyVexOverlays,
-  VALID_STATUSES,
-  VALID_JUSTIFICATIONS
+  verifyVexDocument
 };

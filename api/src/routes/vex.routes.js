@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const sbomRepository = require('../repositories/sbomRepository');
-const { evaluateVexStatement } = require('../utils/vexEngine');
+const { verifyVexDocument } = require('../utils/vexEngine');
 
 /**
  * Handle VEX statement submission and evaluation
@@ -14,9 +14,9 @@ async function handleRecordVex(req, res) {
     return res.status(400).json({ error: 'sbomId parameter is required' });
   }
 
-  const body = req.body || {};
-  if (!body.vulnerabilityId && !body.cve) {
-    return res.status(400).json({ error: 'vulnerabilityId or cve parameter is required' });
+  const { envelope, signatureType, publicKey, targetContext } = req.body || {};
+  if (!envelope) {
+    return res.status(400).json({ error: 'envelope parameter is required' });
   }
 
   try {
@@ -25,22 +25,46 @@ async function handleRecordVex(req, res) {
       return res.status(404).json({ error: `SBOM document not found for ID: ${sbomId}` });
     }
 
-    const evalResult = evaluateVexStatement(body);
+    const evalResult = await verifyVexDocument(envelope, signatureType, publicKey, targetContext);
+
+    // If context is given, pull its details for persistence
+    const vulnerabilityId = targetContext?.vulnerabilityId || 'UNKNOWN-CVE';
+    const originalSeverity = targetContext?.originalSeverity || 'UNKNOWN';
+    const originalCvss = targetContext?.originalCvss || 0;
 
     const dbRecord = await sbomRepository.insertVexStatement({
       sbomId: sbomId.trim(),
-      vulnerabilityId: body.vulnerabilityId || body.cve,
-      originalSeverity: body.originalSeverity || body.severity || 'UNKNOWN',
-      originalCvss: body.originalCvss || body.cvss || 0,
-      status: evalResult.status,
-      policyImpact: evalResult.status === 'not_affected' || evalResult.status === 'fixed' ? 'SUPPRESSED' : 'ACTIVE',
-      justification: evalResult.justification || body.justification || null,
-      impactStatement: evalResult.impactStatement || body.impactStatement || null,
-      payload: body,
-      issuerIdentity: req.headers['x-user-id'] || body.issuerIdentity || 'security-team',
-      issuedAt: body.issuedAt,
-      lastUpdatedAt: body.lastUpdatedAt,
-      validUntil: body.validUntil
+      vulnerabilityId: vulnerabilityId,
+      originalSeverity: originalSeverity,
+      originalCvss: originalCvss,
+      status: evalResult.vexStatus || 'not_affected',
+      policyImpact: evalResult.policyBlockingStatus === 'NON_BLOCKING' ? 'SUPPRESSED' : 'ACTIVE',
+      justification: evalResult.justification || null,
+      impactStatement: evalResult.impactStatement || null,
+      actionStatement: evalResult.actionStatement || null,
+      payload: envelope,
+      issuerIdentity: req.headers['x-user-id'] || 'security-team',
+      issuedAt: new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 31536000000).toISOString(),
+      statementHash: evalResult.statementHash,
+      publicKeyFingerprint: evalResult.publicKeyFingerprint,
+      signatureStatus: evalResult.signatureStatus,
+      format: evalResult.format,
+      formatVersion: evalResult.formatVersion,
+      productIdentifiers: evalResult.productIdentifiers,
+      releaseIdentifiers: evalResult.releaseIdentifiers,
+      componentIdentifiers: evalResult.componentIdentifiers,
+      vulnerabilityIdentifiers: evalResult.vulnerabilityIdentifiers,
+      applicabilityDisposition: evalResult.applicabilityDisposition,
+      policyBlockingStatus: evalResult.policyBlockingStatus,
+      reasonCodes: evalResult.reasonCodes,
+      trustPolicyHash: evalResult.trustPolicyHash,
+      verifiedAt: evalResult.verifiedAt,
+      policyVersion: evalResult.policyVersion,
+      verificationMode: evalResult.verificationMode,
+      transparencyLogStatus: evalResult.transparencyLogStatus,
+      statementId: evalResult.statementId
     });
 
     const statusCode = evalResult.isValid ? 201 : 422;
@@ -49,10 +73,11 @@ async function handleRecordVex(req, res) {
       vexId: dbRecord.id,
       sbomId: sbomId.trim(),
       vulnerabilityId: dbRecord.vulnerability_id,
-      status: evalResult.status,
+      status: evalResult.vexStatus,
       reasonCode: evalResult.reasonCode,
-      reasonDescription: evalResult.reasonDescription,
-      policyImpact: dbRecord.policy_impact,
+      reasonCodes: evalResult.reasonCodes,
+      policyBlockingStatus: dbRecord.policy_blocking_status,
+      applicabilityDisposition: dbRecord.applicability_disposition,
       createdAt: dbRecord.created_at
     });
   } catch (err) {

@@ -54,60 +54,81 @@ async function main() {
   console.log('================================================================\n');
 
   console.log('--- Stage 1: Provenance Tampering & Forgery Validation ---');
-  logTest('1.1 Reject missing or malformed SLSA provenance envelope', () => {
-    const res = provenanceEngine.verifyProvenance({}, null);
-    assert.strictEqual(res.status, 'INVALID');
-    assert.strictEqual(res.reasonCode, 'PRV-004');
-  });
+  
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const crypto = require('crypto');
+  const { execSync } = require('child_process');
+  
+  let testPubKey = '';
+  let validEnvelope = {};
+  let tmpDir = '';
+  
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tpsr-prov-suite-'));
+    const keyPath = path.join(tmpDir, 'cosign.key');
+    const pubPath = path.join(tmpDir, 'cosign.pub');
+    const blobPath = path.join(tmpDir, 'blob.txt');
+    const predPath = path.join(tmpDir, 'predicate.json');
+    const envPath = path.join(tmpDir, 'envelope.json');
 
-  logTest('1.2 Detect forged builder identity in SLSA attestation', () => {
-    const attestation = {
-      _type: 'https://in-toto.io/Statement/v0.1',
-      predicateType: 'https://slsa.dev/provenance/v1',
-      subject: [{ name: 'test-app', digest: { sha256: 'abc123hash' } }],
-      predicate: {
-        buildDefinition: {
-          buildType: 'https://slsa.dev/container-based-build/v0.1',
-          externalParameters: { source: 'https://github.com/org/repo' }
-        },
-        runDetails: {
-          builder: { id: 'https://unauthorized-builder.example.com/build/v1' }
-        }
+    fs.writeFileSync(blobPath, 'dummy', 'utf8');
+    const predicate = {
+      buildDefinition: {
+        buildType: 'https://actions.github.io/buildtypes/workflow/v1',
+        externalParameters: { source: { uri: 'https://github.com/org/repo' } }
+      },
+      runDetails: {
+        builder: { id: 'https://github.com/actions/runner/github-hosted' },
+        metadata: { startedOn: new Date().toISOString(), finishedOn: new Date().toISOString() }
       }
     };
-    const res = provenanceEngine.verifyProvenance(attestation, 'abc123hash');
+    fs.writeFileSync(predPath, JSON.stringify(predicate));
+
+    const cosignBin = path.join(__dirname, '../bin/cosign');
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} generate-key-pair`, { cwd: tmpDir });
+    testPubKey = fs.readFileSync(pubPath, 'utf8');
+    
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} attest-blob --key cosign.key --predicate predicate.json --type slsaprovenance1 --yes --tlog-upload=false --output-signature envelope.json blob.txt`, { cwd: tmpDir });
+    
+    validEnvelope = JSON.parse(fs.readFileSync(envPath, 'utf8'));
+    validEnvelope._dummyHash = crypto.createHash('sha256').update('dummy').digest('hex');
+  } catch (err) {
+    console.error('Failed to setup Cosign for Stage 1:', err);
+  } finally {
+    if (tmpDir && fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  await runAsyncTest('1.1 Reject missing or malformed SLSA provenance envelope (unsigned)', async () => {
+    const res = await provenanceEngine.verifyProvenance({}, null);
     assert.strictEqual(res.status, 'INVALID');
-    assert.strictEqual(res.reasonCode, 'PRV-003');
+    assert.strictEqual(res.reasonCode, 'PRV-015'); // Unsigned prohibited
   });
 
-  logTest('1.3 Detect artifact digest mismatch between SBOM and in-toto subject', () => {
-    const attestation = {
-      _type: 'https://in-toto.io/Statement/v0.1',
-      predicateType: 'https://slsa.dev/provenance/v1',
-      subject: [{ name: 'test-app', digest: { sha256: 'wronghash999' } }],
-      predicate: {
-        buildDefinition: { buildType: 'https://slsa.dev/container-based-build/v0.1' },
-        runDetails: { builder: { id: 'https://github.com/actions/runner/github-hosted' } }
-      }
-    };
-    const res = provenanceEngine.verifyProvenance(attestation, 'realhash000');
+  await runAsyncTest('1.2 Detect forged builder identity in SLSA attestation', async () => {
+    // Tamper the envelope payload
+    const tampered = JSON.parse(JSON.stringify(validEnvelope));
+    const decoded = JSON.parse(Buffer.from(tampered.payload, 'base64').toString('utf8'));
+    decoded.predicate.runDetails.builder.id = 'https://unauthorized-builder.example.com/build/v1';
+    tampered.payload = Buffer.from(JSON.stringify(decoded)).toString('base64');
+
+    const res = await provenanceEngine.verifyProvenance(tampered, validEnvelope._dummyHash, 'OFFLINE_KEYED', testPubKey);
+    assert.strictEqual(res.status, 'INVALID');
+    assert.strictEqual(res.reasonCode, 'PRV-006'); // Signature invalid due to tampering
+  });
+
+  await runAsyncTest('1.3 Detect artifact digest mismatch between SBOM and in-toto subject', async () => {
+    // Pass wrong hash
+    const res = await provenanceEngine.verifyProvenance(validEnvelope, 'wronghash999', 'OFFLINE_KEYED', testPubKey);
     assert.strictEqual(res.status, 'INVALID');
     assert.strictEqual(res.reasonCode, 'BND-002');
   });
 
-  logTest('1.4 Pass valid SLSA v1.0 attestation with matching digest and builder', () => {
-    const attestation = {
-      _type: 'https://in-toto.io/Statement/v0.1',
-      predicateType: 'https://slsa.dev/provenance/v1',
-      subject: [{ name: 'test-app', digest: { sha256: 'validhash111' } }],
-      predicate: {
-        buildDefinition: { buildType: 'https://slsa.dev/container-based-build/v0.1' },
-        runDetails: { builder: { id: 'https://github.com/actions/runner/github-hosted' } }
-      }
-    };
-    const res = provenanceEngine.verifyProvenance(attestation, 'validhash111');
+  await runAsyncTest('1.4 Pass valid SLSA v1.0 attestation with matching digest and builder', async () => {
+    const res = await provenanceEngine.verifyProvenance(validEnvelope, validEnvelope._dummyHash, 'OFFLINE_KEYED', testPubKey);
     assert.strictEqual(res.status, 'VALID');
-    assert.strictEqual(res.reasonCode, 'PRV-001');
+    assert.strictEqual(res.reasonCode, 'PRV-000');
     assert.strictEqual(res.slsaLevel, 'SLSA_BUILD_LEVEL_3');
   });
 

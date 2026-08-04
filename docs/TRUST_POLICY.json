@@ -13,7 +13,16 @@
     "approvedBuildTypes": [
       "https://actions.github.io/buildtypes/workflow/v1",
       "https://tekton.dev/attestations/workflow/v2"
-    ]
+    ],
+    "approvedSourceRepositories": [
+      "https://github.com/org/repo"
+    ],
+    "freshness": {
+      "maxAgeDays": 30,
+      "maxFutureSkewMinutes": 10
+    },
+    "requiredExternalParameters": {},
+    "prohibitedExternalParameters": ["debug", "bypass_tests"]
   },
   "signaturePolicy": {
     "requiredSignatureCount": 1,

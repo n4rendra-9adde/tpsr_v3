@@ -8,6 +8,8 @@ const fabric = require('../../config/fabric');
 
 jest.mock('../../repositories/sbomRepository');
 jest.mock('../../config/fabric');
+jest.mock('../../utils/provenanceEngine');
+const provenanceEngine = require('../../utils/provenanceEngine');
 
 const app = express();
 app.use(express.json());
@@ -38,7 +40,7 @@ describe('TPSR v3 Evidence Governance Routes Unit Tests', () => {
       .post('/api/v1/sbom/non-existent-id/provenance')
       .set('x-user-id', 'dev-user')
       .set('x-user-role', 'developer')
-      .send({ attestationPayload: { _type: 'https://in-toto.io/Statement/v1', subject: [] } });
+      .send({ envelope: { payloadType: 'fake', payload: 'fake' } });
 
     expect(res.status).toBe(404);
     expect(res.body.error).toContain('SBOM document not found');
@@ -56,21 +58,24 @@ describe('TPSR v3 Evidence Governance Routes Unit Tests', () => {
       created_at: new Date().toISOString()
     });
 
-    const validAttestation = {
-      _type: 'https://in-toto.io/Statement/v1',
-      subject: [{ name: 'app.jar', digest: { sha256: validHash } }],
-      predicateType: 'https://slsa.dev/provenance/v1',
-      predicate: {
-        buildDefinition: { buildType: 'https://actions.github.io/buildtypes/workflow/v1' },
-        runDetails: { builder: { id: 'https://github.com/actions/runner/github-hosted' } }
-      }
-    };
+    provenanceEngine.verifyProvenance.mockResolvedValue({
+      status: 'VALID',
+      reasonCode: 'PRV-000',
+      slsaLevel: 'SLSA_BUILD_LEVEL_3',
+      builderId: 'https://github.com/actions/runner',
+      sourceRepository: 'https://github.com/org/repo',
+      signatureStatus: 'VERIFIED'
+    });
 
     const res = await request(app)
       .post('/api/v1/sbom/test-sbom-101/provenance')
       .set('x-user-id', 'dev-user')
       .set('x-user-role', 'developer')
-      .send({ attestationPayload: validAttestation });
+      .send({ 
+        envelope: { payloadType: 'application/vnd.in-toto+json', payload: 'bW9jaw==' },
+        signatureType: 'OFFLINE_KEYED',
+        publicKey: 'mock-key'
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('VALID');
