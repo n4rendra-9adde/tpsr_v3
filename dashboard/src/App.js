@@ -2,6 +2,16 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Space, Button, Alert, Descriptions, Modal, message, Upload, Tooltip } from 'antd';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { 
+  TrustDecisionBadge, 
+  AnchorStatusBadge, 
+  SignatureEvidenceCard, 
+  ProvenanceEvidenceCard, 
+  VexApplicabilityTable, 
+  ReasonCodeList, 
+  SimulationNotice 
+} from './components';
+
 
 // Bypass Ngrok free tier browser warning
 axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
@@ -383,37 +393,13 @@ function SBOMListPage({ selectedIdentity }) {
       title: 'Trust Decision',
       dataIndex: 'trustStatus',
       key: 'trustStatus',
-      render: (status, record) => {
-        let color = 'default';
-        if (status === 'TRUSTED')               color = 'green';
-        if (status === 'CONDITIONALLY_ACCEPTED') color = 'blue';
-        if (status === 'REVIEW_REQUIRED')        color = 'orange';
-        if (status === 'REJECTED')               color = 'red';
-        // Legacy compatibility: historical UNTRUSTED records display as REJECTED (red)
-        if (status === 'UNTRUSTED')              color = 'red';
-        return (
-          <Tooltip title={`${record.trustReasonCode || ''}: ${record.trustReasonDescription || ''}`}>
-            <Tag color={color}>{status === 'UNTRUSTED' ? 'REJECTED (legacy)' : (status || 'UNEVALUATED')}</Tag>
-          </Tooltip>
-        );
-      }
+      render: (status, record) => <TrustDecisionBadge status={status} reasonCode={record.trustReasonCode} reasonDesc={record.trustReasonDescription} />
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => {
-        let color = 'default';
-        if (status === 'REGISTERED') color = 'default';
-        if (status === 'REVIEW_PENDING') color = 'orange';
-        if (status === 'SECURITY_REVIEWED') color = 'cyan';
-        if (status === 'COMPLIANT') color = 'geekblue';
-        if (status === 'APPROVED') color = 'blue';
-        if (status === 'ACTIVE') color = 'green';
-        if (status === 'SUPERSEDED') color = 'red';
-        if (status === 'REJECTED') color = 'red';
-        return <Tag color={color}>{status}</Tag>;
-      },
+      render: (status) => <AnchorStatusBadge status={status} />,
     },
     { title: 'Build ID', dataIndex: 'buildID', key: 'buildID' },
     { title: 'Recorded By', dataIndex: 'requestedBy', key: 'requestedBy', render: (text) => text || '-' },
@@ -576,9 +562,7 @@ function SBOMListPage({ selectedIdentity }) {
                   {fmtISO(selectedRecord.createdAt)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Lifecycle State">
-                  <Tag color={selectedRecord.status === 'ACTIVE' ? 'green' : selectedRecord.status === 'APPROVED' ? 'blue' : selectedRecord.status === 'REJECTED' ? 'red' : 'default'}>
-                    {selectedRecord.status || '-'}
-                  </Tag>
+                  <AnchorStatusBadge status={selectedRecord.status} />
                 </Descriptions.Item>
                 <Descriptions.Item label="Off-chain SBOM Reference">
                   {selectedRecord.offChainRef || '-'}
@@ -600,17 +584,7 @@ function SBOMListPage({ selectedIdentity }) {
                   </Descriptions.Item>
                 )}
                 <Descriptions.Item label="Trust Decision Status">
-                  <Tag color={
-                    selectedRecord.trustStatus === 'TRUSTED'               ? 'green' :
-                    selectedRecord.trustStatus === 'CONDITIONALLY_ACCEPTED' ? 'blue'  :
-                    selectedRecord.trustStatus === 'REVIEW_REQUIRED'        ? 'orange':
-                    selectedRecord.trustStatus === 'REJECTED'               ? 'red'   :
-                    selectedRecord.trustStatus === 'UNTRUSTED'              ? 'red'   : 'default'
-                  }>
-                    {selectedRecord.trustStatus === 'UNTRUSTED'
-                      ? 'REJECTED (legacy)'
-                      : (selectedRecord.trustStatus || 'UNEVALUATED')}
-                  </Tag>
+                  <TrustDecisionBadge status={selectedRecord.trustStatus} reasonCode={selectedRecord.trustReasonCode} reasonDesc={selectedRecord.trustReasonDescription} />
                 </Descriptions.Item>
                 {selectedRecord.trustReasonCode && (
                   <Descriptions.Item label="Trust Reason">
@@ -651,6 +625,8 @@ function VerifyPage({ selectedIdentity }) {
   const [result, setResult] = useState(null);
   const [anchorDoc, setAnchorDoc] = useState(null);
   const [perfMetrics, setPerfMetrics] = useState(null);
+  const [signatureData, setSignatureData] = useState(null);
+  const [provenanceData, setProvenanceData] = useState(null);
 
   const handleBeforeUpload = (file) => {
     setErrorMsg('');
@@ -698,6 +674,9 @@ function VerifyPage({ selectedIdentity }) {
     setResult(null);
     setAnchorDoc(null);
     setPerfMetrics(null);
+    setVexData(null);
+    setSignatureData(null);
+    setProvenanceData(null);
   };
 
   const handleVerify = async () => {
@@ -719,7 +698,7 @@ function VerifyPage({ selectedIdentity }) {
 
     setLoading(true);
     try {
-      const [verifyResp, docResp] = await Promise.allSettled([
+      const [verifyResp, docResp, sigResp, provResp] = await Promise.allSettled([
         axios.post(
           `${API_BASE_URL}/verify`,
           { sbomID: idTrimmed, sbom: contentTrimmed },
@@ -727,6 +706,14 @@ function VerifyPage({ selectedIdentity }) {
         ),
         axios.get(
           `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/document`,
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        ),
+        axios.get(
+          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/signatures`,
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        ),
+        axios.get(
+          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/provenance`,
           { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
         )
       ]);
@@ -743,6 +730,17 @@ function VerifyPage({ selectedIdentity }) {
 
       if (docResp.status === 'fulfilled') {
         setAnchorDoc(docResp.value.data);
+      }
+      if (vexResp.status === 'fulfilled') {
+        setVexData(vexResp.value.data.vexStatements || []);
+      }
+      if (sigResp.status === 'fulfilled') {
+        const sigs = sigResp.value.data.signatures || [];
+        if (sigs.length > 0) setSignatureData(sigs[0]);
+      }
+      if (provResp.status === 'fulfilled') {
+        const provs = provResp.value.data.attestations || [];
+        if (provs.length > 0) setProvenanceData(provs[0]);
       }
     } finally {
       setLoading(false);
@@ -856,7 +854,7 @@ function VerifyPage({ selectedIdentity }) {
                   <Card size="small">
                     <Typography.Text type="secondary">Lifecycle State</Typography.Text>
                     <Typography.Title level={5} style={{ margin: 0 }}>
-                      <Tag color={getLedgerStatusColor(result.status)}>{result.status || '-'}</Tag>
+                      <AnchorStatusBadge status={result.status} />
                     </Typography.Title>
                   </Card>
                 </Col>
@@ -864,7 +862,7 @@ function VerifyPage({ selectedIdentity }) {
                   <Card size="small">
                     <Typography.Text type="secondary">Trust Decision</Typography.Text>
                     <Typography.Title level={5} style={{ margin: 0 }}>
-                      <Tag color={getTrustColor(anchorDoc.trustStatus)}>{getTrustLabel(anchorDoc.trustStatus)}</Tag>
+                      <TrustDecisionBadge status={anchorDoc.trustStatus} reasonCode={anchorDoc.trustReasonCode} reasonDesc={anchorDoc.trustReasonDescription} />
                     </Typography.Title>
                   </Card>
                 </Col>
@@ -879,6 +877,10 @@ function VerifyPage({ selectedIdentity }) {
               </Row>
             </>
           )}
+
+          
+          <SignatureEvidenceCard signatureData={signatureData} />
+          <ProvenanceEvidenceCard provenanceData={provenanceData} />
 
           {anchorDoc && (
             <Card
@@ -911,10 +913,10 @@ function VerifyPage({ selectedIdentity }) {
                   </Tooltip>
                 </Descriptions.Item>
                 <Descriptions.Item label="Lifecycle State">
-                  <Tag color={getLedgerStatusColor(result.status)}>{result.status || '-'}</Tag>
+                  <AnchorStatusBadge status={result.status} />
                 </Descriptions.Item>
                 <Descriptions.Item label="Trust Status">
-                  <Tag color={getTrustColor(anchorDoc.trustStatus)}>{getTrustLabel(anchorDoc.trustStatus)}</Tag>
+                  <TrustDecisionBadge status={anchorDoc.trustStatus} reasonCode={anchorDoc.trustReasonCode} reasonDesc={anchorDoc.trustReasonDescription} />
                 </Descriptions.Item>
               </Descriptions>
             </Card>
@@ -1138,20 +1140,7 @@ function HistoryPage({ selectedIdentity }) {
     {
       title: 'Lifecycle State',
       key: 'status',
-      render: (_, item) => {
-        const s = item.record?.status;
-        if (!s) return '-';
-        let color = 'default';
-        if (s === 'REGISTERED') color = 'default';
-        if (s === 'REVIEW_PENDING') color = 'orange';
-        if (s === 'SECURITY_REVIEWED') color = 'cyan';
-        if (s === 'COMPLIANT') color = 'geekblue';
-        if (s === 'APPROVED') color = 'blue';
-        if (s === 'ACTIVE') color = 'green';
-        if (s === 'SUPERSEDED') color = 'red';
-        if (s === 'REJECTED') color = 'red';
-        return <Tag color={color}>{s}</Tag>;
-      }
+      render: (_, item) => <AnchorStatusBadge status={item.record?.status} />
     },
     {
       title: 'Ledger Identity',
@@ -1170,18 +1159,7 @@ function HistoryPage({ selectedIdentity }) {
     {
       title: 'Trust Decision',
       key: 'trustStatus',
-      render: (_, item) => {
-        const ts = item.record?.trustStatus || item.record?.trust_status;
-        if (!ts) return <Tag color="default">UNEVALUATED</Tag>;
-        let color = 'default';
-        if (ts === 'TRUSTED')               color = 'green';
-        if (ts === 'CONDITIONALLY_ACCEPTED') color = 'blue';
-        if (ts === 'REVIEW_REQUIRED')        color = 'orange';
-        if (ts === 'REJECTED')               color = 'red';
-        // Legacy compatibility: historical UNTRUSTED displays as REJECTED (red)
-        if (ts === 'UNTRUSTED')              color = 'red';
-        return <Tag color={color}>{ts === 'UNTRUSTED' ? 'REJECTED (legacy)' : ts}</Tag>;
-      }
+      render: (_, item) => <TrustDecisionBadge status={item.record?.trustStatus || item.record?.trust_status} reasonCode={item.record?.trustReasonCode} reasonDesc={item.record?.trustReasonDescription} />
     },
     {
       title: 'Outbox Anchor Status',
@@ -1283,11 +1261,14 @@ function CompliancePage({ selectedIdentity }) {
   const [report, setReport] = useState(null);
   const [anchorDoc, setAnchorDoc] = useState(null);
   const [perfMetrics, setPerfMetrics] = useState(null);
+  const [signatureData, setSignatureData] = useState(null);
+  const [provenanceData, setProvenanceData] = useState(null);
   const [simEnv, setSimEnv] = useState('PROD');
   const [simExposure, setSimExposure] = useState('INTERNAL');
   const [simVex, setSimVex] = useState('NONE');
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
+  const [vexData, setVexData] = useState(null);
 
   const handleBeforeUpload = (file) => {
     setErrorMsg('');
@@ -1335,6 +1316,9 @@ function CompliancePage({ selectedIdentity }) {
     setReport(null);
     setAnchorDoc(null);
     setPerfMetrics(null);
+    setVexData(null);
+    setSignatureData(null);
+    setProvenanceData(null);
   };
 
   const handleGenerate = async () => {
@@ -1356,7 +1340,7 @@ function CompliancePage({ selectedIdentity }) {
 
     setLoading(true);
     try {
-      const [reportResp, docResp] = await Promise.allSettled([
+      const [reportResp, docResp, vexResp] = await Promise.allSettled([
         axios.post(
           `${API_BASE_URL}/compliance-report`,
           { sbomID: idTrimmed, sbom: contentTrimmed },
@@ -1364,6 +1348,14 @@ function CompliancePage({ selectedIdentity }) {
         ),
         axios.get(
           `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/document`,
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        ),
+        axios.get(
+          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/signatures`,
+          { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
+        ),
+        axios.get(
+          `${API_BASE_URL}/sboms/${encodeURIComponent(idTrimmed)}/provenance`,
           { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
         )
       ]);
@@ -1380,6 +1372,17 @@ function CompliancePage({ selectedIdentity }) {
 
       if (docResp.status === 'fulfilled') {
         setAnchorDoc(docResp.value.data);
+      }
+      if (vexResp.status === 'fulfilled') {
+        setVexData(vexResp.value.data.vexStatements || []);
+      }
+      if (sigResp.status === 'fulfilled') {
+        const sigs = sigResp.value.data.signatures || [];
+        if (sigs.length > 0) setSignatureData(sigs[0]);
+      }
+      if (provResp.status === 'fulfilled') {
+        const provs = provResp.value.data.attestations || [];
+        if (provs.length > 0) setProvenanceData(provs[0]);
       }
     } finally {
       setLoading(false);
@@ -1526,7 +1529,7 @@ function CompliancePage({ selectedIdentity }) {
                   <Card size="small">
                     <Typography.Text type="secondary">Lifecycle State</Typography.Text>
                     <Typography.Title level={5} style={{ margin: 0 }}>
-                      <Tag color={getLedgerStatusColor(report.lifecycleState)}>{report.lifecycleState || '-'}</Tag>
+                      <AnchorStatusBadge status={report.lifecycleState} />
                     </Typography.Title>
                   </Card>
                 </Col>
@@ -1534,7 +1537,7 @@ function CompliancePage({ selectedIdentity }) {
                   <Card size="small">
                     <Typography.Text type="secondary">Trust Decision</Typography.Text>
                     <Typography.Title level={5} style={{ margin: 0 }}>
-                      <Tag color={getTrustColor(anchorDoc.trustStatus)}>{getTrustLabel(anchorDoc.trustStatus)}</Tag>
+                      <TrustDecisionBadge status={anchorDoc.trustStatus} reasonCode={anchorDoc.trustReasonCode} reasonDesc={anchorDoc.trustReasonDescription} />
                     </Typography.Title>
                   </Card>
                 </Col>
@@ -1548,6 +1551,7 @@ function CompliancePage({ selectedIdentity }) {
                 </Col>
               </Row>
               <Card title="What-If Trust & Policy Simulator" size="small" style={{ marginBottom: 16, backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
+                <SimulationNotice />
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text type="secondary">Test how changing deployment context or VEX overlays affects TPSR v3 trust evaluation for this SBOM:</Text>
                   <Space wrap>
@@ -1622,7 +1626,7 @@ function CompliancePage({ selectedIdentity }) {
                   {fmtISO(anchorDoc.anchoredAt)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Lifecycle State">
-                  <Tag color={getLedgerStatusColor(report.lifecycleState)}>{report.lifecycleState || '-'}</Tag>
+                  <AnchorStatusBadge status={report.lifecycleState} />
                 </Descriptions.Item>
                 <Descriptions.Item label="Off-chain SBOM Reference">
                   {anchorDoc.offChainRef || '-'}
@@ -1752,6 +1756,10 @@ function CompliancePage({ selectedIdentity }) {
             </>
           )}
 
+          
+          <Card title="VEX Applicability Analysis" size="small" style={{ marginBottom: 16 }}>
+            <VexApplicabilityTable vulnerabilities={report.vulnerabilities || []} />
+          </Card>
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="Compliance Status">
               <Tag color={report.compliant ? 'green' : 'red'}>
@@ -1774,7 +1782,7 @@ function CompliancePage({ selectedIdentity }) {
               <Text strong>{report.integrityMatch ? 'Yes' : 'No'}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="Ledger Status">
-              <Tag color={getLedgerStatusColor(report.ledgerStatus)}>{report.ledgerStatus}</Tag>
+              <AnchorStatusBadge status={report.ledgerStatus} />
             </Descriptions.Item>
             <Descriptions.Item label="Policy Governance Status">
               {report.policyStatus === 'PASS' ? (
