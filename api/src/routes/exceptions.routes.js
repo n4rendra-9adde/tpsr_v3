@@ -74,6 +74,7 @@ async function approveException(req, res) {
   const exceptionData = {
     ...exception,
     sbomId: exception.sbom_id,
+    digestManifestDigest: exception.digest_manifest_digest,
     policyRuleId: exception.policy_rule_id,
     requestedBy: exception.requested_by,
     requestedByRole: exception.requested_by_role,
@@ -83,7 +84,10 @@ async function approveException(req, res) {
     validUntil: exception.valid_until,
     residualRisk: exception.residual_risk,
     compensatingControls: exception.compensating_controls,
-    remediationPlan: exception.remediation_plan
+    remediationPlan: exception.remediation_plan,
+    reasonCode: exception.reason_code,
+    justification: exception.justification,
+    businessNeed: exception.business_need
   };
 
   const evalResult = policyExceptionEngine.evaluateExceptionApproval(

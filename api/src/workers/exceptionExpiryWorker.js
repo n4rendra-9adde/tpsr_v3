@@ -138,8 +138,7 @@ async function triggerReevaluationForSbom(sbomId) {
     }
   });
   
-  // 8. Update cached latest trust fields
-  await sbomRepository.updateSbomTrustStatus(sbomId, evalResult.trustStatus, evalResult.reasonCode);
+  // 8. (Removed updateSbomTrustStatus since v3 uses trust_decision_history)
   
   console.log(`[ExceptionExpiryWorker] Reevaluated SBOM ${sbomId}: ${evalResult.trustStatus} (${evalResult.reasonCode})`);
   return dbDecision;

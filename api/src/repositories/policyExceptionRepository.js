@@ -9,10 +9,12 @@ async function createExceptionRequest(data, client = null) {
       reason_code, vulnerability_ids, component_identifiers, environment,
       requested_by, requested_by_role, owned_by, owner_role, requested_at,
       valid_from, valid_until, justification, business_need, remediation_plan,
-      compensating_controls, residual_risk, status, policy_version, trust_policy_hash
+      compensating_controls, residual_risk, status, policy_version, trust_policy_hash,
+      violation_id, violation_type
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(),
-      $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+      $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
+      $24, $25
     ) RETURNING *;
   `;
   
@@ -23,7 +25,8 @@ async function createExceptionRequest(data, client = null) {
     data.requestedBy, data.requestedByRole, data.ownedBy, data.ownerRole,
     data.validFrom, data.validUntil, data.justification, data.businessNeed, data.remediationPlan,
     JSON.stringify(data.compensatingControls || []), data.residualRisk || 'MEDIUM', data.status || 'REQUESTED',
-    data.policyVersion || 'unknown', data.trustPolicyHash || 'unknown'
+    data.policyVersion || 'unknown', data.trustPolicyHash || 'unknown',
+    data.policyRuleId || 'legacy-violation', 'vulnerability'
   ];
 
   const executor = client || db.pool;

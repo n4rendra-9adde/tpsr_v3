@@ -37,7 +37,7 @@
     "trustedPublicKeys": {
       "build-officer@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEb3511L+qM/oD5H1ZqZ9E/s4yL+Q\nKj/E0oO8T5N1J/Z/V1rY1J3G/z5U1W1E1V1E1V1E1V1E1V1E1V1E1V1E1Q==\n-----END PUBLIC KEY-----",
       "security-release@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEV1E1V1E1V1E1V1E1V1E1V1E1V1E1\nQj/E0oO8T5N1J/Z/V1rY1J3G/z5U1W1E1V1E1V1E1V1E1V1E1V1E1V1E1Q==\n-----END PUBLIC KEY-----",
-      "jenkins-service@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMd5AjqQo6DxQBCeVbpLU4zE5+9x\nQ7HPdFUEx+cY8IJjgGRlR4oD2eZ42CRdyhWao20lIB8hUiZQC7ZpcHZqRw==\n-----END PUBLIC KEY-----"
+      "jenkins-service@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElyW5asV62z/yeHaMnwmF+yOTqmA3\nEmppJgypkEnn3aTJvgqZ9umqCBBtkPGAmvhupb2Pi3QkIPCqpxq8Az/ifg==\n-----END PUBLIC KEY-----"
     },
     "rekorTransparencyLog": {
       "enforceInclusion": true,
