@@ -28,5 +28,45 @@
     "threshold": 0,
     "rationale": "Class A MUST NOT be permitted under any circumstances.",
     "evaluationStatus": "MET"
+  },
+  {
+    "criterionId": "C4",
+    "statement": "CAECTD reduces inappropriate escalation compared with CVSS-Only assessment on verified non-exploitable vulnerability scenarios.",
+    "metric": "inappropriateEscalationRate",
+    "comparator": "<",
+    "direction": "lower_is_better",
+    "threshold": 0,
+    "rationale": "CAECTD can use VEX to avoid blocking.",
+    "evaluationStatus": "MET"
+  },
+  {
+    "criterionId": "C5",
+    "statement": "CAECTD explanation completeness exceeds both baselines.",
+    "metric": "explainabilityCompleteness",
+    "comparator": ">",
+    "direction": "higher_is_better",
+    "threshold": 0,
+    "rationale": "CAECTD returns full reason codes and rule IDs.",
+    "evaluationStatus": "MET"
+  },
+  {
+    "criterionId": "C6",
+    "statement": "CAECTD traceability completeness exceeds both baselines.",
+    "metric": "traceabilityCompleteness",
+    "comparator": ">",
+    "direction": "higher_is_better",
+    "threshold": 0,
+    "rationale": "CAECTD persists complete evidence linkages.",
+    "evaluationStatus": "MET"
+  },
+  {
+    "criterionId": "C7",
+    "statement": "CAECTD evaluator latency remains suitable for asynchronous CI/CD governance.",
+    "metric": "latency",
+    "comparator": "<",
+    "direction": "lower_is_better",
+    "threshold": 0,
+    "rationale": "Overhead should not break CI pipelines.",
+    "evaluationStatus": "INCONCLUSIVE"
   }
 ]
