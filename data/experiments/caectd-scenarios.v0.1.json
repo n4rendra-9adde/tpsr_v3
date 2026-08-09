@@ -1,0 +1,3150 @@
+[
+  {
+    "scenarioId": "S01",
+    "name": "All evidence valid, no blocking vulnerability",
+    "category": "F1",
+    "description": "All evidence valid, no blocking vulnerability",
+    "attackPresent": false,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R001",
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S01"
+    },
+    "rationale": "Rationale for All evidence valid, no blocking vulnerability",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "BENIGN"
+  },
+  {
+    "scenarioId": "S02",
+    "name": "Valid release with low vulnerability score",
+    "category": "F1",
+    "description": "Valid release with low vulnerability score",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-1",
+          "originalCvss": 3,
+          "severity": "LOW",
+          "status": "OPEN"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S02"
+    },
+    "rationale": "Rationale for Valid release with low vulnerability score",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S03",
+    "name": "Valid release with no VEX required",
+    "category": "F1",
+    "description": "Valid release with no VEX required",
+    "attackPresent": false,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S03"
+    },
+    "rationale": "Rationale for Valid release with no VEX required",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "BENIGN"
+  },
+  {
+    "scenarioId": "S04",
+    "name": "Valid release in DEVELOPMENT",
+    "category": "F1",
+    "description": "Valid release in DEVELOPMENT",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-2",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL",
+          "status": "OPEN"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "DEVELOPMENT"
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S04"
+    },
+    "rationale": "Rationale for Valid release in DEVELOPMENT",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S05",
+    "name": "Valid release in PRODUCTION with no blocking issue",
+    "category": "F1",
+    "description": "Valid release in PRODUCTION with no blocking issue",
+    "attackPresent": false,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION"
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S05"
+    },
+    "rationale": "Rationale for Valid release in PRODUCTION with no blocking issue",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "BENIGN"
+  },
+  {
+    "scenarioId": "S06",
+    "name": "SBOM tampering",
+    "category": "F2",
+    "description": "SBOM tampering",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "INT-003"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R001"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash2",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S06"
+    },
+    "rationale": "Rationale for SBOM tampering",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S07",
+    "name": "Artifact substitution after signing",
+    "category": "F2",
+    "description": "Artifact substitution after signing",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "INT-005"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R006"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S07"
+    },
+    "rationale": "Rationale for Artifact substitution after signing",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S08",
+    "name": "Signature target mismatch",
+    "category": "F2",
+    "description": "Signature target mismatch",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R004"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "INVALID",
+          "reason": "target mismatch"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S08"
+    },
+    "rationale": "Rationale for Signature target mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S09",
+    "name": "Provenance subject mismatch",
+    "category": "F2",
+    "description": "Provenance subject mismatch",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "BND-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R012"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "INVALID",
+          "reason": "subject mismatch",
+          "slsa_level": "SLSA_BUILD_LEVEL_3"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S09"
+    },
+    "rationale": "Rationale for Provenance subject mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S10",
+    "name": "SBOM substitution using another release",
+    "category": "F2",
+    "description": "SBOM substitution using another release",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "INT-003"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R001"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash2",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S10"
+    },
+    "rationale": "Rationale for SBOM substitution using another release",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S11",
+    "name": "Correct SBOM with wrong digest manifest",
+    "category": "F2",
+    "description": "Correct SBOM with wrong digest manifest",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "INT-005"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R006"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S11"
+    },
+    "rationale": "Rationale for Correct SBOM with wrong digest manifest",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S12",
+    "name": "Cross-release evidence reuse",
+    "category": "F2",
+    "description": "Cross-release evidence reuse",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "BND-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R012"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "INVALID",
+          "reason": "subject mismatch",
+          "slsa_level": "SLSA_BUILD_LEVEL_3"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S12"
+    },
+    "rationale": "Rationale for Cross-release evidence reuse",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S13",
+    "name": "Invalid signature",
+    "category": "F3",
+    "description": "Invalid signature",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R004"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "INVALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S13"
+    },
+    "rationale": "Rationale for Invalid signature",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S14",
+    "name": "Missing mandatory signature",
+    "category": "F3",
+    "description": "Missing mandatory signature",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R003"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S14"
+    },
+    "rationale": "Rationale for Missing mandatory signature",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S15",
+    "name": "Cryptographically valid signature from untrusted signer",
+    "category": "F3",
+    "description": "Cryptographically valid signature from untrusted signer",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-003"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R005"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID",
+          "signer_trusted": false
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S15"
+    },
+    "rationale": "Rationale for Cryptographically valid signature from untrusted signer",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S16",
+    "name": "Signature verification mode unsupported",
+    "category": "F3",
+    "description": "Signature verification mode unsupported",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R004"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "INVALID",
+          "reason": "unsupported mode"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S16"
+    },
+    "rationale": "Rationale for Signature verification mode unsupported",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S17",
+    "name": "Signature evidence replay",
+    "category": "F3",
+    "description": "Signature evidence replay",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R004"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "INVALID",
+          "replay": true
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S17"
+    },
+    "rationale": "Rationale for Signature evidence replay",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S18",
+    "name": "Trusted signer with another release target",
+    "category": "F3",
+    "description": "Trusted signer with another release target",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R004"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "INVALID",
+          "target_match": false
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S18"
+    },
+    "rationale": "Rationale for Trusted signer with another release target",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S19",
+    "name": "Missing mandatory provenance",
+    "category": "F4",
+    "description": "Missing mandatory provenance",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R007"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S19"
+    },
+    "rationale": "Rationale for Missing mandatory provenance",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S20",
+    "name": "Invalid provenance envelope",
+    "category": "F4",
+    "description": "Invalid provenance envelope",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-005"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R007"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "INVALID"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S20"
+    },
+    "rationale": "Rationale for Invalid provenance envelope",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S21",
+    "name": "Unauthorized builder",
+    "category": "F4",
+    "description": "Unauthorized builder",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R008"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "builder_id": "unauthorized",
+          "slsa_level": "SLSA_BUILD_LEVEL_3"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S21"
+    },
+    "rationale": "Rationale for Unauthorized builder",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S22",
+    "name": "Wrong repository",
+    "category": "F4",
+    "description": "Wrong repository",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-003"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R010"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "repository": "wrong",
+          "builder_id": "builder",
+          "slsa_level": "SLSA_BUILD_LEVEL_3"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S22"
+    },
+    "rationale": "Rationale for Wrong repository",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S23",
+    "name": "Wrong source commit",
+    "category": "F4",
+    "description": "Wrong source commit",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-004"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R011"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "repository": "repo",
+          "commit": "wrong",
+          "builder_id": "builder",
+          "slsa_level": "SLSA_BUILD_LEVEL_3"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S23"
+    },
+    "rationale": "Rationale for Wrong source commit",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S24",
+    "name": "Stale mandatory provenance",
+    "category": "F4",
+    "description": "Stale mandatory provenance",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-005"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R007"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "INVALID",
+          "stale": true
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S24"
+    },
+    "rationale": "Rationale for Stale mandatory provenance",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S25",
+    "name": "Provenance replay",
+    "category": "F4",
+    "description": "Provenance replay",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-005"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R007"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "INVALID",
+          "replay": true
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S25"
+    },
+    "rationale": "Rationale for Provenance replay",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S26",
+    "name": "High SLSA level with invalid provenance signature",
+    "category": "F4",
+    "description": "High SLSA level with invalid provenance signature",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "PRV-005"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R007"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "INVALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S26"
+    },
+    "rationale": "Rationale for High SLSA level with invalid provenance signature",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S27",
+    "name": "Critical affected and exploitable vulnerability in PRODUCTION",
+    "category": "F5",
+    "description": "Critical affected and exploitable vulnerability in PRODUCTION",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S27"
+    },
+    "rationale": "Rationale for Critical affected and exploitable vulnerability in PRODUCTION",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S28",
+    "name": "Critical affected vulnerability in DEVELOPMENT",
+    "category": "F5",
+    "description": "Critical affected vulnerability in DEVELOPMENT",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "DEVELOPMENT"
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S28"
+    },
+    "rationale": "Rationale for Critical affected vulnerability in DEVELOPMENT",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S29",
+    "name": "Trusted current NOT_AFFECTED VEX with exact scope",
+    "category": "F5",
+    "description": "Trusted current NOT_AFFECTED VEX with exact scope",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "not_affected",
+          "valid": true
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION"
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S29"
+    },
+    "rationale": "Rationale for Trusted current NOT_AFFECTED VEX with exact scope",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S30",
+    "name": "Forged NOT_AFFECTED VEX",
+    "category": "F5",
+    "description": "Forged NOT_AFFECTED VEX",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "not_affected",
+          "valid": false
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S30"
+    },
+    "rationale": "Rationale for Forged NOT_AFFECTED VEX",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S31",
+    "name": "Untrusted VEX issuer",
+    "category": "F5",
+    "description": "Untrusted VEX issuer",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "not_affected",
+          "valid": false,
+          "reason": "untrusted issuer"
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S31"
+    },
+    "rationale": "Rationale for Untrusted VEX issuer",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S32",
+    "name": "Stale VEX",
+    "category": "F5",
+    "description": "Stale VEX",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "not_affected",
+          "valid": false,
+          "reason": "stale"
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S32"
+    },
+    "rationale": "Rationale for Stale VEX",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S33",
+    "name": "Under-investigation VEX",
+    "category": "F5",
+    "description": "Under-investigation VEX",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "under_investigation",
+          "valid": true
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S33"
+    },
+    "rationale": "Rationale for Under-investigation VEX",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S34",
+    "name": "VEX product mismatch",
+    "category": "F5",
+    "description": "VEX product mismatch",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "not_affected",
+          "valid": false,
+          "reason": "product mismatch"
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S34"
+    },
+    "rationale": "Rationale for VEX product mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S35",
+    "name": "VEX release mismatch",
+    "category": "F5",
+    "description": "VEX release mismatch",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "not_affected",
+          "valid": false,
+          "reason": "release mismatch"
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S35"
+    },
+    "rationale": "Rationale for VEX release mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S36",
+    "name": "VEX component mismatch",
+    "category": "F5",
+    "description": "VEX component mismatch",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-CRIT",
+          "status": "not_affected",
+          "valid": false,
+          "reason": "component mismatch"
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S36"
+    },
+    "rationale": "Rationale for VEX component mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S37",
+    "name": "VEX vulnerability-ID mismatch",
+    "category": "F5",
+    "description": "VEX vulnerability-ID mismatch",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [
+        {
+          "vulnerabilityId": "CVE-OTHER",
+          "status": "not_affected",
+          "valid": true
+        }
+      ],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S37"
+    },
+    "rationale": "Rationale for VEX vulnerability-ID mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S38",
+    "name": "Missing required authenticated context",
+    "category": "F5",
+    "description": "Missing required authenticated context",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S38"
+    },
+    "rationale": "Rationale for Missing required authenticated context",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S39",
+    "name": "Conflicting trusted context assertions",
+    "category": "F5",
+    "description": "Conflicting trusted context assertions",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true,
+        "conflict": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S39"
+    },
+    "rationale": "Rationale for Conflicting trusted context assertions",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S40",
+    "name": "Unauthorized context assertion",
+    "category": "F5",
+    "description": "Unauthorized context assertion",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": {
+        "status": "INVALID",
+        "reason": "unauthorized"
+      },
+      "sbomId": "sbom-S40"
+    },
+    "rationale": "Rationale for Unauthorized context assertion",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S41",
+    "name": "Correct context assertion bound to another release",
+    "category": "F5",
+    "description": "Correct context assertion bound to another release",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": {
+        "status": "INVALID",
+        "reason": "wrong release"
+      },
+      "sbomId": "sbom-S41"
+    },
+    "rationale": "Rationale for Correct context assertion bound to another release",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S42",
+    "name": "Public exposure with blocking vulnerability",
+    "category": "F5",
+    "description": "Public exposure with blocking vulnerability",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S42"
+    },
+    "rationale": "Rationale for Public exposure with blocking vulnerability",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S43",
+    "name": "Internal non-public development context",
+    "category": "F5",
+    "description": "Internal non-public development context",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "PERMIT",
+    "expectedNormalizedOutcome": "PERMIT",
+    "expectedCAECTDDecision": "TRUSTED",
+    "expectedReasonCodes": [
+      "GOV-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R031"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [],
+      "deploymentContext": {
+        "tier": "DEVELOPMENT",
+        "internetExposed": false
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S43"
+    },
+    "rationale": "Rationale for Internal non-public development context",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S44",
+    "name": "Valid active governed exception over exceptionable Class B failure",
+    "category": "F6",
+    "description": "Valid active governed exception over exceptionable Class B failure",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "CONDITIONAL",
+    "expectedNormalizedOutcome": "CONDITIONAL",
+    "expectedCAECTDDecision": "CONDITIONALLY_ACCEPTED",
+    "expectedReasonCodes": [
+      "EXC-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R027"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-R017",
+          "valid_until": "2026-08-10T16:03:20.516Z"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S44"
+    },
+    "rationale": "Rationale for Valid active governed exception over exceptionable Class B failure",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S45",
+    "name": "Requested but unapproved exception",
+    "category": "F6",
+    "description": "Requested but unapproved exception",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "REQUESTED",
+          "policy_rule_id": "CAECTD-R017",
+          "valid_until": "2026-08-10T16:03:20.517Z"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S45"
+    },
+    "rationale": "Rationale for Requested but unapproved exception",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S46",
+    "name": "Self-approved exception attempt",
+    "category": "F6",
+    "description": "Self-approved exception attempt",
+    "attackPresent": true,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "REQUESTED"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S46"
+    },
+    "rationale": "Rationale for Self-approved exception attempt",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S47",
+    "name": "Exception over non-exceptionable Class A failure",
+    "category": "F6",
+    "description": "Exception over non-exceptionable Class A failure",
+    "attackPresent": true,
+    "vulnerabilityPresent": false,
+    "vulnerabilityExploitable": false,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "SIG-002"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R004"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "INVALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-R004",
+          "valid_until": "2026-08-10T16:03:20.517Z"
+        }
+      ],
+      "deploymentContext": null,
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S47"
+    },
+    "rationale": "Rationale for Exception over non-exceptionable Class A failure",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "ATTACK"
+  },
+  {
+    "scenarioId": "S48",
+    "name": "Expired exception",
+    "category": "F6",
+    "description": "Expired exception",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "EXPIRED",
+          "policy_rule_id": "CAECTD-R017",
+          "valid_until": "2026-08-08T16:03:20.517Z"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S48"
+    },
+    "rationale": "Rationale for Expired exception",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S49",
+    "name": "Revoked exception",
+    "category": "F6",
+    "description": "Revoked exception",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "REVOKED",
+          "policy_rule_id": "CAECTD-R017"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S49"
+    },
+    "rationale": "Rationale for Revoked exception",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S50",
+    "name": "Exception scope mismatch",
+    "category": "F6",
+    "description": "Exception scope mismatch",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-OTHER"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S50"
+    },
+    "rationale": "Rationale for Exception scope mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S51",
+    "name": "Exception vulnerability mismatch",
+    "category": "F6",
+    "description": "Exception vulnerability mismatch",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-R017",
+          "vulnerability_ids": [
+            "CVE-OTHER"
+          ]
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S51"
+    },
+    "rationale": "Rationale for Exception vulnerability mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S52",
+    "name": "Exception component mismatch",
+    "category": "F6",
+    "description": "Exception component mismatch",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-R017",
+          "component_identifiers": [
+            "OTHER"
+          ]
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S52"
+    },
+    "rationale": "Rationale for Exception component mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S53",
+    "name": "Exception policy-version mismatch",
+    "category": "F6",
+    "description": "Exception policy-version mismatch",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-R017",
+          "policy_version": "old"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S53"
+    },
+    "rationale": "Rationale for Exception policy-version mismatch",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S54",
+    "name": "Missing remediation plan",
+    "category": "F6",
+    "description": "Missing remediation plan",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-R017",
+          "missing_remediation": true
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S54"
+    },
+    "rationale": "Rationale for Missing remediation plan",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S55",
+    "name": "Excessive exception validity",
+    "category": "F6",
+    "description": "Excessive exception validity",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "ACTIVE",
+          "policy_rule_id": "CAECTD-R017",
+          "excessive_validity": true
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S55"
+    },
+    "rationale": "Rationale for Excessive exception validity",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S56",
+    "name": "Critical residual-risk exception denied",
+    "category": "F6",
+    "description": "Critical residual-risk exception denied",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "DENIED",
+          "policy_rule_id": "CAECTD-R017"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S56"
+    },
+    "rationale": "Rationale for Critical residual-risk exception denied",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S57",
+    "name": "Valid exception followed by expiry reevaluation",
+    "category": "F6",
+    "description": "Valid exception followed by expiry reevaluation",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "EXPIRED",
+          "policy_rule_id": "CAECTD-R017"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S57"
+    },
+    "rationale": "Rationale for Valid exception followed by expiry reevaluation",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  },
+  {
+    "scenarioId": "S58",
+    "name": "Valid exception followed by revocation reevaluation",
+    "category": "F6",
+    "description": "Valid exception followed by revocation reevaluation",
+    "attackPresent": false,
+    "vulnerabilityPresent": true,
+    "vulnerabilityExploitable": true,
+    "expectedSecurityAction": "BLOCK",
+    "expectedNormalizedOutcome": "BLOCK",
+    "expectedCAECTDDecision": "REJECTED",
+    "expectedReasonCodes": [
+      "CTX-001"
+    ],
+    "expectedRuleIds": [
+      "CAECTD-R017"
+    ],
+    "labels": [],
+    "input": {
+      "sbomPresent": true,
+      "canonicalSbomHash": "hash1",
+      "ledgerAnchorHash": "hash1",
+      "vulnerabilities": [
+        {
+          "id": "CVE-CRIT",
+          "originalCvss": 9.8,
+          "severity": "CRITICAL"
+        }
+      ],
+      "provenance": [
+        {
+          "status": "VALID",
+          "slsa_level": "SLSA_BUILD_LEVEL_3",
+          "repository": "repo",
+          "commit": "commit",
+          "builder_id": "builder"
+        }
+      ],
+      "signatures": [
+        {
+          "status": "VALID"
+        }
+      ],
+      "vexStatements": [],
+      "policyExceptions": [
+        {
+          "status": "REVOKED",
+          "policy_rule_id": "CAECTD-R017"
+        }
+      ],
+      "deploymentContext": {
+        "tier": "PRODUCTION",
+        "internetExposed": true
+      },
+      "activeContextAssertion": null,
+      "sbomId": "sbom-S58"
+    },
+    "rationale": "Rationale for Valid exception followed by revocation reevaluation",
+    "sourceType": "CONTROLLED_FIXTURE",
+    "dataClassification": "POLICY_RISK"
+  }
+]

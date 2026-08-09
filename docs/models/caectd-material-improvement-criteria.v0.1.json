@@ -1,0 +1,32 @@
+[
+  {
+    "criterionId": "C1",
+    "statement": "CAECTD detects at least one labelled attack missed by Integrity-Only TPSR.",
+    "metric": "strictAttackDetectionRate",
+    "comparator": ">",
+    "direction": "higher_is_better",
+    "threshold": 0,
+    "rationale": "CAECTD context and governance vectors can catch attacks beyond simple signature validation.",
+    "evaluationStatus": "MET"
+  },
+  {
+    "criterionId": "C2",
+    "statement": "CAECTD detects at least one labelled supply-chain attack missed by CVSS-Only assessment.",
+    "metric": "strictAttackDetectionRate",
+    "comparator": ">",
+    "direction": "higher_is_better",
+    "threshold": 0,
+    "rationale": "CVSS-Only ignores provenance and signature validation.",
+    "evaluationStatus": "MET"
+  },
+  {
+    "criterionId": "C3",
+    "statement": "CAECTD has no false non-blocking decision for a Class A scenario.",
+    "metric": "falseNonBlockingRate",
+    "comparator": "==",
+    "direction": "lower_is_better",
+    "threshold": 0,
+    "rationale": "Class A MUST NOT be permitted under any circumstances.",
+    "evaluationStatus": "MET"
+  }
+]

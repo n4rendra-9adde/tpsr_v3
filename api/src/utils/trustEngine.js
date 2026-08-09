@@ -326,13 +326,6 @@ async function evaluateTrust(evidenceBundle = {}) {
       assuranceState: 'VERIFIED_TRUSTED',
       evidenceIds: activeExceptions.map(e => e.id)
     };
-    result.trustStatus = TRUST_STATUS.CONDITIONALLY_ACCEPTED;
-    result.reasonCode = 'EXC-001';
-    result.reasonDescription = `Active governed policy exception(s) present, resulting in conditional acceptance.`;
-    result.evidenceSummary.activeExceptionCount = activeExceptions.length;
-    result.triggeredRuleIds.push('CAECTD-R027');
-    finalizeExplanation(result, evalRules);
-    return result;
   }
 
   evalRules.add('CAECTD-R031');
