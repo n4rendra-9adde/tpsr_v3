@@ -32,3 +32,4 @@ Thumbs.db
 chaincode/sbom/sbom
 *.tar.gz
 bin/cosign
+api/api.log

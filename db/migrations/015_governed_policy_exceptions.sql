@@ -78,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_policy_exceptions_vulns ON policy_exceptions USIN
 CREATE TABLE IF NOT EXISTS policy_exception_events (
   event_id UUID PRIMARY KEY,
   exception_id UUID NOT NULL REFERENCES policy_exceptions(id) ON DELETE RESTRICT,
-  sbom_id VARCHAR(255) NOT NULL REFERENCES sbom_documents(sbom_id) ON DELETE RESTRICT,
+  sbom_id UUID NOT NULL REFERENCES sbom_documents(sbom_id) ON DELETE RESTRICT,
   event_type VARCHAR(50) NOT NULL,
   previous_status VARCHAR(50),
   new_status VARCHAR(50) NOT NULL,
