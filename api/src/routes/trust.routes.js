@@ -133,6 +133,89 @@ async function handleEvaluateTrust(req, res) {
   }
 }
 
+function sanitizeDecisionRecord(record) {
+  if (!record) return null;
+  const result = { ...record };
+  
+  if (typeof result.evidence_summary === 'string') {
+    try { result.evidence_summary = JSON.parse(result.evidence_summary); } catch (e) {}
+  }
+  if (typeof result.evidence_dependencies === 'string') {
+    try { result.evidence_dependencies = JSON.parse(result.evidence_dependencies); } catch (e) {}
+  }
+  if (typeof result.triggered_rule_ids === 'string') {
+    try { result.triggered_rule_ids = JSON.parse(result.triggered_rule_ids); } catch (e) {}
+  }
+  if (typeof result.evaluated_rule_ids === 'string') {
+    try { result.evaluated_rule_ids = JSON.parse(result.evaluated_rule_ids); } catch (e) {}
+  }
+  if (typeof result.explanation_completeness === 'string') {
+    try { result.explanation_completeness = JSON.parse(result.explanation_completeness); } catch (e) {}
+  }
+
+  // Remove forbidden fields from evidenceSummary
+  if (result.evidence_summary && result.evidence_summary.vulnerabilities) {
+    result.evidence_summary.vulnerabilities = result.evidence_summary.vulnerabilities.map(v => {
+      const { 
+        effectiveCvssScore, effectiveSeverity, suppressedByVex, 
+        raw_signature, private_key, public_key, access_token, certificate, compensating_control,
+        ...allowed 
+      } = v;
+      return allowed;
+    });
+  }
+
+  // Extract Context Risk Result
+  if (result.evidence_dependencies && result.evidence_dependencies.contextRisk) {
+    const cr = result.evidence_dependencies.contextRisk;
+    result.contextRisk = {
+      contextModelVersion: cr.modelVersion || 'NOT_AVAILABLE',
+      contextAssertionId: cr.contextAssertionId || 'NOT_AVAILABLE',
+      contextAssuranceState: cr.contextAssuranceState || 'NOT_AVAILABLE',
+      environment: cr.normalizedContextVector?.environment || 'NOT_AVAILABLE',
+      internetExposure: cr.normalizedContextVector?.internetExposure || 'NOT_AVAILABLE',
+      assetCriticality: cr.normalizedContextVector?.assetCriticality || 'NOT_AVAILABLE',
+      privilegeLevel: cr.normalizedContextVector?.privilegeLevel || 'NOT_AVAILABLE',
+      dataSensitivity: cr.normalizedContextVector?.dataSensitivity || 'NOT_AVAILABLE',
+      runtimeExecution: cr.normalizedContextVector?.runtimeExecution || 'NOT_AVAILABLE',
+      componentPresence: cr.normalizedContextVector?.componentPresence || 'NOT_AVAILABLE',
+      exploitability: cr.exploitability || 'NOT_AVAILABLE',
+      exploitabilityBasis: cr.exploitabilityBasis || 'NOT_AVAILABLE',
+      vexApplicability: cr.normalizedContextVector?.vexApplicability || 'NOT_AVAILABLE',
+      exceptionStatus: cr.normalizedContextVector?.exceptionStatus || 'NOT_AVAILABLE',
+      exceptionId: cr.exceptionId || 'NOT_AVAILABLE',
+      contextualRisk: cr.contextualRisk || 'NOT_AVAILABLE',
+      policyBlockingStatus: cr.policyBlockingStatus || 'NOT_AVAILABLE',
+      triggeredContextRuleIds: cr.triggeredContextRuleIds || [],
+      evaluatedContextRuleIds: cr.evaluatedContextRuleIds || [],
+      contextReasonCodes: cr.contextReasonCodes || [],
+      conflictResults: cr.conflictResults || null,
+      contextEvaluatedAt: cr.contextEvaluatedAt || 'NOT_AVAILABLE'
+    };
+    
+    // Original vulnerability info
+    if (cr.vulnerabilityIds && cr.vulnerabilityIds.length > 0) {
+      result.originalVulnerabilities = cr.vulnerabilityIds.map((id, index) => {
+        return {
+          vulnerabilityId: id,
+          originalCvss: cr.originalCvss?.[index] || null,
+          originalSeverity: cr.originalSeverities?.[index] || 'UNKNOWN'
+        };
+      });
+    } else {
+      result.originalVulnerabilities = [];
+    }
+  } else {
+    result.contextRisk = null;
+    result.originalVulnerabilities = [];
+  }
+
+  // Never return raw evidence_dependencies directly to avoid leaking internal keys
+  delete result.evidence_dependencies;
+
+  return result;
+}
+
 /**
  * Handle retrieving latest trust decision or history
  */
@@ -149,13 +232,14 @@ async function handleGetTrustDecision(req, res) {
     }
 
     const history = await trustRepository.getTrustDecisionHistoryBySBOMID(sbomId.trim());
-    const latest = history.length > 0 ? history[0] : null;
+    const sanitizedHistory = history.map(sanitizeDecisionRecord);
+    const latest = sanitizedHistory.length > 0 ? sanitizedHistory[0] : null;
 
     return res.status(200).json({
       sbomId: sbomId.trim(),
       latestDecision: latest,
-      historyCount: history.length,
-      history: history
+      historyCount: sanitizedHistory.length,
+      history: sanitizedHistory
     });
   } catch (err) {
     console.error('[TPSR] Error fetching trust decision:', err);

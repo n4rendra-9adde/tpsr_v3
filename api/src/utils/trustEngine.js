@@ -61,10 +61,16 @@ async function evaluateTrust(evidenceBundle = {}) {
         reasonCodesMapped: false,
         mandatoryDependenciesEvaluated: false,
         policyVersionPresent: false,
-        lifecycleEffectPresent: false
+        trustPolicyHashPresent: false,
+        lifecycleEffectPresent: false,
+        contextPolicyResultPresent: false,
+        contextAssertionEvaluated: false,
+        requiredVexEvaluated: false,
+        exceptionEvaluated: false
       },
       missingFields: []
-    }
+    },
+    trustPolicyHash: 'unknown'
   };
 
   const evalRules = new Set();
@@ -145,6 +151,8 @@ async function evaluateTrust(evidenceBundle = {}) {
 
   const policy = provenanceEngine.getTrustPolicy();
   const contextRequired = policy.requireDeploymentContext === true;
+  result.policyVersion = policy.version || '3.0';
+  result.trustPolicyHash = policy.hash || 'unknown';
 
   const assembledEvidence = assembleContextRiskEvidence({
     sbomDocument: sbomDoc,
@@ -160,8 +168,28 @@ async function evaluateTrust(evidenceBundle = {}) {
   result.contextResult = contextResult;
   result.evidenceDependencies.contextRisk = {
     required: contextRequired,
-    assuranceState: contextResult.contextAssuranceState,
-    evidenceIds: contextResult.contextAssertionId ? [contextResult.contextAssertionId] : []
+    modelVersion: '0.1',
+    contextAssertionId: assembledEvidence.contextAssertionId || null,
+    contextAssuranceState: contextResult.contextAssuranceState,
+    normalizedContextVector: assembledEvidence.contextVector || {},
+    exploitability: contextResult.exploitability || 'UNKNOWN',
+    exploitabilityBasis: contextResult.exploitabilityBasis || 'Not evaluated',
+    contextualRisk: contextResult.contextualRisk || 'UNKNOWN',
+    policyBlockingStatus: contextResult.policyBlockingStatus || 'NON_BLOCKING',
+    reviewRequired: contextResult.policyBlockingStatus === 'REVIEW_REQUIRED',
+    exceptionRequired: !!contextResult.exceptionRequired,
+    exceptionId: assembledEvidence.exceptionId || null,
+    vexEvidenceIds: assembledEvidence.vexEvidenceIds || [],
+    vulnerabilityIds: assembledEvidence.vulnerabilities ? assembledEvidence.vulnerabilities.map(v => v.id).filter(Boolean) : [],
+    originalCvss: assembledEvidence.vulnerabilities ? assembledEvidence.vulnerabilities.map(v => v.originalCvss || v.cvss || null) : [],
+    originalSeverities: assembledEvidence.vulnerabilities ? assembledEvidence.vulnerabilities.map(v => v.originalSeverity || v.severity || 'UNKNOWN') : [],
+    componentIdentifiers: assembledEvidence.vulnerabilities ? [...new Set(assembledEvidence.vulnerabilities.map(v => v.componentId).filter(Boolean))] : [],
+    triggeredContextRuleIds: contextResult.triggeredRuleIds || [],
+    evaluatedContextRuleIds: contextResult.evaluatedRuleIds || [],
+    contextReasonCodes: contextResult.reasonCodes || [],
+    conflictResults: assembledEvidence.conflictResults || null,
+    contextEvaluatedAt: new Date().toISOString(),
+    evidenceIds: assembledEvidence.contextAssertionId ? [assembledEvidence.contextAssertionId] : []
   };
   
   result.evidenceDependencies.exception = {
@@ -226,17 +254,36 @@ function finalizeExplanation(result, evalRules) {
   reqChecks.reasonCodesMapped = !!result.reasonCode;
   reqChecks.mandatoryDependenciesEvaluated = !!(result.evidenceDependencies.integrity && result.evidenceDependencies.provenance && result.evidenceDependencies.signature);
   reqChecks.policyVersionPresent = !!result.policyVersion;
+  reqChecks.trustPolicyHashPresent = !!result.trustPolicyHash && result.trustPolicyHash !== 'unknown';
   reqChecks.lifecycleEffectPresent = true; // Derived based on state
+  
+  if (result.evidenceDependencies.contextRisk && result.evidenceDependencies.contextRisk.required) {
+    reqChecks.contextPolicyResultPresent = !!result.contextResult;
+    reqChecks.contextAssertionEvaluated = !!result.evidenceDependencies.contextRisk.contextAssuranceState;
+    reqChecks.requiredVexEvaluated = true; // Evaluated in assembler
+    reqChecks.exceptionEvaluated = !!result.evidenceDependencies.exception;
+  } else {
+    reqChecks.contextPolicyResultPresent = true;
+    reqChecks.contextAssertionEvaluated = true;
+    reqChecks.requiredVexEvaluated = true;
+    reqChecks.exceptionEvaluated = true;
+  }
   
   result.explanationCompleteness.complete = 
     reqChecks.triggeredRulesPresent && 
     reqChecks.reasonCodesMapped && 
     reqChecks.mandatoryDependenciesEvaluated && 
-    reqChecks.policyVersionPresent && 
-    reqChecks.lifecycleEffectPresent;
+    reqChecks.policyVersionPresent &&
+    reqChecks.trustPolicyHashPresent &&
+    reqChecks.lifecycleEffectPresent &&
+    reqChecks.contextPolicyResultPresent &&
+    reqChecks.contextAssertionEvaluated &&
+    reqChecks.requiredVexEvaluated &&
+    reqChecks.exceptionEvaluated;
     
   if (!reqChecks.triggeredRulesPresent) result.explanationCompleteness.missingFields.push('triggeredRuleIds');
   if (!reqChecks.mandatoryDependenciesEvaluated) result.explanationCompleteness.missingFields.push('evidenceDependencies');
+  if (!reqChecks.contextPolicyResultPresent) result.explanationCompleteness.missingFields.push('contextResult');
 }
 
 module.exports = {
