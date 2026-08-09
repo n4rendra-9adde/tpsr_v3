@@ -11,23 +11,53 @@ async function evaluate(input) {
     return { outcome: 'NOT_EVALUATED', decision: 'NOT_EVALUATED' };
   }
 
-  // Construct evidence bundle from input
+  // Map vulnerabilities into components as required by trustEngine
+  const components = input.vulnerabilities && input.vulnerabilities.length > 0
+    ? [{
+        vulnerabilities: input.vulnerabilities.map(v => ({
+          ...v,
+          originalCvssScore: v.originalCvss || v.originalCvssScore,
+          originalSeverity: v.severity || v.originalSeverity
+        }))
+      }]
+    : [];
+
   const evidenceBundle = {
     sbomDocument: {
-      sbom_id: input.sbomId || 'fixture-sbom',
+      sbom_id: (input.sbomPresent && input.canonicalSbomHash === input.ledgerAnchorHash) ? (input.sbomId || 'fixture-sbom') : null,
       id: 'fixture-doc-id',
       sbom_json: {
-        vulnerabilities: input.vulnerabilities || []
+        components
       }
     },
-    provenance: input.provenance || [],
-    signatures: input.signatures || [],
-    vexStatements: input.vexStatements || [],
-    policyExceptions: input.policyExceptions || []
+    provenance: (input.provenance || []).map(p => ({
+      ...p,
+      id: p.id || 'prov-id'
+    })),
+    signatures: (input.signatures || []).map(s => ({
+      ...s,
+      id: s.id || 'sig-id',
+      verification_status: s.status === 'VALID' ? 'VERIFIED' : (s.verification_status || 'FAILED')
+    })),
+    vexStatements: (input.vexStatements || []).map(v => ({
+      ...v,
+      id: v.id || 'vex-id'
+    })),
+    policyExceptions: (input.policyExceptions || []).map(e => ({
+      ...e,
+      id: e.id || 'exc-id',
+      assurance_state: e.status === 'ACTIVE' ? 'VERIFIED_TRUSTED' : e.assurance_state
+    }))
   };
 
   if (input.deploymentContext) {
-    evidenceBundle.deploymentContext = input.deploymentContext;
+    evidenceBundle.deploymentContext = {
+      ...input.deploymentContext,
+      environment: input.deploymentContext.tier || input.deploymentContext.environment,
+      internet_exposure: input.deploymentContext.internetExposed ? 'PUBLIC' : 'INTERNAL',
+      data_sensitivity: input.deploymentContext.dataSensitivity || 'INTERNAL',
+      id: input.deploymentContext.id || 'ctx-id'
+    };
   }
   if (input.activeContextAssertion) {
     evidenceBundle.activeContextAssertion = input.activeContextAssertion;
@@ -46,8 +76,8 @@ async function evaluate(input) {
   return {
     outcome,
     decision: result.trustStatus,
-    reasonCode: result.reasonCode,
-    triggeredRuleIds: result.triggeredRuleIds,
+    reasonCodes: result.reasonCode ? [result.reasonCode] : [],
+    ruleIds: result.triggeredRuleIds || [],
     evidenceDependencies: result.evidenceDependencies,
     explanationCompleteness: result.explanationCompleteness,
     rawResult: result
