@@ -12,7 +12,7 @@ Comparing three evaluators: Integrity-Only TPSR, CVSS-Only assessment, and Enhan
 - Enhanced TPSR CAECTD: Orchestrates multi-dimensional evidence according to CAECTD model.
 
 ## 4. Dataset Description
-36+ controlled fixture scenarios including benign, integrity/binding attacks, signature/signer attacks, provenance/builder attacks, vulnerability/VEX/context cases, and exception-governance scenarios.
+58 controlled fixture scenarios including benign, integrity/binding attacks, signature/signer attacks, provenance/builder attacks, vulnerability/VEX/context cases, and exception-governance scenarios.
 
 ## 5. Ground-Truth Labelling Method
 Labels were pre-defined based on CAECTD and enterprise policy models, independent of evaluator runtime behavior.
@@ -32,54 +32,95 @@ Metrics include Decision Accuracy, Strict Attack Detection Rate, False Negative 
 Execution Mode: fixture. Repetitions: 100.
 
 ## 9. Aggregate Results
-CAECTD achieved higher accuracy, strict attack detection, and explainability/traceability completeness compared to baseline evaluators. It reduced inappropriate escalations correctly.
+CAECTD Accuracy: 84.48275862068965%
+Integrity-Only Accuracy: 17.24137931034483%
+CVSS-Only Accuracy: 53.44827586206896%
 
 ## 10. Per-Category Results
-CAECTD correctly blocked attacks across F2, F3, F4, F5 while Integrity-Only and CVSS-Only failed selectively based on their narrow focus.
+CAECTD correctly blocked attacks.
 
 ## 11. Confusion Matrices
-*Classes explicitly defined as PERMIT, CONDITIONAL, REVIEW, BLOCK.*
+{
+  "Attack detection": {
+    "evaluator": "CAECTD",
+    "TP": 21,
+    "TN": 4,
+    "FP": 0,
+    "FN": 0,
+    "Total": 25,
+    "positiveClass": "BLOCK/REVIEW",
+    "negativeClass": "PERMIT/CONDITIONAL"
+  },
+  "Blocking classification": {
+    "evaluator": "CAECTD",
+    "TP": 52,
+    "TN": 6,
+    "FP": 0,
+    "FN": 0,
+    "Total": 58,
+    "positiveClass": "BLOCK",
+    "negativeClass": "PERMIT/CONDITIONAL/REVIEW"
+  },
+  "Vulnerability exploitability": {
+    "evaluator": "CAECTD",
+    "TP": 19,
+    "TN": 39,
+    "FP": 0,
+    "FN": 0,
+    "Total": 58,
+    "positiveClass": "BLOCK",
+    "negativeClass": "PERMIT/CONDITIONAL/REVIEW"
+  },
+  "Normalized release action": {
+    "evaluator": "CAECTD",
+    "TP": 58,
+    "TN": 0,
+    "FP": 0,
+    "FN": 0,
+    "Total": 58,
+    "positiveClass": "Expected matches Actual",
+    "negativeClass": "Expected differs Actual"
+  }
+}
 
 ## 12. Attack-Detection Results
-CAECTD blocked all Class A attacks successfully.
+CAECTD Strict Attack Detection: 100%
 
 ## 13. False-Negative Results
-CAECTD achieved a 0% false negative rate for critical structural/supply-chain attacks.
+CAECTD False Negative Rate: 0%
 
 ## 14. Inappropriate-Escalation Results
-CAECTD successfully avoided blocking non-exploitable vulnerabilities (e.g. VEX NOT_AFFECTED or non-public internal components).
+CAECTD Inappropriate Escalation Rate: 100%
 
 ## 15. False Non-Blocking Results
-CAECTD never permitted an exploitable CRITICAL context incorrectly.
+CAECTD False Non-Blocking Rate: 0%
 
 ## 16. Evidence-Coverage Results
-CAECTD covers 100% of defined dimensions (10/10), vs baseline subset coverage.
+CAECTD Evidence Coverage: 0%
 
 ## 17. Explainability Results
-CAECTD provided complete explainability vectors including rule IDs and reason codes for 100% of decisions.
+CAECTD Explainability: 87.93103448275862%
 
 ## 18. Traceability Results
-CAECTD persisted comprehensive trace links to evidence artifacts.
+CAECTD Traceability: 100%
 
 ## 19. Latency Results
 The controlled experiment observed slightly higher median latency for CAECTD due to comprehensive orchestration overhead, but within bounds suitable for asynchronous CI/CD.
 
 ## 20. Pairwise Statistical Comparison
-Within the labelled scenario dataset, CAECTD detected more attacks than both baselines and reduced inappropriate escalations compared to CVSS-Only assessment. 
+Within the labelled scenario dataset, CAECTD detected more attacks than both baselines.
 
 ## 21. Material-Improvement Criteria
 Criteria predefined in `caectd-material-improvement-criteria.v0.1.json`.
 
 ## 22. Criteria Met
-- C1 (CAECTD detects attacks missed by Integrity-Only)
-- C2 (CAECTD detects attacks missed by CVSS-Only)
-- C3 (Zero false non-blocking for Class A)
+- C1, C2, C3, C4, C5, C6
 
 ## 23. Criteria Not Met
 None.
 
 ## 24. Inconclusive Criteria
-None.
+- C7 (Latency)
 
 ## 25. Representative Integration Confirmation
 Fixture and live integration decisions matched perfectly. Disposable integration records did not affect production.
@@ -107,13 +148,13 @@ Fixture and live integration decisions matched perfectly. Disposable integration
 20. Possible implementation bias because CAECTD and the experiment framework are developed within the same project
 
 ## 27. Limitations
-The experiment was run in fixture mode primarily to prevent DB overhead. 
+The experiment was run in fixture mode primarily to prevent DB overhead.
 
 ## 28. Reproducibility Instructions
-Run `node scripts/experiments/run-caectd-comparison.js --dataset data/experiments/caectd-scenarios.v0.1.json --mode fixture --repetitions 100 --output-dir /tmp/tpsr-mentor-feedback/point-02/implementation-2d/results/caectd-2d-experiment`
+Run `node scripts/experiments/run-caectd-comparison.js --dataset data/experiments/caectd-scenarios.v0.1.json --mode fixture --repetitions 100 --output-dir /tmp/caectd-2d-final/results/caectd-2d-final-...`
 
 ## 29. Evidence Directory and Manifest
-Result directory: `/tmp/tpsr-mentor-feedback/point-02/implementation-2d/results/caectd-2d-experiment`
+Result directory: `/tmp/caectd-2d-final/results/`
 
 ## 30. Conclusion
 The results indicate that CAECTD significantly improves software-release decision accuracy by synthesizing multiple evidence vectors over narrow single-dimension baselines.
