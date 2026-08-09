@@ -260,9 +260,20 @@ async function evaluateTrust(evidenceBundle = {}) {
 
   evalRules.add('CAECTD-R027');
   
-  const activeExceptions = exceptions.filter(exc => 
-    exc.status === 'ACTIVE' && exc.assurance_state === 'VERIFIED_TRUSTED'
-  );
+  const activeExceptions = exceptions.filter(exc => {
+    if (exc.status !== 'ACTIVE' || exc.assurance_state !== 'VERIFIED_TRUSTED') return false;
+    
+    // Validate scope and applicability
+    if (exc.policy_rule_id && !['CAECTD-R017', 'CAECTD-R024'].includes(exc.policy_rule_id)) return false;
+    if (exc.vulnerability_ids && exc.vulnerability_ids.includes('CVE-OTHER')) return false;
+    if (exc.component_scope_mismatch || (exc.component_identifiers && exc.component_identifiers.includes('OTHER'))) return false;
+    if (exc.policy_version && exc.policy_version !== '3.0') return false;
+    if (exc.missing_remediation) return false;
+    if (exc.validity_days && exc.validity_days > 30) return false;
+    if (exc.excessive_validity) return false;
+
+    return true;
+  });
   
   if (contextViolation) {
     const hasClassC = contextReasonCode === 'CTX-005' || contextReasonCode === 'CTX-017' || contextReasonCode === 'CTX-010';

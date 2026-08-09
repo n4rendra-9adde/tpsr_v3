@@ -242,6 +242,7 @@ function applyVexOverlays(vulnerabilities = [], vexStatements = []) {
 
     // Find matching VEX statement
     const matchingVex = vexStatements.find(v => {
+      if (v.valid === false || v.signer_trusted === false || v.component_scope_mismatch) return false;
       const targetId = v.vulnerability_id || v.vulnerabilityId || v.cve || v.sub;
       return targetId && targetId.toLowerCase() === (vulnId || '').toLowerCase();
     });
