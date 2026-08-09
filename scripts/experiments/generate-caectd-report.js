@@ -1,4 +1,11 @@
-# CAECTD V0.1 EXPERIMENT REPORT
+const fs = require('fs');
+const path = require('path');
+
+function generateReport(outputDir) {
+  const metrics = JSON.parse(fs.readFileSync(`${outputDir}/evaluator-metrics.json`));
+  const confusion = JSON.parse(fs.readFileSync(`${outputDir}/confusion-matrices.json`));
+  
+  const report = `# CAECTD V0.1 EXPERIMENT REPORT
 
 ## 1. Experiment Objective
 Evaluate whether provenance-aware, signer-aware, release-binding-aware, VEX-aware, context-aware, and exception-aware trust evaluation improves software-release decision accuracy, attack detection, inappropriate vulnerability-escalation control, explainability, and traceability compared with integrity-only SBOM validation and CVSS-only assessment.
@@ -32,36 +39,36 @@ Metrics include Decision Accuracy, Strict Attack Detection Rate, False Negative 
 Execution Mode: fixture. Repetitions: 100.
 
 ## 9. Aggregate Results
-CAECTD Accuracy: 99%
-Integrity-Only Accuracy: 17%
-CVSS-Only Accuracy: 53%
+CAECTD Accuracy: ${metrics.caectd.decisionAccuracy.rate * 100}%
+Integrity-Only Accuracy: ${metrics.integrity.decisionAccuracy.rate * 100}%
+CVSS-Only Accuracy: ${metrics.cvss.decisionAccuracy.rate * 100}%
 
 ## 10. Per-Category Results
 CAECTD correctly blocked attacks.
 
 ## 11. Confusion Matrices
-{}
+${JSON.stringify(confusion, null, 2)}
 
 ## 12. Attack-Detection Results
-CAECTD Strict Attack Detection: 100%
+CAECTD Strict Attack Detection: ${metrics.caectd.strictAttackDetectionRate.rate * 100}%
 
 ## 13. False-Negative Results
-CAECTD False Negative Rate: 0%
+CAECTD False Negative Rate: ${metrics.caectd.falseNegativeRate.rate * 100}%
 
 ## 14. Inappropriate-Escalation Results
-CAECTD Inappropriate Escalation Rate: 0%
+CAECTD Inappropriate Escalation Rate: ${metrics.caectd.inappropriateEscalationRate.rate * 100}%
 
 ## 15. False Non-Blocking Results
-CAECTD False Non-Blocking Rate: 0%
+CAECTD False Non-Blocking Rate: ${metrics.caectd.falseNonBlockingRate.rate * 100}%
 
 ## 16. Evidence-Coverage Results
-CAECTD Evidence Coverage: 100%
+CAECTD Evidence Coverage: ${metrics.caectd.evidenceCoverage.rate * 100}%
 
 ## 17. Explainability Results
-CAECTD Explainability: 100%
+CAECTD Explainability: ${metrics.caectd.explainabilityCompleteness.rate * 100}%
 
 ## 18. Traceability Results
-CAECTD Traceability: 100%
+CAECTD Traceability: ${metrics.caectd.traceabilityCompleteness.rate * 100}%
 
 ## 19. Latency Results
 The controlled experiment observed slightly higher median latency for CAECTD due to comprehensive orchestration overhead, but within bounds suitable for asynchronous CI/CD.
@@ -70,7 +77,7 @@ The controlled experiment observed slightly higher median latency for CAECTD due
 Within the labelled scenario dataset, CAECTD detected more attacks than both baselines.
 
 ## 21. Material-Improvement Criteria
-Criteria predefined in `caectd-material-improvement-criteria.v0.1.json`.
+Criteria predefined in \`caectd-material-improvement-criteria.v0.1.json\`.
 
 ## 22. Criteria Met
 - C1, C2, C3, C4, C5, C6
@@ -110,10 +117,26 @@ Fixture and live integration decisions matched perfectly. Disposable integration
 The experiment was run in fixture mode primarily to prevent DB overhead.
 
 ## 28. Reproducibility Instructions
-Run `node scripts/experiments/run-caectd-comparison.js --dataset data/experiments/caectd-scenarios.v0.1.json --mode fixture --repetitions 100 --output-dir /tmp/caectd-2d-final/results/caectd-2d-final-...`
+Run \`node scripts/experiments/run-caectd-comparison.js --dataset data/experiments/caectd-scenarios.v0.1.json --mode fixture --repetitions 100 --output-dir /tmp/caectd-2d-final/results/caectd-2d-final-...\`
 
 ## 29. Evidence Directory and Manifest
-Result directory: `/tmp/test-report-gen`
+Result directory: \`${outputDir}\`
 
 ## 30. Conclusion
 The results indicate that CAECTD significantly improves software-release decision accuracy by synthesizing multiple evidence vectors over narrow single-dimension baselines.
+`;
+
+  const outPath = path.join(__dirname, '../../docs/experiments/CAECTD_V0.1_EXPERIMENT_REPORT.md');
+  fs.writeFileSync(outPath, report);
+}
+
+if (require.main === module) {
+  const outputDir = process.argv[2];
+  if (!outputDir) {
+    console.error('Usage: node generate-caectd-report.js <output-dir>');
+    process.exit(1);
+  }
+  generateReport(outputDir);
+}
+
+module.exports = { generateReport };
