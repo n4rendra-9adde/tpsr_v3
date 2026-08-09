@@ -18,7 +18,8 @@ describe('Context Risk Constants and Mapper', () => {
 describe('Context Risk Engine', () => {
   it('Production public exploitable sets CRITICAL/BLOCKING', () => {
     const input = {
-      contextVector: { environment: 'PRODUCTION', internetExposure: 'PUBLIC', vexApplicability: 'AFFECTED', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED' },
+      vulnerabilities: [{ originalSeverity: 'CRITICAL', vexApplicability: 'AFFECTED' }],
+      contextVector: { environment: 'PRODUCTION', internetExposure: 'PUBLIC', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED' },
     };
     const res = evaluateContextRisk(input);
     expect(res.contextualRisk).toBe('CRITICAL');
@@ -28,7 +29,8 @@ describe('Context Risk Engine', () => {
   it('Trusted NOT_AFFECTED VEX makes it NON_BLOCKING', () => {
     const input = {
       vexTrusted: true, vexCurrent: true, vexExactScope: true,
-      contextVector: { vexApplicability: 'NOT_AFFECTED' }
+      vulnerabilities: [{ originalSeverity: 'CRITICAL', vexApplicability: 'NOT_AFFECTED' }],
+      contextVector: {}
     };
     const res = evaluateContextRisk(input);
     expect(res.exploitability).toBe('NOT_EXPLOITABLE');
@@ -37,7 +39,8 @@ describe('Context Risk Engine', () => {
 
   it('Under investigation VEX produces REVIEW_REQUIRED', () => {
     const input = {
-      contextVector: { vexApplicability: 'UNDER_INVESTIGATION' }
+      vulnerabilities: [{ originalSeverity: 'CRITICAL', vexApplicability: 'UNDER_INVESTIGATION' }],
+      contextVector: {}
     };
     const res = evaluateContextRisk(input);
     expect(res.exploitability).toBe('UNDER_INVESTIGATION');
@@ -47,7 +50,8 @@ describe('Context Risk Engine', () => {
   it('Missing or untrusted VEX ignores NOT_AFFECTED', () => {
     const input = {
       vexTrusted: false,
-      contextVector: { vexApplicability: 'NOT_AFFECTED' }
+      vulnerabilities: [{ originalSeverity: 'HIGH', vexApplicability: 'NOT_AFFECTED' }],
+      contextVector: {}
     };
     const res = evaluateContextRisk(input);
     expect(res.exploitability).toBe('UNKNOWN');
@@ -67,7 +71,8 @@ describe('Context Risk Engine', () => {
   it('Active exception produces CONDITIONALLY_ACCEPTED over Class B', () => {
     const input = {
       exceptionTrusted: true,
-      contextVector: { environment: 'PRODUCTION', internetExposure: 'PUBLIC', vexApplicability: 'AFFECTED', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED', exceptionStatus: 'ACTIVE' }
+      vulnerabilities: [{ originalSeverity: 'CRITICAL', vexApplicability: 'AFFECTED' }],
+      contextVector: { environment: 'PRODUCTION', internetExposure: 'PUBLIC', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED', exceptionStatus: 'ACTIVE' }
     };
     const res = evaluateContextRisk(input);
     expect(res.policyBlockingStatus).toBe('BLOCKING');

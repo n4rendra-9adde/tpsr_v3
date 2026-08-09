@@ -33,97 +33,165 @@ function evaluateContextRisk(input) {
 
   if (!input) return result;
 
-  // Track original CVSS / severity changes to prove we don't mutate
-  const originalCvss = input.originalCvss;
-  const originalSeverity = input.originalSeverity;
+  const originalCvss = input.originalCvss || 0;
+  const originalSeverity = input.originalSeverity || 'UNKNOWN';
 
   result.normalizedContextVector = { ...input.contextVector };
 
-  // Exploitability Derivation
-  let vexStatus = input.contextVector.vexApplicability;
-  let compPres = input.contextVector.componentPresence;
-  let runExec = input.contextVector.runtimeExecution;
-
-  if (vexStatus === 'AFFECTED' && (compPres === 'PRESENT' || compPres === 'PARTIAL') && runExec === 'EXECUTED') {
-    result.exploitability = 'EXPLOITABLE';
-    result.exploitabilityBasis = 'Trusted AFFECTED VEX with executed component';
-  } else if (vexStatus === 'NOT_AFFECTED') {
-    if (input.vexTrusted && input.vexCurrent && input.vexExactScope) {
-      result.exploitability = 'NOT_EXPLOITABLE';
-      result.exploitabilityBasis = 'Trusted NOT_AFFECTED VEX';
-      result.policyBlockingStatus = 'NON_BLOCKING';
-      result.reviewRequired = false;
-      result.contextualRisk = 'LOW';
-    } else {
-      result.exploitabilityBasis = 'Untrusted or invalid NOT_AFFECTED VEX';
+  let highestRisk = 'LOW';
+  let isBlocking = false;
+  let needsReview = false;
+  let exceptionNeeded = false;
+  let triggeredRules = new Set();
+  let reasonCodes = new Set();
+  
+  let normalizedVulnerabilities = [];
+  if (Array.isArray(input.vulnerabilities)) {
+    normalizedVulnerabilities = input.vulnerabilities;
+  } else if (Array.isArray(input.vulns)) { // temporary compatibility alias
+    normalizedVulnerabilities = input.vulns;
+  } else if (input.vulnerability && typeof input.vulnerability === 'object') {
+    normalizedVulnerabilities = [input.vulnerability];
+  } else if (input.sbomDocument && input.sbomDocument.sbom_json) {
+    let sbom = {};
+    try {
+      sbom = typeof input.sbomDocument.sbom_json === 'string' ? JSON.parse(input.sbomDocument.sbom_json) : input.sbomDocument.sbom_json;
+    } catch (_) {}
+    if (sbom.components && Array.isArray(sbom.components)) {
+      sbom.components.forEach(c => {
+        if (c.vulnerabilities && Array.isArray(c.vulnerabilities)) {
+          normalizedVulnerabilities.push(...c.vulnerabilities);
+        }
+      });
     }
-  } else if (vexStatus === 'UNDER_INVESTIGATION') {
-    result.exploitability = 'UNDER_INVESTIGATION';
-    result.exploitabilityBasis = 'UNDER_INVESTIGATION VEX';
-  } else if (compPres === 'NOT_PRESENT' && input.componentPresenceTrusted) {
-    result.exploitability = 'NOT_EXPLOITABLE';
-    result.exploitabilityBasis = 'Verified component NOT_PRESENT';
-    result.policyBlockingStatus = 'NON_BLOCKING';
-    result.reviewRequired = false;
-    result.contextualRisk = 'LOW';
-  } else if (compPres === 'PRESENT' && runExec === 'PRESENT_NOT_EXECUTED') {
-    result.exploitability = 'UNKNOWN';
-    result.exploitabilityBasis = 'Component PRESENT_NOT_EXECUTED';
   }
 
-  // Conflict handling
+  if (normalizedVulnerabilities.length > 0) {
+    for (const vuln of normalizedVulnerabilities) {
+      let vexStatus = vuln.vexApplicability || 'UNKNOWN';
+      let compPres = input.contextVector.componentPresence || 'UNKNOWN';
+      let runExec = input.contextVector.runtimeExecution || 'UNKNOWN';
+
+      let expl = 'UNKNOWN';
+      let explBasis = 'Default';
+      let risk = 'LOW';
+      let blockStatus = 'NON_BLOCKING';
+      
+      if (vexStatus === 'AFFECTED' && (compPres === 'PRESENT' || compPres === 'PARTIAL') && runExec === 'EXECUTED') {
+        expl = 'EXPLOITABLE';
+        explBasis = 'Trusted AFFECTED VEX with executed component';
+      } else if (vexStatus === 'NOT_AFFECTED') {
+        if (input.vexTrusted && input.vexCurrent && input.vexExactScope) {
+          expl = 'NOT_EXPLOITABLE';
+          explBasis = 'Trusted NOT_AFFECTED VEX';
+        } else {
+          explBasis = 'Untrusted or invalid NOT_AFFECTED VEX';
+          needsReview = true;
+        }
+      } else if (vexStatus === 'UNDER_INVESTIGATION') {
+        expl = 'UNDER_INVESTIGATION';
+        explBasis = 'UNDER_INVESTIGATION VEX';
+      } else if (compPres === 'NOT_PRESENT' && input.componentPresenceTrusted) {
+        expl = 'NOT_EXPLOITABLE';
+        explBasis = 'Verified component NOT_PRESENT';
+      } else if (compPres === 'PRESENT' && runExec === 'PRESENT_NOT_EXECUTED') {
+        expl = 'UNKNOWN';
+        explBasis = 'Component PRESENT_NOT_EXECUTED';
+      }
+      
+      let env = input.contextVector.environment;
+      let exp = input.contextVector.internetExposure;
+      let crit = input.contextVector.assetCriticality;
+      let priv = input.contextVector.privilegeLevel;
+      let sens = input.contextVector.dataSensitivity;
+      
+      let sev = vuln.originalSeverity || vuln.severity || 'UNKNOWN';
+      if (env === 'PRODUCTION' && (exp === 'PUBLIC' || exp === 'RESTRICTED_PUBLIC') && expl !== 'NOT_EXPLOITABLE' && sev === 'CRITICAL') {
+        risk = 'CRITICAL';
+        blockStatus = 'BLOCKING';
+        exceptionNeeded = true;
+        triggeredRules.add('CR-001');
+        reasonCodes.add('CTX-001');
+      } else if (env === 'PRODUCTION' && crit === 'CRITICAL' && expl !== 'NOT_EXPLOITABLE') {
+        risk = 'HIGH';
+        blockStatus = 'BLOCKING';
+      } else if (priv === 'SYSTEM' && expl !== 'NOT_EXPLOITABLE') {
+        risk = 'HIGH';
+        blockStatus = 'BLOCKING';
+      } else if (sens === 'RESTRICTED' && expl !== 'NOT_EXPLOITABLE') {
+        risk = 'HIGH';
+        blockStatus = 'BLOCKING';
+      } else if (env === 'DEVELOPMENT' && (exp === 'NONE' || exp === 'INTERNAL') && expl !== 'EXPLOITABLE') {
+        risk = 'LOW';
+        blockStatus = 'NON_BLOCKING';
+      } else if (!env && sev === 'CRITICAL' && expl !== 'NOT_EXPLOITABLE') {
+        risk = 'CRITICAL';
+        blockStatus = 'BLOCKING';
+        exceptionNeeded = true;
+        triggeredRules.add('CAECTD-R017');
+        reasonCodes.add('CTX-002');
+      }
+
+      if (expl === 'UNDER_INVESTIGATION') {
+        blockStatus = 'REVIEW_REQUIRED';
+        risk = 'UNKNOWN';
+      }
+
+      if (blockStatus === 'BLOCKING') isBlocking = true;
+      if (blockStatus === 'REVIEW_REQUIRED') needsReview = true;
+      
+      result.exploitability = expl;
+      result.exploitabilityBasis = explBasis;
+      highestRisk = risk === 'CRITICAL' ? 'CRITICAL' : (risk === 'HIGH' && highestRisk !== 'CRITICAL' ? 'HIGH' : highestRisk);
+    }
+  } else {
+    // No vulns, just check context
+    if (input.contextRequired && !input.contextVector.environment) {
+      needsReview = true;
+      reasonCodes.add('CTX-005');
+      triggeredRules.add('CAECTD-R024');
+    }
+  }
+
   if (input.conflict) {
     result.contextAssuranceState = 'CONFLICTING';
     result.contextualRisk = 'UNKNOWN';
     result.policyBlockingStatus = 'REVIEW_REQUIRED';
-    result.reasonCodes.push('CFL-001');
+    result.reasonCodes.push('CTX-017');
+    result.triggeredRuleIds.push('CAECTD-R025');
     return result;
   }
 
-  // Invalid context
   if (input.invalidContext) {
     result.contextAssuranceState = 'INVALID';
     result.contextualRisk = 'UNKNOWN';
     result.policyBlockingStatus = 'REVIEW_REQUIRED';
+    result.reasonCodes.push('CTX-010');
+    result.triggeredRuleIds.push('CAECTD-R026');
     return result;
   }
 
-  // Context Risk Rules
-  let env = input.contextVector.environment;
-  let exp = input.contextVector.internetExposure;
-  let crit = input.contextVector.assetCriticality;
-  let priv = input.contextVector.privilegeLevel;
-  let sens = input.contextVector.dataSensitivity;
-
-  if (env === 'PRODUCTION' && (exp === 'PUBLIC' || exp === 'RESTRICTED_PUBLIC') && result.exploitability === 'EXPLOITABLE') {
-    result.contextualRisk = 'CRITICAL';
-    result.policyBlockingStatus = 'BLOCKING';
-    result.reviewRequired = false;
-    result.exceptionRequired = true;
-    result.triggeredRuleIds.push('CR-001');
-    result.reasonCodes.push('CTX-001');
-  } else if (env === 'PRODUCTION' && crit === 'CRITICAL' && result.exploitability === 'EXPLOITABLE') {
-    result.contextualRisk = 'HIGH'; // or CRITICAL
-    result.policyBlockingStatus = 'BLOCKING';
-    result.reviewRequired = false;
-  } else if (priv === 'SYSTEM' && result.exploitability === 'EXPLOITABLE') {
-    result.contextualRisk = 'HIGH';
-    result.policyBlockingStatus = 'BLOCKING';
-    result.reviewRequired = false;
-  } else if (sens === 'RESTRICTED' && result.exploitability === 'EXPLOITABLE') {
-    result.contextualRisk = 'HIGH';
-    result.policyBlockingStatus = 'BLOCKING';
-    result.reviewRequired = false;
-  } else if (env === 'DEVELOPMENT' && (exp === 'NONE' || exp === 'INTERNAL') && result.exploitability !== 'EXPLOITABLE') {
-    result.contextualRisk = 'LOW';
-    result.policyBlockingStatus = 'NON_BLOCKING';
-    result.reviewRequired = false;
+  if (input.missingContext) {
+    result.contextAssuranceState = 'MISSING';
+    result.contextualRisk = 'UNKNOWN';
+    result.policyBlockingStatus = 'REVIEW_REQUIRED';
+    result.reasonCodes.push('CTX-005');
+    result.triggeredRuleIds.push('CAECTD-R024');
+    return result;
   }
+
+  if (isBlocking) result.policyBlockingStatus = 'BLOCKING';
+  else if (needsReview) result.policyBlockingStatus = 'REVIEW_REQUIRED';
+  else result.policyBlockingStatus = 'NON_BLOCKING';
+  
+  result.contextualRisk = highestRisk;
+  result.exceptionRequired = exceptionNeeded;
+  result.triggeredRuleIds = Array.from(triggeredRules);
+  result.reasonCodes = Array.from(reasonCodes);
 
   // Exception processing
   let excStatus = input.contextVector.exceptionStatus;
   if (excStatus === 'ACTIVE' && input.exceptionTrusted && result.policyBlockingStatus === 'BLOCKING') {
-    // Condition met for active valid exception over exceptionable class B
     result.exceptionContribution = 'CONDITIONALLY_ACCEPTED';
     result.triggeredRuleIds.push('CR-011');
   }
@@ -134,7 +202,6 @@ function evaluateContextRisk(input) {
     result.exceptionContribution = 'NONE';
   }
 
-  // Final review fallback if no rule explicitly sets it
   if (result.policyBlockingStatus === 'REVIEW_REQUIRED') {
     result.reviewRequired = true;
   }
