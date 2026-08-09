@@ -55,8 +55,9 @@ async function insertTrustDecision(record) {
   const query = `
     INSERT INTO trust_decision_history (
       sbom_id, trust_status, reason_code, reason_description,
-      evidence_summary, policy_version, evaluated_by, idempotency_key
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      evidence_summary, policy_version, evaluated_by, idempotency_key,
+      caectd_model_version, triggered_rule_ids, evaluated_rule_ids, evidence_dependencies, explanation_completeness
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *;
   `;
   const values = [
@@ -67,7 +68,12 @@ async function insertTrustDecision(record) {
     JSON.stringify(record.evidenceSummary || {}),
     record.policyVersion || '3.0',
     record.evaluatedBy || 'system',
-    record.idempotencyKey || null
+    record.idempotencyKey || null,
+    record.caectdModelVersion || null,
+    record.triggeredRuleIds ? JSON.stringify(record.triggeredRuleIds) : null,
+    record.evaluatedRuleIds ? JSON.stringify(record.evaluatedRuleIds) : null,
+    record.evidenceDependencies ? JSON.stringify(record.evidenceDependencies) : null,
+    record.explanationCompleteness ? JSON.stringify(record.explanationCompleteness) : null
   ];
 
   const client = await db.pool.connect();

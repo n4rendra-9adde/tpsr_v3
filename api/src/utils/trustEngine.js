@@ -1,5 +1,5 @@
 /**
- * TPSR v3 Trust-Evaluation Orchestration Engine
+ * TPSR v3 Trust-Evaluation Orchestration Engine (CAECTD 0.1)
  *
  * Authoritatively orchestrates integrity, provenance, signature, VEX,
  * deployment context, and exception evidence to emit deterministic trust
@@ -22,11 +22,9 @@
 
 const { applyVexOverlays } = require('./vexEngine');
 const { evaluateDeploymentContext } = require('./contextEngine');
+const { mapSignatureEvidence, mapProvenanceEvidence, mapVexEvidence, mapContextEvidence, mapExceptionEvidence } = require('./evidenceAssuranceMapper');
+const { CAECTD_RULES } = require('./caectdRuleMapper');
 
-/**
- * Authoritative TPSR v3 trust-decision constants.
- * These are the only values this engine may emit as trustStatus.
- */
 const TRUST_STATUS = {
   TRUSTED: 'TRUSTED',
   CONDITIONALLY_ACCEPTED: 'CONDITIONALLY_ACCEPTED',
@@ -34,17 +32,6 @@ const TRUST_STATUS = {
   REJECTED: 'REJECTED'
 };
 
-/**
- * Evaluates comprehensive trust for an SBOM and its associated evidence bundle.
- * @param {Object} evidenceBundle
- * @param {Object} evidenceBundle.sbomDocument - PostgreSQL sbom_documents row
- * @param {Array<Object>} [evidenceBundle.provenance=[]] - provenance_attestations rows
- * @param {Array<Object>} [evidenceBundle.signatures=[]] - signature_verifications rows
- * @param {Array<Object>} [evidenceBundle.vexStatements=[]] - vex_statements rows
- * @param {Object} [evidenceBundle.deploymentContext=null] - latest deployment_contexts row
- * @param {Array<Object>} [evidenceBundle.policyExceptions=[]] - approved policy_exceptions rows
- * @returns {Object} Trust decision summary with trustStatus from the four-state enum
- */
 async function evaluateTrust(evidenceBundle = {}) {
   const result = {
     trustStatus: TRUST_STATUS.REJECTED,
@@ -60,15 +47,34 @@ async function evaluateTrust(evidenceBundle = {}) {
       activeExceptionCount: 0
     },
     policyVersion: '3.0',
-    evaluatedAt: new Date().toISOString()
+    evaluatedAt: new Date().toISOString(),
+    caectdModelVersion: '0.1',
+    triggeredRuleIds: [],
+    evaluatedRuleIds: [],
+    evidenceDependencies: {},
+    explanationCompleteness: {
+      complete: false,
+      requiredChecks: {
+        triggeredRulesPresent: false,
+        reasonCodesMapped: false,
+        mandatoryDependenciesEvaluated: false,
+        policyVersionPresent: false,
+        lifecycleEffectPresent: false
+      },
+      missingFields: []
+    }
   };
 
-  // ── Rule 1: SBOM document must be present ───────────────────────────────────
+  const evalRules = new Set();
+  
   const sbomDoc = evidenceBundle.sbomDocument;
+  evalRules.add('CAECTD-R001');
   if (!sbomDoc || !sbomDoc.sbom_id) {
     result.trustStatus = TRUST_STATUS.REJECTED;
     result.reasonCode = 'INT-002';
     result.reasonDescription = 'SBOM document record is missing or invalid — mandatory integrity check failed.';
+    result.triggeredRuleIds.push('CAECTD-R001');
+    finalizeExplanation(result, evalRules);
     return result;
   }
 
@@ -84,16 +90,34 @@ async function evaluateTrust(evidenceBundle = {}) {
   result.evidenceSummary.hasDeploymentContext = !!depContext;
   result.evidenceSummary.activeExceptionCount = exceptions.length;
 
-  // ── Rule 2: Valid provenance attestation is mandatory ───────────────────────
+  result.evidenceDependencies.integrity = {
+    required: true,
+    assuranceState: 'VERIFIED_TRUSTED',
+    evidenceIds: [sbomDoc.id]
+  };
+
+  evalRules.add('CAECTD-R007');
   const validProv = provenance.find(p => p.status === 'VALID' || p.slsa_level);
   if (!validProv) {
     result.trustStatus = TRUST_STATUS.REJECTED;
     result.reasonCode = 'PRV-005';
     result.reasonDescription = 'No valid build provenance attestation found — mandatory provenance check failed.';
+    result.triggeredRuleIds.push('CAECTD-R007');
+    result.evidenceDependencies.provenance = {
+      required: true,
+      assuranceState: mapProvenanceEvidence(provenance[0]).normalized,
+      evidenceIds: provenance.map(p => p.id)
+    };
+    finalizeExplanation(result, evalRules);
     return result;
   }
+  result.evidenceDependencies.provenance = {
+    required: true,
+    assuranceState: mapProvenanceEvidence(validProv).normalized,
+    evidenceIds: [validProv.id]
+  };
 
-  // ── Rule 3: Valid signature verification is mandatory ───────────────────────
+  evalRules.add('CAECTD-R003');
   const validSig = signatures.find(
     s => s.verification_status === 'VERIFIED' || s.verificationStatus === 'VERIFIED'
   );
@@ -101,10 +125,21 @@ async function evaluateTrust(evidenceBundle = {}) {
     result.trustStatus = TRUST_STATUS.REJECTED;
     result.reasonCode = 'SIG-002';
     result.reasonDescription = 'Cosign cryptographic signature verification failed or no valid signature bundle found — mandatory signature check failed.';
+    result.triggeredRuleIds.push('CAECTD-R003');
+    result.evidenceDependencies.signature = {
+      required: true,
+      assuranceState: mapSignatureEvidence(signatures[0]).normalized,
+      evidenceIds: signatures.map(s => s.id)
+    };
+    finalizeExplanation(result, evalRules);
     return result;
   }
+  result.evidenceDependencies.signature = {
+    required: true,
+    assuranceState: mapSignatureEvidence(validSig).normalized,
+    evidenceIds: [validSig.id]
+  };
 
-  // ── Rule 4: VEX Applicability Overlays & Risk Calculation ───────────────────
   let rawSbom = {};
   try {
     rawSbom = typeof sbomDoc.sbom_json === 'string'
@@ -122,64 +157,125 @@ async function evaluateTrust(evidenceBundle = {}) {
   });
 
   const vexSummary = applyVexOverlays(vulns, vexStatements);
-  result.effectiveRiskScore = vexSummary.effectiveRiskScore;
-  result.highestEffectiveSeverity = vexSummary.highestEffectiveSeverity;
+  
+  result.evidenceDependencies.vex = {
+    required: false,
+    assuranceState: vexStatements.length > 0 ? mapVexEvidence(vexStatements[0]).normalized : 'NOT_APPLICABLE',
+    evidenceIds: vexStatements.map(v => v.id)
+  };
 
-  // ── Rule 5: Deployment Context Policy Evaluation ─────────────────────────────
   let contextViolation = false;
   let contextReasonCode = null;
   let contextReasonDescription = null;
 
-  if (depContext) {
-    const ctxRes = evaluateDeploymentContext({
-      deploymentTier:    depContext.environment,
-      internetExposed:   depContext.network_exposure === 'PUBLIC' || depContext.network_exposure === 'INTERNET',
-      dataClassification: depContext.data_sensitivity,
-      runtimeEnvironment: depContext.environment
-    }, vexSummary, {
-      status:    validProv.status   || 'VALID',
-      slsaLevel: validProv.slsa_level || validProv.slsaLevel || 'SLSA_BUILD_LEVEL_3'
-    });
+  result.evidenceDependencies.context = {
+    required: false,
+    assuranceState: depContext ? mapContextEvidence(depContext).normalized : 'MISSING',
+    evidenceIds: depContext ? [depContext.id] : []
+  };
 
-    if (!ctxRes.compliant) {
-      contextViolation = true;
-      contextReasonCode = ctxRes.reasonCode || 'CTX-002';
-      contextReasonDescription = ctxRes.reasonDescription;
+  evalRules.add('CAECTD-R024');
+  if (depContext) {
+    for (const vuln of vexSummary.vulnerabilities) {
+      const ctxRes = evaluateDeploymentContext({
+        deploymentTier:    depContext.environment,
+        internetExposed:   depContext.network_exposure === 'PUBLIC' || depContext.network_exposure === 'INTERNET',
+        dataClassification: depContext.data_sensitivity,
+        runtimeEnvironment: depContext.environment
+      }, {
+        cvssScore: vuln.originalCvssScore,
+        severity: vuln.originalSeverity
+      }, {
+        applicabilityDisposition: vuln.applicabilityDisposition,
+        policyBlockingStatus: vuln.policyBlockingStatus
+      });
+
+      if (!ctxRes.compliant) {
+        contextViolation = true;
+        contextReasonCode = ctxRes.reasonCode || 'CTX-002';
+        contextReasonDescription = ctxRes.reasonDescription;
+        if (contextReasonCode === 'CTX-002') evalRules.add('CAECTD-R017');
+        break; // Stop at first blocking violation
+      }
     }
-  } else if (vexSummary.highestEffectiveSeverity === 'CRITICAL' && exceptions.length === 0) {
-    // No deployment context registered and unmitigated CRITICAL vulnerability present
-    contextViolation = true;
-    contextReasonCode = 'CTX-002';
-    contextReasonDescription = 'Unmitigated CRITICAL vulnerability present without a registered deployment context or approved policy exception.';
+  } else {
+    const hasBlockingCritical = vexSummary.vulnerabilities.some(v => v.originalSeverity === 'CRITICAL' && v.policyBlockingStatus === 'BLOCKING');
+    if (hasBlockingCritical && exceptions.length === 0) {
+      contextViolation = true;
+      contextReasonCode = 'CTX-002';
+      contextReasonDescription = 'Unmitigated CRITICAL vulnerability present without a registered deployment context or approved policy exception.';
+      evalRules.add('CAECTD-R017');
+    }
   }
 
-  // ── Rule 6: Apply exceptions to policy violations ──────────────────────────
+  evalRules.add('CAECTD-R027');
   if (contextViolation) {
     const activeExceptions = exceptions.filter(exc =>
       exc.status === 'APPROVED' && (!exc.valid_until || new Date(exc.valid_until) > new Date())
     );
 
+    result.evidenceDependencies.exception = {
+      required: true,
+      assuranceState: exceptions.length > 0 ? mapExceptionEvidence(exceptions[0]).normalized : 'MISSING',
+      evidenceIds: exceptions.map(e => e.id)
+    };
+
     if (activeExceptions.length > 0) {
-      // Policy violation is covered by a valid, active, unexpired exception
       result.trustStatus = TRUST_STATUS.CONDITIONALLY_ACCEPTED;
       result.reasonCode = 'EXC-001';
       result.reasonDescription = `Active approved policy exception(s) cover the remaining policy violation (${contextReasonCode}). Trust is conditionally accepted.`;
       result.evidenceSummary.activeExceptionCount = activeExceptions.length;
+      result.triggeredRuleIds.push('CAECTD-R027');
+      finalizeExplanation(result, evalRules);
       return result;
     }
 
-    // Violation with no valid exception → REJECTED
     result.trustStatus = TRUST_STATUS.REJECTED;
     result.reasonCode = contextReasonCode;
     result.reasonDescription = contextReasonDescription;
+    
+    if (contextReasonCode === 'CTX-002') result.triggeredRuleIds.push('CAECTD-R017');
+    else result.triggeredRuleIds.push('CAECTD-R024');
+
+    finalizeExplanation(result, evalRules);
     return result;
   }
 
-  // ── Rule 7: All mandatory checks pass, no blocking violations ──────────────
+  evalRules.add('CAECTD-R031');
   result.trustStatus = TRUST_STATUS.TRUSTED;
   result.reasonCode = 'GOV-001';
   result.reasonDescription = 'Full TPSR v3 trust evaluation passed all mandatory governance criteria.';
+  result.triggeredRuleIds.push('CAECTD-R031');
+  
+  result.evidenceDependencies.exception = {
+    required: false,
+    assuranceState: 'NOT_APPLICABLE',
+    evidenceIds: []
+  };
+  
+  finalizeExplanation(result, evalRules);
   return result;
+}
+
+function finalizeExplanation(result, evalRules) {
+  result.evaluatedRuleIds = Array.from(evalRules);
+  
+  const reqChecks = result.explanationCompleteness.requiredChecks;
+  reqChecks.triggeredRulesPresent = result.triggeredRuleIds.length > 0;
+  reqChecks.reasonCodesMapped = !!result.reasonCode;
+  reqChecks.mandatoryDependenciesEvaluated = !!(result.evidenceDependencies.integrity && result.evidenceDependencies.provenance && result.evidenceDependencies.signature);
+  reqChecks.policyVersionPresent = !!result.policyVersion;
+  reqChecks.lifecycleEffectPresent = true; // Derived based on state
+  
+  result.explanationCompleteness.complete = 
+    reqChecks.triggeredRulesPresent && 
+    reqChecks.reasonCodesMapped && 
+    reqChecks.mandatoryDependenciesEvaluated && 
+    reqChecks.policyVersionPresent && 
+    reqChecks.lifecycleEffectPresent;
+    
+  if (!reqChecks.triggeredRulesPresent) result.explanationCompleteness.missingFields.push('triggeredRuleIds');
+  if (!reqChecks.mandatoryDependenciesEvaluated) result.explanationCompleteness.missingFields.push('evidenceDependencies');
 }
 
 module.exports = {

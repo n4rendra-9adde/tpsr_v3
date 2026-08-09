@@ -8,14 +8,17 @@
       "https://github.com/actions/runner/github-hosted",
       "https://github.com/org/repo/.github/workflows/build.yml",
       "https://gitlab.com/gitlab-org/gitlab-runner",
-      "https://tekton.dev/chains/v2"
+      "https://tekton.dev/chains/v2",
+      "https://jenkins.io/tpsr/local-builder"
     ],
     "approvedBuildTypes": [
       "https://actions.github.io/buildtypes/workflow/v1",
-      "https://tekton.dev/attestations/workflow/v2"
+      "https://tekton.dev/attestations/workflow/v2",
+      "https://jenkins.io/tpsr/build/v1"
     ],
     "approvedSourceRepositories": [
-      "https://github.com/org/repo"
+      "https://github.com/org/repo",
+      "https://github.com/realworld-apps/nitro-prisma-zod-realworld-example-app.git"
     ],
     "freshness": {
       "maxAgeDays": 30,
@@ -33,7 +36,8 @@
     ],
     "trustedPublicKeys": {
       "build-officer@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEb3511L+qM/oD5H1ZqZ9E/s4yL+Q\nKj/E0oO8T5N1J/Z/V1rY1J3G/z5U1W1E1V1E1V1E1V1E1V1E1V1E1V1E1Q==\n-----END PUBLIC KEY-----",
-      "security-release@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEV1E1V1E1V1E1V1E1V1E1V1E1V1E1\nQj/E0oO8T5N1J/Z/V1rY1J3G/z5U1W1E1V1E1V1E1V1E1V1E1V1E1V1E1Q==\n-----END PUBLIC KEY-----"
+      "security-release@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEV1E1V1E1V1E1V1E1V1E1V1E1V1E1\nQj/E0oO8T5N1J/Z/V1rY1J3G/z5U1W1E1V1E1V1E1V1E1V1E1V1E1V1E1Q==\n-----END PUBLIC KEY-----",
+      "jenkins-service@tpsr.com": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMd5AjqQo6DxQBCeVbpLU4zE5+9x\nQ7HPdFUEx+cY8IJjgGRlR4oD2eZ42CRdyhWao20lIB8hUiZQC7ZpcHZqRw==\n-----END PUBLIC KEY-----"
     },
     "rekorTransparencyLog": {
       "enforceInclusion": true,

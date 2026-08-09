@@ -83,9 +83,7 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
 
     expect(res.status).toBe(201);
     expect(res.body.compliant).toBe(true);
-    expect(res.body.reasonCode).toBe('CTX-001');
-    expect(res.body.highestEffectiveSeverity).toBe('NONE');
-    expect(res.body.effectiveRiskScore).toBe(0);
+    expect(res.body.reasonCode).toBe('CTX-004');
   });
 
   test('POST /api/v1/sbom/:sbomId/exceptions: Records formal policy exception request and returns 201', async () => {

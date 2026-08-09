@@ -38,35 +38,58 @@ async function handleRecordContext(req, res) {
     });
 
     const vexSummary = applyVexOverlays(vulns, vexStatements);
-    const evalResult = evaluateDeploymentContext({
-      deploymentTier: body.deploymentTier || body.environment,
-      internetExposed: body.internetExposed || body.networkExposure === 'PUBLIC' || body.networkExposure === 'INTERNET',
-      dataClassification: body.dataClassification || body.dataSensitivity,
-      runtimeEnvironment: body.runtimeEnvironment
-    }, vexSummary);
+    
+    let isCompliant = true;
+    let finalReasonCode = 'CTX-000';
+    let finalReasonDescription = `Deployment context policy check passed for tier: ${body.deploymentTier || body.environment}`;
+
+    for (const vuln of vexSummary.vulnerabilities) {
+      const evalResult = evaluateDeploymentContext({
+        deploymentTier: body.deploymentTier || body.environment,
+        internetExposed: body.internetExposed || body.networkExposure === 'PUBLIC' || body.networkExposure === 'INTERNET',
+        dataClassification: body.dataClassification || body.dataSensitivity,
+        runtimeEnvironment: body.runtimeEnvironment
+      }, {
+        cvssScore: vuln.originalCvssScore,
+        severity: vuln.originalSeverity
+      }, {
+        applicabilityDisposition: vuln.applicabilityDisposition,
+        policyBlockingStatus: vuln.policyBlockingStatus
+      });
+
+      if (!evalResult.compliant) {
+        isCompliant = false;
+        finalReasonCode = evalResult.reasonCode;
+        finalReasonDescription = evalResult.reasonDescription;
+        break;
+      }
+    }
+
+    if (vexSummary.vulnerabilities.length === 0) {
+      // If there are no vulnerabilities, it is trivially compliant.
+      isCompliant = true;
+    }
 
     const dbRecord = await sbomRepository.insertDeploymentContext({
       sbomId: sbomId.trim(),
-      environment: evalResult.deploymentTier,
-      networkExposure: evalResult.internetExposed ? 'PUBLIC' : 'INTERNAL',
-      dataSensitivity: evalResult.dataClassification,
+      environment: (body.deploymentTier || body.environment || 'PROD').toUpperCase(),
+      networkExposure: (body.internetExposed || body.networkExposure === 'PUBLIC' || body.networkExposure === 'INTERNET') ? 'PUBLIC' : 'INTERNAL',
+      dataSensitivity: body.dataClassification || body.dataSensitivity,
       privilegeLevel: body.privilegeLevel || 'STANDARD',
       compensatingControls: body.compensatingControls || [],
-      riskMultiplier: body.riskMultiplier || (evalResult.deploymentTier === 'PROD_CRITICAL' ? 1.5 : 1.0)
+      riskMultiplier: body.riskMultiplier || ((body.deploymentTier || body.environment) === 'PROD_CRITICAL' ? 1.5 : 1.0)
     });
 
-    const statusCode = evalResult.compliant ? 201 : 422;
+    const statusCode = isCompliant ? 201 : 422;
     return res.status(statusCode).json({
-      message: evalResult.compliant ? 'Deployment context recorded and policy check passed' : 'Deployment context policy check failed',
+      message: isCompliant ? 'Deployment context recorded and policy check passed' : 'Deployment context policy check failed',
       contextId: dbRecord.id,
       sbomId: sbomId.trim(),
-      compliant: evalResult.compliant,
-      deploymentTier: evalResult.deploymentTier,
-      internetExposed: evalResult.internetExposed,
-      reasonCode: evalResult.reasonCode,
-      reasonDescription: evalResult.reasonDescription,
-      effectiveRiskScore: vexSummary.effectiveRiskScore,
-      highestEffectiveSeverity: vexSummary.highestEffectiveSeverity,
+      compliant: isCompliant,
+      deploymentTier: (body.deploymentTier || body.environment || 'PROD').toUpperCase(),
+      internetExposed: !!(body.internetExposed || body.networkExposure === 'PUBLIC' || body.networkExposure === 'INTERNET'),
+      reasonCode: finalReasonCode,
+      reasonDescription: finalReasonDescription,
       registeredAt: dbRecord.registered_at
     });
   } catch (err) {

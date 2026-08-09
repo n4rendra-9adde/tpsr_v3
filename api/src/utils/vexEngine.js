@@ -220,6 +220,64 @@ async function verifyVexDocument(envelope, signatureType, publicKey, targetConte
   return result;
 }
 
+function evaluateVexStatement(vexRecord) {
+  const status = vexRecord.applicability_status || vexRecord.status;
+  const justification = vexRecord.justification;
+
+  if (status === 'not_affected' || status === 'fixed') {
+    return { status, reasonCode: 'VEX-001', reasonDescription: 'VEX policy applied: Risk mitigated.', justification, applicabilityDisposition: 'NOT_AFFECTED', policyBlockingStatus: 'NON_BLOCKING' };
+  } else if (status === 'under_investigation') {
+    return { status, reasonCode: 'VEX-002', reasonDescription: 'VEX policy applied: Under investigation.', justification, applicabilityDisposition: 'UNDER_INVESTIGATION', policyBlockingStatus: 'REVIEW_REQUIRED' };
+  } else {
+    return { status: 'affected', reasonCode: 'VEX-003', reasonDescription: 'VEX policy applied: Vulnerability applicable.', justification, applicabilityDisposition: 'APPLICABLE', policyBlockingStatus: 'BLOCKING' };
+  }
+}
+
+function applyVexOverlays(vulnerabilities = [], vexStatements = []) {
+  const activeVexIds = [];
+
+  const updatedVulnerabilities = vulnerabilities.map(vuln => {
+    const vulnCopy = { ...vuln };
+    const vulnId = vulnCopy.id || vulnCopy.cve || vulnCopy.vulnerabilityId;
+
+    // Find matching VEX statement
+    const matchingVex = vexStatements.find(v => {
+      const targetId = v.vulnerability_id || v.vulnerabilityId || v.cve || v.sub;
+      return targetId && targetId.toLowerCase() === (vulnId || '').toLowerCase();
+    });
+
+    vulnCopy.originalCvssScore = Number(vulnCopy.cvssScore || vulnCopy.cvss || 0);
+    vulnCopy.originalSeverity = (vulnCopy.severity || 'UNKNOWN').toUpperCase();
+
+    if (matchingVex) {
+      if (matchingVex.id || matchingVex.vex_id) {
+        activeVexIds.push(matchingVex.id || matchingVex.vex_id);
+      }
+      const evalResult = evaluateVexStatement(matchingVex);
+      vulnCopy.vexStatus = evalResult.status;
+      vulnCopy.vexReasonCode = evalResult.reasonCode;
+      vulnCopy.vexReasonDescription = evalResult.reasonDescription;
+      vulnCopy.vexJustification = evalResult.justification;
+      vulnCopy.applicabilityDisposition = evalResult.applicabilityDisposition;
+      vulnCopy.policyBlockingStatus = evalResult.policyBlockingStatus;
+    } else {
+      vulnCopy.vexStatus = 'unevaluated';
+      vulnCopy.applicabilityDisposition = 'APPLICABLE';
+      vulnCopy.policyBlockingStatus = 'BLOCKING';
+    }
+
+    return vulnCopy;
+  });
+
+  return {
+    vulnerabilities: updatedVulnerabilities,
+    activeVexIds: Array.from(new Set(activeVexIds)),
+    appliedAt: new Date().toISOString()
+  };
+}
+
 module.exports = {
-  verifyVexDocument
+  verifyVexDocument,
+  evaluateVexStatement,
+  applyVexOverlays
 };
