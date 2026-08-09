@@ -6,9 +6,12 @@ const contextRoute = require('../context.routes');
 const exceptionsRoute = require('../exceptions.routes');
 const sbomRepository = require('../../repositories/sbomRepository');
 const vexEngine = require('../../utils/vexEngine');
+const policyExceptionRepository = require('../../repositories/policyExceptionRepository');
+const policyExceptionEngine = require('../../utils/policyExceptionEngine');
 
 jest.mock('../../repositories/sbomRepository');
 jest.mock('../../utils/vexEngine');
+jest.mock('../../repositories/policyExceptionRepository');
 
 const app = express();
 app.use(express.json());
@@ -43,7 +46,7 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
     sbomRepository.insertVexStatement.mockResolvedValue({
       id: 701,
       vulnerability_id: 'CVE-2026-9999',
-      policy_impact: 'SUPPRESSED',
+      policy_blocking_status: 'NON_BLOCKING',
       created_at: new Date().toISOString()
     });
 
@@ -67,7 +70,7 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
 
     expect(res.status).toBe(201);
     expect(res.body.reasonCode).toBe('VEX-001');
-    expect(res.body.policyImpact).toBe('SUPPRESSED');
+    expect(res.body.policyBlockingStatus).toBe('NON_BLOCKING');
     expect(res.body.vexId).toBe(701);
   });
 
@@ -116,21 +119,23 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
   });
 
   test('POST /api/v1/sbom/:sbomId/exceptions: Records formal policy exception request and returns 201', async () => {
-    sbomRepository.getSBOMDocumentBySBOMID.mockResolvedValue({ id: 203, sbom_id: 'test-sbom-203' });
-    sbomRepository.insertPolicyException.mockResolvedValue({
+    sbomRepository.getSBOMDocumentBySBOMID.mockResolvedValue({ id: 203, sbom_id: 'test-sbom-203', sbom_hash: 'hash123' });
+    
+    policyExceptionRepository.createExceptionRequest.mockResolvedValue({
       id: 901,
-      violation_id: 'CVE-2026-7777',
-      violation_type: 'CRITICAL_UNMITIGATED',
-      status: 'APPROVED',
-      valid_until: '2026-12-31T23:59:59Z',
+      policy_rule_id: 'CAECTD-R010',
+      status: 'REQUESTED',
       created_at: new Date().toISOString()
     });
+    
+    policyExceptionRepository.recordExceptionEvent.mockResolvedValue({});
 
     const body = {
-      violationId: 'CVE-2026-7777',
-      violationType: 'CRITICAL_UNMITIGATED',
+      policyRuleId: 'CAECTD-R010',
+      reasonCode: 'TEST',
       justification: 'Legacy system migrating in Q4; isolated network segment.',
-      validUntil: '2026-12-31T23:59:59Z'
+      validUntil: '2026-12-31T23:59:59Z',
+      residualRisk: 'MEDIUM'
     };
 
     const res = await request(app)
@@ -140,14 +145,14 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
       .send(body);
 
     expect(res.status).toBe(201);
-    expect(res.body.exceptionId).toBe(901);
-    expect(res.body.status).toBe('APPROVED');
+    expect(res.body.id).toBe(901);
+    expect(res.body.status).toBe('REQUESTED');
   });
 
   test('GET /api/v1/sbom/:sbomId/exceptions: Retrieves active policy exceptions', async () => {
     sbomRepository.getSBOMDocumentBySBOMID.mockResolvedValue({ id: 204, sbom_id: 'test-sbom-204' });
-    sbomRepository.getPolicyExceptionsBySBOMID.mockResolvedValue([
-      { id: 901, sbom_id: 'test-sbom-204', violation_id: 'CVE-2026-7777', status: 'APPROVED' }
+    policyExceptionRepository.listExceptionsBySbomId.mockResolvedValue([
+      { id: 901, sbom_id: 'test-sbom-204', policy_rule_id: 'CAECTD-R010', status: 'ACTIVE' }
     ]);
 
     const res = await request(app)
@@ -157,6 +162,6 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
 
     expect(res.status).toBe(200);
     expect(res.body.count).toBe(1);
-    expect(res.body.policyExceptions[0].violation_id).toBe('CVE-2026-7777');
+    expect(res.body.policyExceptions[0].policy_rule_id).toBe('CAECTD-R010');
   });
 });

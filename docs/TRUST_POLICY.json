@@ -108,9 +108,21 @@
       "PUBLIC": 0.8
     }
   },
-  "exceptionPolicy": {
-    "allowedRoles": ["security", "admin"],
-    "maxValidityDays": 90,
-    "requireCompensatingControls": true
+  "exceptionGovernance": {
+    "allowedRequesterRoles": ["developer", "security"],
+    "allowedOwnerRoles": ["developer", "security"],
+    "allowedApproverRoles": ["security", "admin"],
+    "requireIndependentApprover": true,
+    "requireOwnerDifferentFromApprover": true,
+    "requireRequesterDifferentFromApprover": true,
+    "maximumValidityHoursByRisk": {
+      "LOW": 720,
+      "MEDIUM": 336,
+      "HIGH": 168,
+      "CRITICAL": 24
+    },
+    "requireRemediationPlan": true,
+    "requireCompensatingControlsForHighRisk": true,
+    "allowCriticalRiskExceptions": false
   }
 }

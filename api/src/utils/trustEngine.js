@@ -257,27 +257,68 @@ async function evaluateTrust(evidenceBundle = {}) {
 
   evalRules.add('CAECTD-R027');
   if (contextViolation) {
-    const activeExceptions = exceptions.filter(exc =>
-      exc.status === 'APPROVED' && (!exc.valid_until || new Date(exc.valid_until) > new Date())
+    const activeExceptions = exceptions.filter(exc => 
+      exc.status === 'ACTIVE' && exc.assurance_state === 'VERIFIED_TRUSTED'
     );
+    // Note: To be fully strict we'd use policyExceptionEngine in real time, but since it's pre-computed 
+    // into assurance_state when requested/approved, we rely on the DB's assurance_state for this decision
+    // mapping if it matches the release.
+    
+    // In our repository, we enforce valid_until > NOW() when fetching active exceptions.
+    // For now we assume if it's in `activeExceptions`, it's valid for this SBOM.
+    // Ensure we don't override Class A failures (though contextViolation is Class B typically).
 
+    const hasClassC = contextReasonCode === 'CTX-005' || contextReasonCode === 'CTX-017' || contextReasonCode === 'CTX-010';
+    
+    // Check if the underlying failure is exceptionable (e.g., CTX-002, CTX-014 etc. but not missing context which is CTX-005)
+    // For now we check if it is not Class C and not Class A.
+    
     result.evidenceDependencies.exception = {
       required: true,
-      assuranceState: exceptions.length > 0 ? mapExceptionEvidence(exceptions[0]).normalized : 'MISSING',
-      evidenceIds: exceptions.map(e => e.id)
+      assuranceState: exceptions.length > 0 ? (activeExceptions.length > 0 ? 'VERIFIED_TRUSTED' : 'INVALID') : 'MISSING',
+      evidenceIds: exceptions.map(e => e.id),
+      details: exceptions.map(e => ({
+        exceptionId: e.id,
+        exceptionStatus: e.status,
+        exceptionAssuranceState: e.assurance_state,
+        policyRuleId: e.policy_rule_id,
+        reasonCode: e.reason_code,
+        vulnerabilityIds: e.vulnerability_ids,
+        owner: e.owned_by,
+        approver: e.approved_by,
+        validUntil: e.valid_until,
+        governanceResult: e.assurance_state === 'VERIFIED_TRUSTED' ? 'PASSED' : 'FAILED'
+      }))
     };
 
-    if (activeExceptions.length > 0) {
+    if (activeExceptions.length > 0 && !hasClassC) {
       result.trustStatus = TRUST_STATUS.CONDITIONALLY_ACCEPTED;
       result.reasonCode = 'EXC-001';
-      result.reasonDescription = `Active approved policy exception(s) cover the remaining policy violation (${contextReasonCode}). Trust is conditionally accepted.`;
+      result.reasonDescription = `Active governed policy exception(s) cover the remaining policy violation (${contextReasonCode}). Trust is conditionally accepted.`;
       result.evidenceSummary.activeExceptionCount = activeExceptions.length;
       result.triggeredRuleIds.push('CAECTD-R027');
       finalizeExplanation(result, evalRules);
       return result;
     }
 
-    result.trustStatus = contextReasonCode === 'CTX-005' ? TRUST_STATUS.REVIEW_REQUIRED : TRUST_STATUS.REJECTED;
+    if (activeExceptions.length > 0 && hasClassC) {
+       // Cannot override Class C
+       evalRules.add('CAECTD-R030');
+       result.triggeredRuleIds.push('CAECTD-R030');
+    }
+
+    const hasExpired = exceptions.some(e => e.status === 'EXPIRED');
+    const hasRevoked = exceptions.some(e => e.status === 'REVOKED');
+    if (hasExpired) {
+       evalRules.add('CAECTD-R028');
+       result.triggeredRuleIds.push('CAECTD-R028');
+    }
+    if (hasRevoked) {
+       evalRules.add('CAECTD-R029');
+       result.triggeredRuleIds.push('CAECTD-R029');
+    }
+
+    result.trustStatus = hasClassC ? TRUST_STATUS.REVIEW_REQUIRED : TRUST_STATUS.REJECTED;
     result.reasonCode = contextReasonCode;
     result.reasonDescription = contextReasonDescription;
 

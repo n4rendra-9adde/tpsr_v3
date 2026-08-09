@@ -30,6 +30,7 @@ var exceptionsRoute = require('./routes/exceptions.routes');
 var trustRoute = require('./routes/trust.routes');
 var outboxRoute = require('./routes/outbox.routes');
 var outboxWorker = require('./workers/outboxWorker');
+var exceptionExpiryWorker = require('./workers/exceptionExpiryWorker');
 
 
 // Startup environment validation
@@ -132,7 +133,7 @@ function getAllowedRoles(method, reqPath) {
   if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/context(\/assertions.*)?$/)) {
     return auth.ROUTE_ROLE_MAP.context;
   }
-  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/exceptions$/)) {
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/exceptions(\/.*)?$/)) {
     return auth.ROUTE_ROLE_MAP.exceptions;
   }
   if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/trust-(evaluation|decision|evidence)$/)) {
@@ -198,11 +199,13 @@ async function startServer() {
   var server = app.listen(PORT, function () {
     console.log('TPSR API server running on port ' + PORT);
     outboxWorker.startWorker(10000, 10, 'outbox-worker-api');
+    exceptionExpiryWorker.start();
   });
 
   function shutdown(signal) {
     console.log('[TPSR] Received ' + signal + '. Shutting down gracefully...');
     outboxWorker.stopWorker();
+    exceptionExpiryWorker.stop();
     server.close(function () {
       db.closeDatabasePool()
         .then(function () {

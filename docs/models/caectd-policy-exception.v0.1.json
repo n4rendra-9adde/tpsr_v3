@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tpsr.local/models/caectd-policy-exception.v0.1.json",
+  "title": "CAECTD Policy Exception Model v0.1",
+  "description": "Schema for governed policy exceptions in the Context-Aware Evidence-Correlated Trust Decision Model",
+  "type": "object",
+  "properties": {
+    "exceptionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "exceptionVersion": {
+      "type": "string"
+    },
+    "sbomId": {
+      "type": "string"
+    },
+    "digestManifestDigest": {
+      "type": "string"
+    },
+    "policyRuleId": {
+      "type": "string"
+    },
+    "reasonCode": {
+      "type": "string"
+    },
+    "vulnerabilityIds": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "componentIdentifiers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "requestedBy": {
+      "type": "string"
+    },
+    "requestedByRole": {
+      "type": "string"
+    },
+    "ownedBy": {
+      "type": "string"
+    },
+    "ownerRole": {
+      "type": "string"
+    },
+    "approvedBy": {
+      "type": "string"
+    },
+    "approverRole": {
+      "type": "string"
+    },
+    "requestedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approvedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "validFrom": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "validUntil": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "justification": {
+      "type": "string",
+      "minLength": 1
+    },
+    "businessNeed": {
+      "type": "string"
+    },
+    "remediationPlan": {
+      "type": "string"
+    },
+    "compensatingControls": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "residualRisk": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    },
+    "approvalComment": {
+      "type": "string"
+    },
+    "revocationReason": {
+      "type": "string"
+    },
+    "revokedBy": {
+      "type": "string"
+    },
+    "revokedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supersedesExceptionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "previousExceptionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "REQUESTED",
+        "APPROVED",
+        "ACTIVE",
+        "REJECTED",
+        "EXPIRED",
+        "REVOKED",
+        "SUPERSEDED",
+        "INVALID",
+        "OUT_OF_SCOPE"
+      ]
+    },
+    "policyVersion": {
+      "type": "string"
+    },
+    "trustPolicyHash": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "exceptionId",
+    "exceptionVersion",
+    "sbomId",
+    "digestManifestDigest",
+    "policyRuleId",
+    "reasonCode",
+    "requestedBy",
+    "requestedByRole",
+    "ownedBy",
+    "ownerRole",
+    "requestedAt",
+    "validFrom",
+    "validUntil",
+    "justification",
+    "residualRisk",
+    "status",
+    "policyVersion",
+    "trustPolicyHash",
+    "createdAt",
+    "updatedAt"
+  ]
+}

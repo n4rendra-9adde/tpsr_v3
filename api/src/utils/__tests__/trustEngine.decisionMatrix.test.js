@@ -34,9 +34,9 @@ const publicProdCtx = {
   data_sensitivity: 'RESTRICTED'
 };
 
-const approvedExc = [{ status: 'APPROVED', valid_until: new Date(Date.now() + 86400000).toISOString() }];
-const expiredExc  = [{ status: 'APPROVED', valid_until: new Date(Date.now() - 86400000).toISOString() }];
-const revokedExc  = [{ status: 'REVOKED',  valid_until: new Date(Date.now() + 86400000).toISOString() }];
+const approvedExc = [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', valid_until: new Date(Date.now() + 86400000).toISOString() }];
+const expiredExc  = [{ status: 'EXPIRED', assurance_state: 'STALE', valid_until: new Date(Date.now() - 86400000).toISOString() }];
+const revokedExc  = [{ status: 'REVOKED', assurance_state: 'INVALID', valid_until: new Date(Date.now() + 86400000).toISOString() }];
 
 // ─── A. TRUSTED ─────────────────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ describe('B. CONDITIONALLY_ACCEPTED — valid exception covers policy violation'
   });
 
   test('B.4 Exception with no valid_until (unlimited) is treated as active', async () => {
-    const unlimitedExc = [{ status: 'APPROVED', valid_until: null }];
+    const unlimitedExc = [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', valid_until: null }];
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
       vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: unlimitedExc

@@ -9,6 +9,7 @@ import {
   AnchorStatusBadge, 
   SignatureEvidenceCard, 
   ContextAssertionCard,
+  PolicyExceptionCard,
   ProvenanceEvidenceCard, 
   VexApplicabilityTable, 
   ReasonCodeList, 
@@ -634,6 +635,9 @@ function VerifyPage({ selectedIdentity }) {
     documentData: anchorDoc,
     signatureData,
     provenanceData,
+    vexData,
+    contextAssertionData,
+    exceptionsData,
     diagnostics,
     fetchEvidence,
     reset: resetEvidence
@@ -867,6 +871,9 @@ function VerifyPage({ selectedIdentity }) {
           <SignatureEvidenceCard signatureData={signatureData} />
           <ProvenanceEvidenceCard provenanceData={provenanceData} />
           <ContextAssertionCard contextData={contextAssertionData} />
+          {exceptionsData && exceptionsData.length > 0 && exceptionsData.map((exc) => (
+             <PolicyExceptionCard key={exc.id} exceptionData={exc} />
+          ))}
 
           {anchorDoc && (
             <Card
@@ -1257,6 +1264,8 @@ function CompliancePage({ selectedIdentity }) {
     error: evidenceError,
     documentData: anchorDoc,
     vexData,
+    contextAssertionData,
+    exceptionsData,
     diagnostics,
     fetchEvidence,
     reset: resetEvidence
@@ -1599,6 +1608,10 @@ function CompliancePage({ selectedIdentity }) {
               </Descriptions>
             </Card>
           )}
+
+          {exceptionsData && exceptionsData.length > 0 && exceptionsData.map((exc) => (
+             <PolicyExceptionCard key={exc.id} exceptionData={exc} />
+          ))}
 
           {perfMetrics && (
             <Card

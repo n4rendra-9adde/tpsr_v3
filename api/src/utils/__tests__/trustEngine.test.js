@@ -83,7 +83,7 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
       provenance: validProv,
       signatures: validSig,
       deploymentContext: { environment: 'PROD_CRITICAL', network_exposure: 'PUBLIC' },
-      policyExceptions: [{ id: 'exc-1', violation_id: 'CVE-2026-1111', status: 'APPROVED', valid_until: futureDate }]
+      policyExceptions: [{ id: 'exc-1', violation_id: 'CVE-2026-1111', status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', valid_until: futureDate }]
     });
     expect(res.trustStatus).toBe('CONDITIONALLY_ACCEPTED');
     expect(res.trustStatus).not.toBe('TRUSTED');

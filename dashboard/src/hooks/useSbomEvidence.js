@@ -13,6 +13,7 @@ export function useSbomEvidence() {
   const [provenanceData, setProvenanceData] = useState(null);
   const [vexData, setVexData] = useState([]);
   const [contextAssertionData, setContextAssertionData] = useState(null);
+  const [exceptionsData, setExceptionsData] = useState([]);
   
   // Diagnostics
   const [diagnostics, setDiagnostics] = useState([]);
@@ -23,6 +24,7 @@ export function useSbomEvidence() {
     setProvenanceData(null);
     setVexData([]);
     setContextAssertionData(null);
+    setExceptionsData([]);
     setError(null);
     setDiagnostics([]);
   }, []);
@@ -43,7 +45,8 @@ export function useSbomEvidence() {
       { name: 'signatures', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/signatures` },
       { name: 'provenance', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/provenance` },
       { name: 'vex', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/vex` },
-      { name: 'contextAssertions', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/context/assertions` }
+      { name: 'contextAssertions', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/context/assertions` },
+      { name: 'exceptions', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/exceptions` }
     ];
 
     try {
@@ -161,6 +164,13 @@ export function useSbomEvidence() {
               } else {
                 emptyReason = 'No active context assertions found';
               }
+            } else if (ep.name === 'exceptions') {
+              if (data.policyExceptions && data.policyExceptions.length > 0) {
+                count = data.policyExceptions.length;
+                setExceptionsData(data.policyExceptions);
+              } else {
+                emptyReason = 'No policy exceptions requested or active';
+              }
             }
           } catch (err) {
             parseError = err.message;
@@ -201,6 +211,7 @@ export function useSbomEvidence() {
     provenanceData,
     vexData,
     contextAssertionData,
+    exceptionsData,
     diagnostics,
     fetchEvidence,
     reset
