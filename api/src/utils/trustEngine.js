@@ -99,7 +99,7 @@ async function evaluateTrust(evidenceBundle = {}) {
   };
 
   evalRules.add('CAECTD-R007');
-  const validProv = provenance.find(p => p.status === 'VALID' || p.slsa_level);
+  const validProv = provenance.find(p => p.status === 'VALID' && p.slsa_level !== 'SLSA_BUILD_LEVEL_0');
   if (!validProv) {
     result.trustStatus = TRUST_STATUS.REJECTED;
     result.reasonCode = 'PRV-005';
@@ -206,7 +206,9 @@ async function evaluateTrust(evidenceBundle = {}) {
   }
 
   if (depContext && !contextViolation) {
+    console.log("[TPSR] Evaluating vulnerabilities:", vexSummary.vulnerabilities.length);
     for (const vuln of vexSummary.vulnerabilities) {
+      console.log("[TPSR] Vuln:", vuln.id || vuln.cve || vuln.vulnerabilityId, "Sev:", vuln.originalSeverity, "Status:", vuln.policyBlockingStatus);
       const ctxRes = evaluateDeploymentContext({
         deploymentTier:    isAuthenticatedContext ? depContext.environment : depContext.environment,
         internetExposed:   isAuthenticatedContext ? (depContext.internet_exposure === 'PUBLIC' || depContext.internetExposure === 'PUBLIC') : (depContext.network_exposure === 'PUBLIC' || depContext.network_exposure === 'INTERNET'),
@@ -220,6 +222,7 @@ async function evaluateTrust(evidenceBundle = {}) {
         policyBlockingStatus: vuln.policyBlockingStatus
       });
 
+      console.log("[TPSR] ctxRes:", ctxRes);
       if (!ctxRes.compliant) {
         contextViolation = true;
         contextReasonCode = ctxRes.reasonCode || 'CTX-002';
@@ -256,22 +259,13 @@ async function evaluateTrust(evidenceBundle = {}) {
   }
 
   evalRules.add('CAECTD-R027');
+  
+  const activeExceptions = exceptions.filter(exc => 
+    exc.status === 'ACTIVE' && exc.assurance_state === 'VERIFIED_TRUSTED'
+  );
+  
   if (contextViolation) {
-    const activeExceptions = exceptions.filter(exc => 
-      exc.status === 'ACTIVE' && exc.assurance_state === 'VERIFIED_TRUSTED'
-    );
-    // Note: To be fully strict we'd use policyExceptionEngine in real time, but since it's pre-computed 
-    // into assurance_state when requested/approved, we rely on the DB's assurance_state for this decision
-    // mapping if it matches the release.
-    
-    // In our repository, we enforce valid_until > NOW() when fetching active exceptions.
-    // For now we assume if it's in `activeExceptions`, it's valid for this SBOM.
-    // Ensure we don't override Class A failures (though contextViolation is Class B typically).
-
     const hasClassC = contextReasonCode === 'CTX-005' || contextReasonCode === 'CTX-017' || contextReasonCode === 'CTX-010';
-    
-    // Check if the underlying failure is exceptionable (e.g., CTX-002, CTX-014 etc. but not missing context which is CTX-005)
-    // For now we check if it is not Class C and not Class A.
     
     result.evidenceDependencies.exception = {
       required: true,
@@ -322,6 +316,21 @@ async function evaluateTrust(evidenceBundle = {}) {
     result.reasonCode = contextReasonCode;
     result.reasonDescription = contextReasonDescription;
 
+    finalizeExplanation(result, evalRules);
+    return result;
+  }
+
+  if (activeExceptions.length > 0) {
+    result.evidenceDependencies.exception = {
+      required: false,
+      assuranceState: 'VERIFIED_TRUSTED',
+      evidenceIds: activeExceptions.map(e => e.id)
+    };
+    result.trustStatus = TRUST_STATUS.CONDITIONALLY_ACCEPTED;
+    result.reasonCode = 'EXC-001';
+    result.reasonDescription = `Active governed policy exception(s) present, resulting in conditional acceptance.`;
+    result.evidenceSummary.activeExceptionCount = activeExceptions.length;
+    result.triggeredRuleIds.push('CAECTD-R027');
     finalizeExplanation(result, evalRules);
     return result;
   }

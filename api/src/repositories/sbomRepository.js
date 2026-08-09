@@ -592,7 +592,7 @@ async function insertPolicyException(record) {
 }
 
 async function getPolicyExceptionsBySBOMID(sbomID) {
-  var query = `SELECT * FROM policy_exceptions WHERE sbom_id = $1 AND deleted_at IS NULL AND status = 'APPROVED' AND valid_until > CURRENT_TIMESTAMP ORDER BY created_at DESC;`;
+  var query = `SELECT * FROM policy_exceptions WHERE sbom_id = $1 AND deleted_at IS NULL AND status = 'ACTIVE' AND valid_until > CURRENT_TIMESTAMP ORDER BY created_at DESC;`;
   var client = await db.pool.connect();
   try {
     var result = await client.query(query, [sbomID]);
