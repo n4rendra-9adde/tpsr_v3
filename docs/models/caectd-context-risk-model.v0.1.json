@@ -1,0 +1,158 @@
+{
+  "modelId": "CAECTD_CONTEXT_RISK",
+  "modelVersion": "0.1",
+  "modelName": "CAECTD Deterministic Context Risk Model",
+  "contextVector": [
+    "environment",
+    "exploitability",
+    "assetCriticality",
+    "internetExposure",
+    "privilegeLevel",
+    "dataSensitivity",
+    "runtimeExecution",
+    "componentPresence",
+    "compensatingControls",
+    "vexApplicability",
+    "exceptionStatus"
+  ],
+  "canonicalEnumerations": {
+    "environment": ["DEVELOPMENT", "TEST", "STAGING", "PRODUCTION"],
+    "exploitability": ["EXPLOITABLE", "NOT_EXPLOITABLE", "UNDER_INVESTIGATION", "UNKNOWN"],
+    "assetCriticality": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+    "internetExposure": ["NONE", "INTERNAL", "RESTRICTED_PUBLIC", "PUBLIC"],
+    "privilegeLevel": ["UNPRIVILEGED", "ELEVATED", "SYSTEM"],
+    "dataSensitivity": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"],
+    "runtimeExecution": ["EXECUTED", "PRESENT_NOT_EXECUTED", "NOT_PRESENT", "UNKNOWN"],
+    "componentPresence": ["PRESENT", "NOT_PRESENT", "PARTIAL", "UNKNOWN"],
+    "vexApplicability": ["AFFECTED", "NOT_AFFECTED", "FIXED", "UNDER_INVESTIGATION", "UNKNOWN", "NOT_AVAILABLE"],
+    "exceptionStatus": ["NONE", "ACTIVE", "EXPIRED", "REVOKED", "OUT_OF_SCOPE", "INVALID"]
+  },
+  "authoritySources": {
+    "environment": "Authenticated Context Assertion",
+    "assetCriticality": "Authenticated Context Assertion",
+    "internetExposure": "Authenticated Context Assertion",
+    "privilegeLevel": "Authenticated Context Assertion",
+    "dataSensitivity": "Authenticated Context Assertion",
+    "runtimeExecution": "Authenticated Context Assertion",
+    "componentPresence": "Authenticated Context Assertion",
+    "compensatingControls": "Authenticated Context Assertion",
+    "vexApplicability": "Verified Cryptographic VEX Evidence",
+    "exceptionStatus": "Governed Exception Engine"
+  },
+  "evidenceDependencies": [
+    "Context Assertion",
+    "VEX Document",
+    "Exception Record"
+  ],
+  "exploitabilityRules": [
+    {
+      "ruleId": "CAECTD-E1",
+      "name": "Trusted Affected Evidence",
+      "requiredInputs": ["vexApplicability", "componentPresence", "runtimeExecution"],
+      "condition": "vexApplicability == 'AFFECTED' and componentPresence in ['PRESENT', 'PARTIAL'] and runtimeExecution == 'EXECUTED'",
+      "requiredEvidence": ["VEX", "Context"],
+      "authorityRequirement": "VERIFIED_TRUSTED",
+      "contextualRisk": "UNKNOWN",
+      "policyBlockingStatus": "BLOCKING",
+      "reviewRequired": false,
+      "exceptionRequired": true,
+      "CAECTD decision contribution": "REJECTED",
+      "failureClass": "CLASS_B",
+      "reasonCodes": ["EXP-001"],
+      "exceptionPolicy": "EXCEPTIONABLE",
+      "evidenceDependencies": ["VEX"],
+      "implementationStatus": "IMPLEMENTED"
+    }
+  ],
+  "contextRiskRules": [
+    {
+      "ruleId": "CR-001",
+      "name": "Production Public Exploitable Critical Issue",
+      "requiredInputs": ["environment", "internetExposure", "exploitability"],
+      "condition": "environment == 'PRODUCTION' and internetExposure in ['PUBLIC', 'RESTRICTED_PUBLIC'] and exploitability == 'EXPLOITABLE'",
+      "requiredEvidence": ["Context"],
+      "authorityRequirement": "VERIFIED_TRUSTED",
+      "contextualRisk": "CRITICAL",
+      "policyBlockingStatus": "BLOCKING",
+      "reviewRequired": false,
+      "exceptionRequired": true,
+      "CAECTD decision contribution": "REJECTED",
+      "failureClass": "CLASS_B",
+      "reasonCodes": ["CTX-001"],
+      "exceptionPolicy": "EXCEPTIONABLE",
+      "evidenceDependencies": ["Context"],
+      "implementationStatus": "IMPLEMENTED"
+    }
+  ],
+  "conflictRules": [
+    {
+      "ruleId": "CFL-001",
+      "name": "Conflicting Trusted Environments",
+      "requiredInputs": ["environments"],
+      "condition": "Multiple active trusted assertions have different environments",
+      "requiredEvidence": ["Context"],
+      "authorityRequirement": "VERIFIED_TRUSTED",
+      "contextualRisk": "UNKNOWN",
+      "policyBlockingStatus": "REVIEW_REQUIRED",
+      "reviewRequired": true,
+      "exceptionRequired": false,
+      "CAECTD decision contribution": "REVIEW_REQUIRED",
+      "failureClass": "CLASS_C",
+      "reasonCodes": ["CFL-001"],
+      "exceptionPolicy": "NON_EXCEPTIONABLE",
+      "evidenceDependencies": ["Context"],
+      "implementationStatus": "IMPLEMENTED"
+    }
+  ],
+  "exceptionRules": [
+    {
+      "ruleId": "CR-011",
+      "name": "Active Governed Exception",
+      "requiredInputs": ["exceptionStatus"],
+      "condition": "exceptionStatus == 'ACTIVE'",
+      "requiredEvidence": ["Exception"],
+      "authorityRequirement": "VERIFIED_TRUSTED",
+      "contextualRisk": "UNKNOWN",
+      "policyBlockingStatus": "NON_BLOCKING",
+      "reviewRequired": false,
+      "exceptionRequired": false,
+      "CAECTD decision contribution": "CONDITIONALLY_ACCEPTED",
+      "failureClass": "NONE",
+      "reasonCodes": ["CTX-011"],
+      "exceptionPolicy": "N/A",
+      "evidenceDependencies": ["Exception"],
+      "implementationStatus": "IMPLEMENTED"
+    }
+  ],
+  "precedence": [
+    "REJECTED",
+    "REVIEW_REQUIRED",
+    "CONDITIONALLY_ACCEPTED",
+    "TRUSTED"
+  ],
+  "outputSchema": {
+    "modelId": "string",
+    "modelVersion": "string",
+    "contextAssuranceState": "string",
+    "normalizedContextVector": "object",
+    "exploitability": "string",
+    "exploitabilityBasis": "string",
+    "contextualRisk": "string",
+    "policyBlockingStatus": "string",
+    "reviewRequired": "boolean",
+    "exceptionRequired": "boolean",
+    "exceptionId": "string",
+    "vexEvidenceIds": "array",
+    "vulnerabilityIds": "array",
+    "componentIdentifiers": "array",
+    "triggeredRuleIds": "array",
+    "evaluatedRuleIds": "array",
+    "reasonCodes": "array",
+    "evidenceDependencies": "array",
+    "conflictResults": "array",
+    "evaluatedAt": "string"
+  },
+  "limitations": [
+    "Latency does not measure end-to-end network performance."
+  ]
+}

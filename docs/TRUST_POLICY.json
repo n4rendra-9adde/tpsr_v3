@@ -25,7 +25,10 @@
       "maxFutureSkewMinutes": 10
     },
     "requiredExternalParameters": {},
-    "prohibitedExternalParameters": ["debug", "bypass_tests"]
+    "prohibitedExternalParameters": [
+      "debug",
+      "bypass_tests"
+    ]
   },
   "signaturePolicy": {
     "requiredSignatureCount": 1,
@@ -62,28 +65,40 @@
   },
   "contextAuthorities": {
     "PRODUCTION": {
-      "allowedRoles": ["security", "admin"],
+      "allowedRoles": [
+        "security",
+        "admin"
+      ],
       "approvedPublicKeyFingerprints": [
         "6a656e6b696e732d7365727669636540747073722e636f6d"
       ],
       "maximumValidityHours": 24
     },
     "STAGING": {
-      "allowedRoles": ["security", "admin"],
+      "allowedRoles": [
+        "security",
+        "admin"
+      ],
       "approvedPublicKeyFingerprints": [
         "6a656e6b696e732d7365727669636540747073722e636f6d"
       ],
       "maximumValidityHours": 72
     },
     "TEST": {
-      "allowedRoles": ["security", "developer"],
+      "allowedRoles": [
+        "security",
+        "developer"
+      ],
       "approvedPublicKeyFingerprints": [
         "6a656e6b696e732d7365727669636540747073722e636f6d"
       ],
       "maximumValidityHours": 168
     },
     "DEVELOPMENT": {
-      "allowedRoles": ["developer", "security"],
+      "allowedRoles": [
+        "developer",
+        "security"
+      ],
       "approvedPublicKeyFingerprints": [
         "6a656e6b696e732d7365727669636540747073722e636f6d"
       ],
@@ -109,9 +124,18 @@
     }
   },
   "exceptionGovernance": {
-    "allowedRequesterRoles": ["developer", "security"],
-    "allowedOwnerRoles": ["developer", "security"],
-    "allowedApproverRoles": ["security", "admin"],
+    "allowedRequesterRoles": [
+      "developer",
+      "security"
+    ],
+    "allowedOwnerRoles": [
+      "developer",
+      "security"
+    ],
+    "allowedApproverRoles": [
+      "security",
+      "admin"
+    ],
     "requireIndependentApprover": true,
     "requireOwnerDifferentFromApprover": true,
     "requireRequesterDifferentFromApprover": true,
@@ -124,5 +148,24 @@
     "requireRemediationPlan": true,
     "requireCompensatingControlsForHighRisk": true,
     "allowCriticalRiskExceptions": false
+  },
+  "contextRiskPolicy": {
+    "operations": [
+      "submit",
+      "verify"
+    ],
+    "environmentRequirements": [
+      "PRODUCTION",
+      "STAGING",
+      "TEST",
+      "DEVELOPMENT"
+    ],
+    "riskThresholds": {
+      "CRITICAL": "BLOCKING",
+      "HIGH": "BLOCKING",
+      "MEDIUM": "REVIEW_REQUIRED",
+      "LOW": "NON_BLOCKING"
+    },
+    "conflictBehavior": "REVIEW_REQUIRED"
   }
 }
