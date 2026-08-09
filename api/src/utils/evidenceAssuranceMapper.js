@@ -50,7 +50,16 @@ function mapProvenanceEvidence(evidence) {
   if (!original) {
     return { original: 'UNKNOWN', normalized: ASSURANCE_STATES.NOT_EVALUATED };
   }
+
+  // Provenance subject mismatch / BND-002: normalized assurance state = INVALID
+  const reasonCodes = evidence.reasonCodes || evidence.reason_codes || [];
+  if (reasonCodes.includes('BND-002')) {
+    return { original, normalized: ASSURANCE_STATES.INVALID };
+  }
   
+  // CONFLICTING must be used only for incompatible trusted evidence.
+  // We remove any legacy fallback mapping to CONFLICTING if it existed implicitly.
+
   if (original === 'VALID') {
     return { original, normalized: ASSURANCE_STATES.VERIFIED_TRUSTED };
   } else if (original === 'UNTRUSTED') {

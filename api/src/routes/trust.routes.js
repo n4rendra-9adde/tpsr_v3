@@ -69,7 +69,12 @@ async function handleEvaluateTrust(req, res) {
       evidenceSummary: evalResult.evidenceSummary,
       policyVersion: evalResult.policyVersion,
       evaluatedBy: req.headers['x-user-id'] || 'security-officer',
-      idempotencyKey: idempotencyKey ? idempotencyKey.trim() : null
+      idempotencyKey: idempotencyKey ? idempotencyKey.trim() : null,
+      caectdModelVersion: evalResult.caectdModelVersion,
+      triggeredRuleIds: evalResult.triggeredRuleIds,
+      evaluatedRuleIds: evalResult.evaluatedRuleIds,
+      evidenceDependencies: evalResult.evidenceDependencies,
+      explanationCompleteness: evalResult.explanationCompleteness
     });
 
     // Queue into ledger outbox for transactional background anchoring

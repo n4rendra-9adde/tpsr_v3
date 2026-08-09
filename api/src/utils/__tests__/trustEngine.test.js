@@ -110,6 +110,49 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
     expect(res.trustStatus).not.toBe('UNTRUSTED');
   });
 
+  // ── CAECTD-R024 Triggering Tests ───────────────────────────────────────────
+
+  test('Missing SBOM does not automatically trigger R024', async () => {
+    const res = await evaluateTrust({});
+    expect(res.trustStatus).toBe('REJECTED');
+    expect(res.triggeredRuleIds).not.toContain('CAECTD-R024');
+  });
+
+  test('A blocking vulnerability with valid context does not trigger R024', async () => {
+    const res = await evaluateTrust({
+      sbomDocument: {
+        sbom_id: 'test-trust-r024',
+        sbom_json: JSON.stringify({
+          components: [{ vulnerabilities: [{ id: 'CVE-2026-CRIT', cvssScore: 9.8, severity: 'CRITICAL' }] }]
+        })
+      },
+      provenance: validProv,
+      signatures: validSig,
+      deploymentContext: { environment: 'PROD_CRITICAL', network_exposure: 'PUBLIC' },
+      policyExceptions: []
+    });
+    // Context is present, so R024 shouldn't be triggered even if there's a blocking violation (which triggers R017)
+    expect(res.trustStatus).toBe('REJECTED');
+    expect(res.triggeredRuleIds).not.toContain('CAECTD-R024');
+    expect(res.triggeredRuleIds).toContain('CAECTD-R017');
+  });
+
+  test('A policy requiring context with context absent triggers R024', async () => {
+    const provEngine = require('../provenanceEngine');
+    const spy = jest.spyOn(provEngine, 'getTrustPolicy').mockReturnValue({ requireDeploymentContext: true });
+
+    const res = await evaluateTrust({
+      sbomDocument: sbomDoc,
+      provenance: validProv,
+      signatures: validSig,
+      deploymentContext: null, // missing context
+      policyExceptions: []
+    });
+
+    expect(res.triggeredRuleIds).toContain('CAECTD-R024');
+    spy.mockRestore();
+  });
+
   // ── TRUST_STATUS constants exported ────────────────────────────────────────
 
   test('TRUST_STATUS constants export the correct authoritative four-state values', () => {

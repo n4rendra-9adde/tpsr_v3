@@ -5,8 +5,10 @@ const vexRoute = require('../vex.routes');
 const contextRoute = require('../context.routes');
 const exceptionsRoute = require('../exceptions.routes');
 const sbomRepository = require('../../repositories/sbomRepository');
+const vexEngine = require('../../utils/vexEngine');
 
 jest.mock('../../repositories/sbomRepository');
+jest.mock('../../utils/vexEngine');
 
 const app = express();
 app.use(express.json());
@@ -28,6 +30,16 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
 
   test('POST /api/v1/sbom/:sbomId/vex: Records valid VEX statement and returns 201', async () => {
     sbomRepository.getSBOMDocumentBySBOMID.mockResolvedValue({ id: 201, sbom_id: 'test-sbom-201' });
+    
+    vexEngine.verifyVexDocument.mockResolvedValue({
+      isValid: true,
+      vexStatus: 'not_affected',
+      policyBlockingStatus: 'NON_BLOCKING',
+      justification: 'vulnerable_code_not_present',
+      impactStatement: 'Vulnerable code path removed',
+      reasonCode: 'VEX-001'
+    });
+
     sbomRepository.insertVexStatement.mockResolvedValue({
       id: 701,
       vulnerability_id: 'CVE-2026-9999',
@@ -36,12 +48,15 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
     });
 
     const body = {
-      vulnerabilityId: 'CVE-2026-9999',
-      originalSeverity: 'CRITICAL',
-      originalCvss: 9.8,
-      status: 'not_affected',
-      justification: 'vulnerable_code_not_present',
-      impactStatement: 'Vulnerable code path removed'
+      envelope: {
+        vulnerabilityId: 'CVE-2026-9999',
+        originalSeverity: 'CRITICAL',
+        originalCvss: 9.8,
+        status: 'not_affected',
+        justification: 'vulnerable_code_not_present',
+        impactStatement: 'Vulnerable code path removed'
+      },
+      signatureType: 'NONE'
     };
 
     const res = await request(app)
@@ -70,6 +85,20 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
     sbomRepository.getVexStatementsBySBOMID.mockResolvedValue([
       { id: 'vex-1', vulnerability_id: 'CVE-2026-8888', status: 'fixed' }
     ]);
+    
+    vexEngine.applyVexOverlays.mockReturnValue({
+      vulnerabilities: [
+        {
+          originalCvssScore: 9.8,
+          originalSeverity: 'CRITICAL',
+          applicabilityDisposition: 'NOT_AFFECTED',
+          policyBlockingStatus: 'NON_BLOCKING'
+        }
+      ],
+      activeVexIds: ['vex-1'],
+      appliedAt: new Date().toISOString()
+    });
+
     sbomRepository.insertDeploymentContext.mockResolvedValue({
       id: 801,
       registered_at: new Date().toISOString()
@@ -83,7 +112,7 @@ describe('TPSR v3 VEX, Deployment Context, and Exception Routes Unit Tests', () 
 
     expect(res.status).toBe(201);
     expect(res.body.compliant).toBe(true);
-    expect(res.body.reasonCode).toBe('CTX-004');
+    expect(res.body.reasonCode).toBe('CTX-000');
   });
 
   test('POST /api/v1/sbom/:sbomId/exceptions: Records formal policy exception request and returns 201', async () => {

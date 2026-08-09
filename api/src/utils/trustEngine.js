@@ -22,6 +22,7 @@
 
 const { applyVexOverlays } = require('./vexEngine');
 const { evaluateDeploymentContext } = require('./contextEngine');
+const provenanceEngine = require('./provenanceEngine');
 const { mapSignatureEvidence, mapProvenanceEvidence, mapVexEvidence, mapContextEvidence, mapExceptionEvidence } = require('./evidenceAssuranceMapper');
 const { CAECTD_RULES } = require('./caectdRuleMapper');
 
@@ -168,13 +169,19 @@ async function evaluateTrust(evidenceBundle = {}) {
   let contextReasonCode = null;
   let contextReasonDescription = null;
 
+  const policy = provenanceEngine.getTrustPolicy();
+  const contextRequired = policy.requireDeploymentContext === true;
   result.evidenceDependencies.context = {
-    required: false,
+    required: contextRequired,
     assuranceState: depContext ? mapContextEvidence(depContext).normalized : 'MISSING',
     evidenceIds: depContext ? [depContext.id] : []
   };
 
-  evalRules.add('CAECTD-R024');
+  if (!depContext && contextRequired) {
+    evalRules.add('CAECTD-R024');
+    result.triggeredRuleIds.push('CAECTD-R024');
+  }
+
   if (depContext) {
     for (const vuln of vexSummary.vulnerabilities) {
       const ctxRes = evaluateDeploymentContext({
@@ -194,17 +201,25 @@ async function evaluateTrust(evidenceBundle = {}) {
         contextViolation = true;
         contextReasonCode = ctxRes.reasonCode || 'CTX-002';
         contextReasonDescription = ctxRes.reasonDescription;
-        if (contextReasonCode === 'CTX-002') evalRules.add('CAECTD-R017');
+        evalRules.add('CAECTD-R017');
+        result.triggeredRuleIds.push('CAECTD-R017');
         break; // Stop at first blocking violation
       }
     }
   } else {
-    const hasBlockingCritical = vexSummary.vulnerabilities.some(v => v.originalSeverity === 'CRITICAL' && v.policyBlockingStatus === 'BLOCKING');
-    if (hasBlockingCritical && exceptions.length === 0) {
+    if (contextRequired) {
       contextViolation = true;
-      contextReasonCode = 'CTX-002';
-      contextReasonDescription = 'Unmitigated CRITICAL vulnerability present without a registered deployment context or approved policy exception.';
-      evalRules.add('CAECTD-R017');
+      contextReasonCode = 'CTX-005';
+      contextReasonDescription = 'Deployment context is required by policy but was not provided.';
+    } else {
+      const hasBlockingCritical = vexSummary.vulnerabilities.some(v => v.originalSeverity === 'CRITICAL' && v.policyBlockingStatus === 'BLOCKING');
+      if (hasBlockingCritical && exceptions.length === 0) {
+        contextViolation = true;
+        contextReasonCode = 'CTX-002';
+        contextReasonDescription = 'Unmitigated CRITICAL vulnerability present without a registered deployment context or approved policy exception.';
+        evalRules.add('CAECTD-R017');
+        result.triggeredRuleIds.push('CAECTD-R017');
+      }
     }
   }
 
@@ -230,12 +245,9 @@ async function evaluateTrust(evidenceBundle = {}) {
       return result;
     }
 
-    result.trustStatus = TRUST_STATUS.REJECTED;
+    result.trustStatus = contextReasonCode === 'CTX-005' ? TRUST_STATUS.REVIEW_REQUIRED : TRUST_STATUS.REJECTED;
     result.reasonCode = contextReasonCode;
     result.reasonDescription = contextReasonDescription;
-    
-    if (contextReasonCode === 'CTX-002') result.triggeredRuleIds.push('CAECTD-R017');
-    else result.triggeredRuleIds.push('CAECTD-R024');
 
     finalizeExplanation(result, evalRules);
     return result;

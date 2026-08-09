@@ -30,6 +30,12 @@ describe('evidenceAssuranceMapper', () => {
     it('maps UNTRUSTED to VERIFIED_UNTRUSTED', () => {
       expect(mapProvenanceEvidence({ status: 'UNTRUSTED' }).normalized).toBe(ASSURANCE_STATES.VERIFIED_UNTRUSTED);
     });
+
+    it('maps UNTRUSTED with BND-002 to INVALID', () => {
+      expect(mapProvenanceEvidence({ status: 'UNTRUSTED', reasonCodes: ['BND-002'] }).normalized).toBe(ASSURANCE_STATES.INVALID);
+      expect(mapProvenanceEvidence({ status: 'UNTRUSTED', reason_codes: ['BND-002'] }).normalized).toBe(ASSURANCE_STATES.INVALID);
+    });
+
     it('maps missing to MISSING', () => {
       expect(mapProvenanceEvidence(null).normalized).toBe(ASSURANCE_STATES.MISSING);
     });
