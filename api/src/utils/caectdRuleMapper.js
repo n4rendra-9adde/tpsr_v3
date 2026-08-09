@@ -117,6 +117,28 @@ const CAECTD_RULES = {
     exceptionAllowed: true,
     lifecycleEffect: 'Blocked'
   },
+  'CAECTD-R025': {
+    ruleId: 'CAECTD-R025',
+    ruleName: 'Conflicting trusted assertions',
+    failureClass: 'Class C',
+    defaultDecisionEffect: 'REVIEW_REQUIRED',
+    evidenceDependencies: ['contextualPolicyDecision'],
+    reasonCodes: ['CTX-017'],
+    reasonCodeStatus: 'PROPOSED',
+    exceptionAllowed: true,
+    lifecycleEffect: 'Blocked'
+  },
+  'CAECTD-R026': {
+    ruleId: 'CAECTD-R026',
+    ruleName: 'Invalid, untrusted, or unauthorized assertion',
+    failureClass: 'Class A',
+    defaultDecisionEffect: 'REJECTED',
+    evidenceDependencies: ['contextualPolicyDecision'],
+    reasonCodes: ['CTX-010', 'CTX-011', 'CTX-012', 'CTX-013', 'CTX-014', 'CTX-015', 'CTX-016'],
+    reasonCodeStatus: 'PROPOSED',
+    exceptionAllowed: false,
+    lifecycleEffect: 'Blocked'
+  },
   'CAECTD-R031': {
     ruleId: 'CAECTD-R031',
     ruleName: 'All mandatory controls pass',

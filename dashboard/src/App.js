@@ -8,6 +8,7 @@ import {
   TrustDecisionBadge, 
   AnchorStatusBadge, 
   SignatureEvidenceCard, 
+  ContextAssertionCard,
   ProvenanceEvidenceCard, 
   VexApplicabilityTable, 
   ReasonCodeList, 
@@ -865,6 +866,7 @@ function VerifyPage({ selectedIdentity }) {
           
           <SignatureEvidenceCard signatureData={signatureData} />
           <ProvenanceEvidenceCard provenanceData={provenanceData} />
+          <ContextAssertionCard contextData={contextAssertionData} />
 
           {anchorDoc && (
             <Card

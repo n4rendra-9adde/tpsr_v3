@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tpsr.com/schemas/caectd-context-assertion.v0.1.json",
+  "title": "CAECTD Authenticated Context Assertion",
+  "description": "Schema for authenticating and binding deployment context to a specific software release release under the CAECTD trust model.",
+  "type": "object",
+  "properties": {
+    "assertionId": { "type": "string", "format": "uuid" },
+    "assertionVersion": { "type": "string" },
+    "sbomId": { "type": "string" },
+    "digestManifestDigest": { "type": "string" },
+    "environment": {
+      "type": "string",
+      "enum": ["DEVELOPMENT", "TEST", "STAGING", "PRODUCTION"]
+    },
+    "internetExposure": {
+      "type": "string",
+      "enum": ["NONE", "INTERNAL", "RESTRICTED_PUBLIC", "PUBLIC"]
+    },
+    "assetCriticality": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    },
+    "privilegeLevel": {
+      "type": "string",
+      "enum": ["UNPRIVILEGED", "ELEVATED", "SYSTEM"]
+    },
+    "dataSensitivity": {
+      "type": "string",
+      "enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]
+    },
+    "runtimeExecution": {
+      "type": "string",
+      "enum": ["EXECUTED", "PRESENT_NOT_EXECUTED", "NOT_PRESENT", "UNKNOWN"]
+    },
+    "componentPresence": {
+      "type": "string",
+      "enum": ["PRESENT", "NOT_PRESENT", "PARTIAL", "UNKNOWN"]
+    },
+    "compensatingControls": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "assertedBy": { "type": "string" },
+    "assertorRole": { "type": "string" },
+    "assertedAt": { "type": "string", "format": "date-time" },
+    "validUntil": { "type": "string", "format": "date-time" },
+    "justification": { "type": "string" },
+    "previousAssertionId": { "type": ["string", "null"], "format": "uuid" },
+    "supersedesAssertionId": { "type": ["string", "null"], "format": "uuid" },
+    "signatureType": { "type": "string" },
+    "verificationMode": { "type": "string" },
+    "signerIdentity": { "type": "string" },
+    "publicKeyFingerprint": { "type": "string" },
+    "signatureVerified": { "type": "boolean" },
+    "transparencyLogVerified": { "type": "boolean" },
+    "assertionPayloadHash": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["ACTIVE", "EXPIRED", "REVOKED", "SUPERSEDED", "INVALID"]
+    }
+  },
+  "required": [
+    "assertionId",
+    "assertionVersion",
+    "sbomId",
+    "digestManifestDigest",
+    "environment",
+    "internetExposure",
+    "assetCriticality",
+    "privilegeLevel",
+    "dataSensitivity",
+    "runtimeExecution",
+    "componentPresence",
+    "assertedBy",
+    "assertorRole",
+    "assertedAt",
+    "validUntil",
+    "signatureType",
+    "verificationMode",
+    "signerIdentity",
+    "publicKeyFingerprint",
+    "signatureVerified",
+    "transparencyLogVerified",
+    "assertionPayloadHash",
+    "status"
+  ]
+}

@@ -60,6 +60,36 @@
       "inline_mitigations_already_exist"
     ]
   },
+  "contextAuthorities": {
+    "PRODUCTION": {
+      "allowedRoles": ["security", "admin"],
+      "approvedPublicKeyFingerprints": [
+        "6a656e6b696e732d7365727669636540747073722e636f6d"
+      ],
+      "maximumValidityHours": 24
+    },
+    "STAGING": {
+      "allowedRoles": ["security", "admin"],
+      "approvedPublicKeyFingerprints": [
+        "6a656e6b696e732d7365727669636540747073722e636f6d"
+      ],
+      "maximumValidityHours": 72
+    },
+    "TEST": {
+      "allowedRoles": ["security", "developer"],
+      "approvedPublicKeyFingerprints": [
+        "6a656e6b696e732d7365727669636540747073722e636f6d"
+      ],
+      "maximumValidityHours": 168
+    },
+    "DEVELOPMENT": {
+      "allowedRoles": ["developer", "security"],
+      "approvedPublicKeyFingerprints": [
+        "6a656e6b696e732d7365727669636540747073722e636f6d"
+      ],
+      "maximumValidityHours": 168
+    }
+  },
   "contextRiskMultipliers": {
     "environments": {
       "PRODUCTION": 1.5,

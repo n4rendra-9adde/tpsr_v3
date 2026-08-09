@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom";
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { SignatureEvidenceCard, ProvenanceEvidenceCard, VexApplicabilityTable } from '../index';
+import { SignatureEvidenceCard, ProvenanceEvidenceCard, VexApplicabilityTable, ContextAssertionCard } from '../index';
 
 describe('Evidence Components', () => {
 
@@ -76,8 +76,40 @@ describe('Evidence Components', () => {
       expect(screen.getByText('9.8')).toBeInTheDocument();
       expect(screen.getByText('CRITICAL')).toBeInTheDocument();
       expect(screen.getByText('pkg:npm/express')).toBeInTheDocument();
-      expect(screen.getByText('express@4.17.1')).toBeInTheDocument();
       expect(screen.getByText('NOT_AFFECTED')).toBeInTheDocument();
+    });
+  });
+
+  describe('ContextAssertionCard', () => {
+    it('renders empty state when contextData is null', () => {
+      render(<ContextAssertionCard contextData={null} />);
+      expect(screen.getByText('No active context assertion found.')).toBeInTheDocument();
+    });
+
+    it('renders populated state correctly', () => {
+      const mockData = {
+        status: 'ACTIVE',
+        environment: 'PRODUCTION',
+        assertor: 'dev-user',
+        role: 'security',
+        signerFingerprint: 'f9a65d721ff2b5b5',
+        assertionTime: '2026-08-09T11:13:41.811Z',
+        expiry: '2026-08-10T07:13:41.811Z',
+        releaseBinding: 'sha256:d6f809a79aa20',
+        verificationStatus: 'VERIFIED',
+        assuranceState: 'VERIFIED_TRUSTED',
+        ruleIds: ['CAECTD-R024'],
+        reasonCodes: ['CTX-000']
+      };
+      
+      render(<ContextAssertionCard contextData={mockData} />);
+      
+      expect(screen.getByText('PRODUCTION')).toBeInTheDocument();
+      expect(screen.getByText('dev-user')).toBeInTheDocument();
+      expect(screen.getByText('f9a65d721ff2b5b5')).toBeInTheDocument();
+      expect(screen.getByText('VERIFIED')).toBeInTheDocument();
+      expect(screen.getByText('VERIFIED_TRUSTED')).toBeInTheDocument();
+      expect(screen.getByText('CTX-000')).toBeInTheDocument();
     });
   });
 

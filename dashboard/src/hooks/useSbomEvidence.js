@@ -12,6 +12,7 @@ export function useSbomEvidence() {
   const [signatureData, setSignatureData] = useState(null);
   const [provenanceData, setProvenanceData] = useState(null);
   const [vexData, setVexData] = useState([]);
+  const [contextAssertionData, setContextAssertionData] = useState(null);
   
   // Diagnostics
   const [diagnostics, setDiagnostics] = useState([]);
@@ -21,6 +22,7 @@ export function useSbomEvidence() {
     setSignatureData(null);
     setProvenanceData(null);
     setVexData([]);
+    setContextAssertionData(null);
     setError(null);
     setDiagnostics([]);
   }, []);
@@ -40,7 +42,8 @@ export function useSbomEvidence() {
       { name: 'document', url: `${API_BASE_URL}/sboms/${encodeURIComponent(sbomId)}/document` },
       { name: 'signatures', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/signatures` },
       { name: 'provenance', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/provenance` },
-      { name: 'vex', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/vex` }
+      { name: 'vex', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/vex` },
+      { name: 'contextAssertions', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/context/assertions` }
     ];
 
     try {
@@ -135,6 +138,29 @@ export function useSbomEvidence() {
               } else {
                 emptyReason = 'No VEX statements found';
               }
+            } else if (ep.name === 'contextAssertions') {
+              const records = data.assertions || [];
+              const active = records.filter(r => r.status === 'ACTIVE');
+              count = active.length;
+              if (count > 0) {
+                const rec = active[0];
+                setContextAssertionData({
+                  status: rec.status,
+                  environment: rec.environment,
+                  assertor: rec.asserted_by,
+                  role: rec.assertor_role,
+                  signerFingerprint: rec.public_key_fingerprint,
+                  assertionTime: rec.asserted_at,
+                  expiry: rec.valid_until,
+                  releaseBinding: rec.digest_manifest_digest,
+                  verificationStatus: rec.verification_status,
+                  assuranceState: rec.assurance_state,
+                  ruleIds: rec.rule_ids || [],
+                  reasonCodes: rec.reason_codes || []
+                });
+              } else {
+                emptyReason = 'No active context assertions found';
+              }
             }
           } catch (err) {
             parseError = err.message;
@@ -174,6 +200,7 @@ export function useSbomEvidence() {
     signatureData,
     provenanceData,
     vexData,
+    contextAssertionData,
     diagnostics,
     fetchEvidence,
     reset

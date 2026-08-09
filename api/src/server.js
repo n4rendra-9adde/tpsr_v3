@@ -25,6 +25,7 @@ var provenanceRoute = require('./routes/provenance.routes');
 var signaturesRoute = require('./routes/signatures.routes');
 var vexRoute = require('./routes/vex.routes');
 var contextRoute = require('./routes/context.routes');
+var contextAssertionsRoute = require('./routes/contextAssertions.routes');
 var exceptionsRoute = require('./routes/exceptions.routes');
 var trustRoute = require('./routes/trust.routes');
 var outboxRoute = require('./routes/outbox.routes');
@@ -128,7 +129,7 @@ function getAllowedRoles(method, reqPath) {
   if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/vex$/)) {
     return auth.ROUTE_ROLE_MAP.vex;
   }
-  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/context$/)) {
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/context(\/assertions.*)?$/)) {
     return auth.ROUTE_ROLE_MAP.context;
   }
   if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/exceptions$/)) {
@@ -169,6 +170,7 @@ app.use('/api', provenanceRoute);
 app.use('/api', signaturesRoute);
 app.use('/api', vexRoute);
 app.use('/api', contextRoute);
+app.use('/api', contextAssertionsRoute);
 app.use('/api', exceptionsRoute);
 app.use('/api', trustRoute);
 app.use('/api', outboxRoute);

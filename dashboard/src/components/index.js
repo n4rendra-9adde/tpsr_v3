@@ -1,5 +1,6 @@
 export { TrustDecisionBadge } from './TrustDecisionBadge';
 export { AnchorStatusBadge } from './AnchorStatusBadge';
+export { ContextAssertionCard } from './ContextAssertionCard';
 export { SignatureEvidenceCard } from './SignatureEvidenceCard';
 export { ProvenanceEvidenceCard } from './ProvenanceEvidenceCard';
 export { VexApplicabilityTable } from './VexApplicabilityTable';

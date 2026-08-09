@@ -82,7 +82,8 @@ async function evaluateTrust(evidenceBundle = {}) {
   const provenance  = Array.isArray(evidenceBundle.provenance)       ? evidenceBundle.provenance       : [];
   const signatures  = Array.isArray(evidenceBundle.signatures)       ? evidenceBundle.signatures       : [];
   const vexStatements = Array.isArray(evidenceBundle.vexStatements)  ? evidenceBundle.vexStatements    : [];
-  const depContext  = evidenceBundle.deploymentContext || null;
+  const depContext  = evidenceBundle.activeContextAssertion || evidenceBundle.deploymentContext || null;
+  const isAuthenticatedContext = !!evidenceBundle.activeContextAssertion;
   const exceptions  = Array.isArray(evidenceBundle.policyExceptions) ? evidenceBundle.policyExceptions : [];
 
   result.evidenceSummary.provenanceCount     = provenance.length;
@@ -171,24 +172,46 @@ async function evaluateTrust(evidenceBundle = {}) {
 
   const policy = provenanceEngine.getTrustPolicy();
   const contextRequired = policy.requireDeploymentContext === true;
-  result.evidenceDependencies.context = {
-    required: contextRequired,
-    assuranceState: depContext ? mapContextEvidence(depContext).normalized : 'MISSING',
-    evidenceIds: depContext ? [depContext.id] : []
-  };
 
-  if (!depContext && contextRequired) {
-    evalRules.add('CAECTD-R024');
-    result.triggeredRuleIds.push('CAECTD-R024');
+  if (evidenceBundle.allActiveContextAssertions && evidenceBundle.allActiveContextAssertions.length > 1) {
+    evalRules.add('CAECTD-R025');
+    result.triggeredRuleIds.push('CAECTD-R025');
+    result.evidenceDependencies.context = {
+      required: contextRequired,
+      assuranceState: 'CONFLICTING',
+      evidenceIds: evidenceBundle.allActiveContextAssertions.map(a => a.id)
+    };
+    contextViolation = true;
+    contextReasonCode = 'CTX-017';
+    contextReasonDescription = 'Conflicting trusted assertions exist for this release.';
+  } else {
+    result.evidenceDependencies.context = {
+      required: contextRequired,
+      assuranceState: isAuthenticatedContext ? depContext.assurance_state || depContext.assuranceState || 'INVALID' : (depContext ? mapContextEvidence(depContext).normalized : 'MISSING'),
+      evidenceIds: depContext ? [depContext.id] : []
+    };
+
+    if (!depContext && contextRequired) {
+      evalRules.add('CAECTD-R024');
+      result.triggeredRuleIds.push('CAECTD-R024');
+    }
+
+    if (isAuthenticatedContext && result.evidenceDependencies.context.assuranceState !== 'VERIFIED_TRUSTED') {
+      evalRules.add('CAECTD-R026');
+      result.triggeredRuleIds.push('CAECTD-R026');
+      contextViolation = true;
+      contextReasonCode = 'CTX-010';
+      contextReasonDescription = 'Invalid, untrusted, or unauthorized authenticated assertion.';
+    }
   }
 
-  if (depContext) {
+  if (depContext && !contextViolation) {
     for (const vuln of vexSummary.vulnerabilities) {
       const ctxRes = evaluateDeploymentContext({
-        deploymentTier:    depContext.environment,
-        internetExposed:   depContext.network_exposure === 'PUBLIC' || depContext.network_exposure === 'INTERNET',
-        dataClassification: depContext.data_sensitivity,
-        runtimeEnvironment: depContext.environment
+        deploymentTier:    isAuthenticatedContext ? depContext.environment : depContext.environment,
+        internetExposed:   isAuthenticatedContext ? (depContext.internet_exposure === 'PUBLIC' || depContext.internetExposure === 'PUBLIC') : (depContext.network_exposure === 'PUBLIC' || depContext.network_exposure === 'INTERNET'),
+        dataClassification: isAuthenticatedContext ? (depContext.data_sensitivity || depContext.dataSensitivity) : depContext.data_sensitivity,
+        runtimeEnvironment: isAuthenticatedContext ? (depContext.runtime_execution || depContext.runtimeExecution) : depContext.environment
       }, {
         cvssScore: vuln.originalCvssScore,
         severity: vuln.originalSeverity
@@ -206,7 +229,16 @@ async function evaluateTrust(evidenceBundle = {}) {
         break; // Stop at first blocking violation
       }
     }
-  } else {
+    
+    // Legacy unauthenticated context cannot produce TRUSTED contextual assurance
+    if (!isAuthenticatedContext && !contextViolation && contextRequired) {
+      contextViolation = true;
+      contextReasonCode = 'CTX-005'; // Missing required *authenticated* context
+      contextReasonDescription = 'Legacy unauthenticated context cannot produce TRUSTED contextual assurance when context is required.';
+      evalRules.add('CAECTD-R024');
+      result.triggeredRuleIds.push('CAECTD-R024');
+    }
+  } else if (!contextViolation) {
     if (contextRequired) {
       contextViolation = true;
       contextReasonCode = 'CTX-005';

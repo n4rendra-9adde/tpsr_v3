@@ -42,22 +42,27 @@ async function handleEvaluateTrust(req, res) {
       return res.status(404).json({ error: `SBOM document not found for ID: ${sbomId}` });
     }
 
-    const [provenance, signatures, vexStatements, depContexts, exceptions] = await Promise.all([
+    const contextAssertionRepository = require('../repositories/contextAssertionRepository');
+    const [provenance, signatures, vexStatements, depContexts, exceptions, activeAssertions] = await Promise.all([
       sbomRepository.getProvenanceBySBOMID(sbomId.trim()),
       sbomRepository.getSignaturesBySBOMID(sbomId.trim()),
       sbomRepository.getVexStatementsBySBOMID(sbomId.trim()),
       sbomRepository.getDeploymentContextBySBOMID(sbomId.trim()),
-      sbomRepository.getPolicyExceptionsBySBOMID(sbomId.trim())
+      sbomRepository.getPolicyExceptionsBySBOMID(sbomId.trim()),
+      contextAssertionRepository.listContextAssertionsBySbomId(sbomId.trim())
     ]);
 
-    const latestContext = depContexts.length > 0 ? depContexts[0] : null;
+    const activeAssertion = activeAssertions.find(a => a.status === 'ACTIVE') || null;
+    const latestLegacyContext = depContexts.length > 0 ? depContexts[0] : null;
 
     const evalResult = await evaluateTrust({
       sbomDocument: sbomDoc,
       provenance,
       signatures,
       vexStatements,
-      deploymentContext: latestContext,
+      deploymentContext: latestLegacyContext,
+      activeContextAssertion: activeAssertion,
+      allActiveContextAssertions: activeAssertions.filter(a => a.status === 'ACTIVE'),
       policyExceptions: exceptions
     });
 

@@ -67,6 +67,14 @@ This document defines the 40 authoritative reason codes emitted by the TPSR v3 t
 | `CTX-003` | Context-adjusted risk score exceeds maximum allowable threshold for target environment. | `HIGH` | `REJECTED` / `REVIEW_REQUIRED` | Reduce attack surface, isolate network exposure, or remediate top CVSS vulnerabilities. |
 | `CTX-004` | Missing required compensating control for privileged (`ROOT`) deployment context. | `HIGH` | `REVIEW_REQUIRED` | Enforce non-root container execution or register verified compensating controls. |
 | `CTX-005` | Deployment context registration record is older than 90 days without re-attestation. | `LOW` | Warning (`REVIEW_REQUIRED`) | Re-confirm deployment environment context via `/api/v1/sbom/:sbomId/context`. |
+| `CTX-010` | Invalid, untrusted, or unauthorized authenticated assertion (CAECTD-R026). | `CRITICAL` | `REJECTED` | Ensure assertion is signed by an authorized entity for the asserted environment. (Newly implemented) |
+| `CTX-011` | Missing required fields in context assertion payload. | `CRITICAL` | `REJECTED` | Ensure environment, sbomId, and digest are correctly populated. (Newly implemented) |
+| `CTX-012` | Cryptographic signature verification failed for context assertion. | `CRITICAL` | `REJECTED` | Verify the payload and signature match. (Newly implemented) |
+| `CTX-013` | Unsupported signature type for context assertion. | `CRITICAL` | `REJECTED` | Use OFFLINE_KEYED signature type. (Newly implemented) |
+| `CTX-014` | Assertor role unauthorized for the declared environment. | `CRITICAL` | `REJECTED` | Ensure the asserting actor possesses the requisite authority for the tier (e.g. security for PRODUCTION). (Newly implemented) |
+| `CTX-015` | Digest mismatch between context assertion and target release (SBOM). | `CRITICAL` | `REJECTED` | Ensure the assertion targets the correct exact release digest. (Newly implemented) |
+| `CTX-016` | Context assertion failed freshness check or is expired. | `CRITICAL` | `REJECTED` | Re-assert context payload to establish new validity window. (Newly implemented) |
+| `CTX-017` | Conflicting active trusted assertions exist for this release (CAECTD-R025). | `HIGH` | `REVIEW_REQUIRED` | Revoke or supersede the conflicting active assertion. (Newly implemented) |
 
 ---
 
