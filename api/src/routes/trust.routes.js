@@ -62,7 +62,7 @@ async function handleEvaluateTrust(req, res) {
       vexStatements,
       deploymentContext: latestLegacyContext,
       activeContextAssertion: activeAssertion,
-      allActiveContextAssertions: activeAssertions.filter(a => a.status === 'ACTIVE'),
+      allActiveContextAssertions: activeAssertions.filter(a => a.status === 'ACTIVE' || (a.status === 'INVALID' && a.assurance_state === 'CONFLICTING')),
       policyExceptions: exceptions
     });
 

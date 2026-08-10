@@ -87,12 +87,6 @@ async function handleRecordContextAssertion(req, res) {
       };
 
       const conflicting = await contextAssertionRepository.findConflictingActiveAssertions(client, sbomId.trim(), body.assertion.environment);
-      if (status === 'ACTIVE' && conflicting.length > 0) {
-        // According to CAECTD rules, conflicting active assertions might result in REVIEW_REQUIRED or HTTP 409
-        // We will just return 409
-        await client.query('ROLLBACK');
-        return res.status(409).json({ error: 'Conflicting active assertion exists', reasonCodes: ['CTX-017'] });
-      }
       
       // If there is an existing active assertion for the SAME environment, supersede it
       if (status === 'ACTIVE') {
@@ -104,9 +98,12 @@ async function handleRecordContextAssertion(req, res) {
       }
 
       const created = await contextAssertionRepository.createContextAssertion(client, record);
+      
+      // If conflicting, we also want to mark the old ones as INVALID but wait, schema only has INVALID.
+      // Actually, if we just let it insert as INVALID, the assembler can detect it.
       await client.query('COMMIT');
 
-      if (status !== 'ACTIVE') {
+      if (status !== 'ACTIVE' && evalResult.assuranceState !== 'CONFLICTING') {
         return res.status(422).json({
           error: 'Context assertion verification failed',
           verificationStatus: evalResult.verificationStatus,

@@ -11,8 +11,7 @@ describe('CAECTD Evaluator Adapter Parity', () => {
       signatures: [{ status: 'VALID' }],
       vexStatements: [],
       policyExceptions: [],
-      deploymentContext: { environment: 'PROD' },
-      activeContextAssertion: null
+      activeContextAssertion: { status: 'ACTIVE', verificationStatus: 'VERIFIED', environment: 'PROD', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED' }
     };
     const result = await evaluate(input);
     expect(result.decision).toBe('TRUSTED');
@@ -27,8 +26,8 @@ describe('CAECTD Evaluator Adapter Parity', () => {
       vulnerabilities: [{ id: 'CVE-1', severity: 'CRITICAL' }],
       provenance: [{ status: 'VALID', slsa_level: 'SLSA_BUILD_LEVEL_3' }],
       signatures: [{ status: 'VALID' }],
-      vexStatements: [{ status: 'NOT_AFFECTED', vulnerability_id: 'CVE-1' }],
-      deploymentContext: null // missing required context will fail evaluation anyway
+      vexStatements: [{ applicability_status: 'NOT_AFFECTED', signature_status: 'VERIFIED', deleted_at: null, vulnerability_id: 'CVE-1' }],
+      activeContextAssertion: { status: 'ACTIVE', verificationStatus: 'VERIFIED', environment: 'PROD', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED' }
     };
     const result = await evaluate(input);
     // In the new unified CAECTD model, if context is not required and VEX is NOT_AFFECTED, it is TRUSTED.
@@ -46,8 +45,8 @@ describe('CAECTD Evaluator Adapter Parity', () => {
       provenance: [{ status: 'VALID', slsa_level: 'SLSA_BUILD_LEVEL_3' }],
       signatures: [{ status: 'VALID' }],
       vexStatements: [],
-      policyExceptions: [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', policy_rule_id: 'CR-001' }],
-      deploymentContext: { environment: 'PRODUCTION', internetExposed: true, dataSensitivity: 'RESTRICTED' }
+      policyExceptions: [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', policy_rule_id: 'CR-001', vulnerability_ids: ['CVE-1'], remediation_plan: 'Fix', compensating_controls: ['WAF'], valid_until: new Date(Date.now() + 86400000).toISOString() }],
+      activeContextAssertion: { status: 'ACTIVE', verificationStatus: 'VERIFIED', environment: 'PRODUCTION', internetExposure: 'PUBLIC', dataSensitivity: 'RESTRICTED', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED' }
     };
     const result = await evaluate(input);
     expect(result.decision).toBe('CONDITIONALLY_ACCEPTED');

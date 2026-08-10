@@ -12,11 +12,16 @@ const {
 } = require('./contextRiskConstants');
 
 function evaluateContextRisk(input) {
+  let contextAssuranceState = 'NOT_EVALUATED';
+  if (input && !input.missingContext && !input.invalidContext && !input.conflict && input.contextAssertionId) {
+    contextAssuranceState = 'VERIFIED_TRUSTED';
+  }
+
   const result = {
     modelId: 'CAECTD_CONTEXT_RISK',
     modelVersion: '0.1',
     normalizedContextVector: {},
-    contextAssuranceState: 'NOT_EVALUATED',
+    contextAssuranceState: contextAssuranceState,
     exploitability: 'UNKNOWN',
     exploitabilityBasis: 'Default',
     contextualRisk: 'UNKNOWN',
@@ -97,6 +102,9 @@ function evaluateContextRisk(input) {
       } else if (compPres === 'PRESENT' && runExec === 'PRESENT_NOT_EXECUTED') {
         expl = 'UNKNOWN';
         explBasis = 'Component PRESENT_NOT_EXECUTED';
+      } else if (compPres === 'PRESENT' && runExec === 'EXECUTED') {
+        expl = 'EXPLOITABLE';
+        explBasis = 'Component PRESENT and EXECUTED';
       }
       
       let env = input.contextVector.environment;
@@ -106,7 +114,10 @@ function evaluateContextRisk(input) {
       let sens = input.contextVector.dataSensitivity;
       
       let sev = vuln.originalSeverity || vuln.severity || 'UNKNOWN';
-      if (env === 'PRODUCTION' && (exp === 'PUBLIC' || exp === 'RESTRICTED_PUBLIC') && expl !== 'NOT_EXPLOITABLE' && sev === 'CRITICAL') {
+      if (expl === 'UNDER_INVESTIGATION') {
+        blockStatus = 'REVIEW_REQUIRED';
+        risk = 'UNKNOWN';
+      } else if (env === 'PRODUCTION' && (exp === 'PUBLIC' || exp === 'RESTRICTED_PUBLIC') && expl !== 'NOT_EXPLOITABLE' && sev === 'CRITICAL') {
         risk = 'CRITICAL';
         blockStatus = 'BLOCKING';
         exceptionNeeded = true;
@@ -130,11 +141,6 @@ function evaluateContextRisk(input) {
         exceptionNeeded = true;
         triggeredRules.add('CAECTD-R017');
         reasonCodes.add('CTX-002');
-      }
-
-      if (expl === 'UNDER_INVESTIGATION') {
-        blockStatus = 'REVIEW_REQUIRED';
-        risk = 'UNKNOWN';
       }
 
       if (blockStatus === 'BLOCKING') isBlocking = true;

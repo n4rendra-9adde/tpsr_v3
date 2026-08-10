@@ -8,6 +8,10 @@ const trustRepository = require('../../repositories/trustRepository');
 
 jest.mock('../../repositories/sbomRepository');
 jest.mock('../../repositories/trustRepository');
+jest.mock('../../repositories/contextAssertionRepository', () => ({
+  listContextAssertionsBySbomId: jest.fn()
+}));
+const contextAssertionRepository = require('../../repositories/contextAssertionRepository');
 
 const app = express();
 app.use(express.json());
@@ -54,8 +58,9 @@ describe('TPSR v3 Trust Evaluation & Outbox Routes Unit Tests', () => {
     sbomRepository.getProvenanceBySBOMID.mockResolvedValue([{ status: 'VALID', slsa_level: 'SLSA_BUILD_LEVEL_3' }]);
     sbomRepository.getSignaturesBySBOMID.mockResolvedValue([{ verification_status: 'VERIFIED' }]);
     sbomRepository.getVexStatementsBySBOMID.mockResolvedValue([]);
-    sbomRepository.getDeploymentContextBySBOMID.mockResolvedValue([{ environment: 'PROD', network_exposure: 'INTERNAL' }]);
+    sbomRepository.getDeploymentContextBySBOMID.mockResolvedValue([]);
     sbomRepository.getPolicyExceptionsBySBOMID.mockResolvedValue([]);
+    contextAssertionRepository.listContextAssertionsBySbomId.mockResolvedValue([{ status: 'ACTIVE', verification_status: 'VERIFIED', environment: 'PROD', internetExposure: 'INTERNAL', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED' }]);
 
     trustRepository.insertTrustDecision.mockResolvedValue({
       id: 'dec-301',

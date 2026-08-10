@@ -9,7 +9,9 @@ describe('Label Mutation Independence', () => {
       vulnerabilities: [],
       provenance: [{ status: 'VALID', slsa_level: 'SLSA_BUILD_LEVEL_3' }],
       signatures: [{ status: 'VALID' }],
-      expectedCAECTDDecision: 'TRUSTED' // initial label
+      expectedCAECTDDecision: 'TRUSTED', // initial label
+      deploymentContext: { environment: 'DEVELOPMENT' },
+      activeContextAssertion: { status: 'ACTIVE', verificationStatus: 'VERIFIED', environment: 'DEVELOPMENT' }
     };
     const res1 = await evaluate(input);
     expect(res1.decision).toBe('TRUSTED');

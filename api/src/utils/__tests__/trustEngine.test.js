@@ -47,7 +47,7 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
       },
       provenance: validProv,
       signatures: validSig,
-      deploymentContext: { environment: 'PROD_CRITICAL', network_exposure: 'PUBLIC' },
+      activeContextAssertion: { environment: 'PROD_CRITICAL', internetExposure: 'PUBLIC', status: 'ACTIVE', verificationStatus: 'VERIFIED' },
       policyExceptions: []
     });
     expect(res.trustStatus).toBe('REJECTED');
@@ -61,7 +61,7 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
       sbomDocument: sbomDoc,
       provenance: validProv,
       signatures: validSig,
-      deploymentContext: { environment: 'PROD', network_exposure: 'INTERNAL' }
+      activeContextAssertion: { environment: 'PROD', internetExposure: 'INTERNAL', status: 'ACTIVE', verificationStatus: 'VERIFIED' }
     });
     expect(res.trustStatus).toBe('TRUSTED');
     expect(res.reasonCode).toBe('GOV-001');
@@ -82,8 +82,8 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
       },
       provenance: validProv,
       signatures: validSig,
-      deploymentContext: { environment: 'PROD_CRITICAL', network_exposure: 'PUBLIC' },
-      policyExceptions: [{ id: 'exc-1', violation_id: 'CVE-2026-1111', status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', valid_until: futureDate }]
+      activeContextAssertion: { environment: 'PRODUCTION', internetExposure: 'PUBLIC', status: 'ACTIVE', verificationStatus: 'VERIFIED' },
+      policyExceptions: [{ id: 'exc-1', policy_rule_id: 'CAECTD-R017', vulnerability_ids: ['CVE-2026-1111'], status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', valid_until: futureDate, remediation_plan: 'Patching', compensating_controls: ['WAF'], residual_risk: 'LOW' }]
     });
     expect(res.trustStatus).toBe('CONDITIONALLY_ACCEPTED');
     expect(res.trustStatus).not.toBe('TRUSTED');
@@ -103,7 +103,7 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
       },
       provenance: validProv,
       signatures: validSig,
-      deploymentContext: { environment: 'PROD_CRITICAL', network_exposure: 'PUBLIC' },
+      activeContextAssertion: { environment: 'PRODUCTION', internetExposure: 'PUBLIC', status: 'ACTIVE', verificationStatus: 'VERIFIED' },
       policyExceptions: [{ id: 'exc-2', violation_id: 'CVE-2026-2222', status: 'APPROVED', valid_until: pastDate }]
     });
     expect(res.trustStatus).toBe('REJECTED');
@@ -128,7 +128,7 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
       },
       provenance: validProv,
       signatures: validSig,
-      deploymentContext: { environment: 'PROD_CRITICAL', network_exposure: 'PUBLIC' },
+      activeContextAssertion: { environment: 'PRODUCTION', internetExposure: 'PUBLIC', status: 'ACTIVE', verificationStatus: 'VERIFIED' },
       policyExceptions: []
     });
     // Context is present, so R024 shouldn't be triggered even if there's a blocking violation (which triggers R017)
@@ -151,6 +151,39 @@ describe('TPSR v3 Trust-Evaluation Orchestration Engine — Four-State Enum', ()
 
     expect(res.triggeredRuleIds).toContain('CAECTD-R024');
     spy.mockRestore();
+  });
+
+  test('Scenario 1 Regression: Current trusted context with affected vuln and PRESENT/EXECUTED produces EXPLOITABLE and REJECTED', async () => {
+    const res = await evaluateTrust({
+      sbomDocument: {
+        sbom_id: 'test-s1-regression',
+        sbom_json: JSON.stringify({
+          components: [{
+            'bom-ref': 'comp-1',
+            vulnerabilities: [{ id: 'CVE-2026-CRIT', severity: 'CRITICAL', originalSeverity: 'CRITICAL' }]
+          }]
+        })
+      },
+      provenance: validProv,
+      signatures: validSig,
+      activeContextAssertion: {
+        id: 'ctx-123',
+        status: 'ACTIVE',
+        verificationStatus: 'VERIFIED',
+        environment: 'PRODUCTION',
+        internetExposure: 'PUBLIC',
+        componentPresence: 'PRESENT',
+        runtimeExecution: 'EXECUTED'
+      },
+      policyExceptions: [],
+      policy: { contextRiskPolicy: {} }
+    });
+    
+    expect(res.trustStatus).toBe('REJECTED');
+    expect(res.evidenceDependencies.contextRisk.contextAssuranceState).toBe('VERIFIED_TRUSTED');
+    expect(res.evidenceDependencies.contextRisk.exploitability).toBe('EXPLOITABLE');
+    expect(res.evidenceDependencies.contextRisk.contextualRisk).toBe('CRITICAL');
+    expect(res.evidenceDependencies.contextRisk.policyBlockingStatus).toBe('BLOCKING');
   });
 
   // ── TRUST_STATUS constants exported ────────────────────────────────────────

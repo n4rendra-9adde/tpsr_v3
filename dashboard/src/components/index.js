@@ -8,3 +8,4 @@ export { VexApplicabilityTable } from './VexApplicabilityTable';
 export { ReasonCodeList } from './ReasonCodeList';
 export { SimulationNotice } from './SimulationNotice';
 export { EvidenceApiDiagnostics } from './EvidenceApiDiagnostics';
+export { default as ContextRiskSummary } from './ContextRiskSummary';

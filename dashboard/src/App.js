@@ -11,6 +11,7 @@ import {
   ContextAssertionCard,
   PolicyExceptionCard,
   ProvenanceEvidenceCard, 
+  ContextRiskSummary,
   VexApplicabilityTable, 
   ReasonCodeList, 
   SimulationNotice 
@@ -638,6 +639,7 @@ function VerifyPage({ selectedIdentity }) {
     vexData,
     contextAssertionData,
     exceptionsData,
+    trustDecisionData,
     diagnostics,
     fetchEvidence,
     reset: resetEvidence
@@ -874,6 +876,12 @@ function VerifyPage({ selectedIdentity }) {
           {exceptionsData && exceptionsData.length > 0 && exceptionsData.map((exc) => (
              <PolicyExceptionCard key={exc.id} exceptionData={exc} />
           ))}
+          
+          <ContextRiskSummary 
+            contextRisk={trustDecisionData?.contextRisk}
+            originalVulnerabilities={trustDecisionData?.originalVulnerabilities || []}
+            isSimulation={false}
+          />
 
           {anchorDoc && (
             <Card
@@ -1266,6 +1274,7 @@ function CompliancePage({ selectedIdentity }) {
     vexData,
     contextAssertionData,
     exceptionsData,
+    trustDecisionData,
     diagnostics,
     fetchEvidence,
     reset: resetEvidence

@@ -23,20 +23,28 @@ const noCtx      = null;
 const noExc      = [];
 
 const internalCtx = {
+  status: 'ACTIVE',
+  verificationStatus: 'VERIFIED',
   environment: 'PROD',
-  network_exposure: 'INTERNAL',
-  data_sensitivity: 'INTERNAL'
+  internetExposure: 'INTERNAL',
+  data_sensitivity: 'INTERNAL',
+  componentPresence: 'PRESENT',
+  runtimeExecution: 'EXECUTED'
 };
 
 const publicProdCtx = {
+  status: 'ACTIVE',
+  verificationStatus: 'VERIFIED',
   environment: 'PROD_CRITICAL',
-  network_exposure: 'PUBLIC',
-  data_sensitivity: 'RESTRICTED'
+  internetExposure: 'PUBLIC',
+  data_sensitivity: 'RESTRICTED',
+  componentPresence: 'PRESENT',
+  runtimeExecution: 'EXECUTED'
 };
 
-const approvedExc = [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', valid_until: new Date(Date.now() + 86400000).toISOString() }];
-const expiredExc  = [{ status: 'EXPIRED', assurance_state: 'STALE', valid_until: new Date(Date.now() - 86400000).toISOString() }];
-const revokedExc  = [{ status: 'REVOKED', assurance_state: 'INVALID', valid_until: new Date(Date.now() + 86400000).toISOString() }];
+const approvedExc = [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', policy_rule_id: 'CAECTD-R017', vulnerability_ids: ['CVE-2026-9999'], remediation_plan: 'Fix', compensating_controls: ['WAF'], residual_risk: 'LOW', valid_until: new Date(Date.now() + 86400000).toISOString() }];
+const expiredExc  = [{ status: 'EXPIRED', assurance_state: 'STALE', policy_rule_id: 'CAECTD-R017', vulnerability_ids: ['CVE-2026-9999'], remediation_plan: 'Fix', compensating_controls: ['WAF'], residual_risk: 'LOW', valid_until: new Date(Date.now() - 86400000).toISOString() }];
+const revokedExc  = [{ status: 'REVOKED', assurance_state: 'INVALID', policy_rule_id: 'CAECTD-R017', vulnerability_ids: ['CVE-2026-9999'], remediation_plan: 'Fix', compensating_controls: ['WAF'], residual_risk: 'LOW', valid_until: new Date(Date.now() + 86400000).toISOString() }];
 
 // ─── A. TRUSTED ─────────────────────────────────────────────────────────────
 
@@ -44,7 +52,7 @@ describe('A. TRUSTED — all mandatory checks pass, no exception needed', () => 
   test('A.1 Returns TRUSTED when all mandatory checks pass with internal context', async () => {
     const res = await evaluateTrust({
       sbomDocument: validSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: internalCtx, policyExceptions: noExc
+      vexStatements: noVex, activeContextAssertion: internalCtx, policyExceptions: noExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.TRUSTED);
     expect(res.reasonCode).toBe('GOV-001');
@@ -55,16 +63,16 @@ describe('A. TRUSTED — all mandatory checks pass, no exception needed', () => 
   test('A.2 Returns TRUSTED when all mandatory checks pass with no deployment context', async () => {
     const res = await evaluateTrust({
       sbomDocument: validSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: noCtx, policyExceptions: noExc
+      vexStatements: noVex, activeContextAssertion: noCtx, policyExceptions: noExc
     });
-    expect(res.trustStatus).toBe(TRUST_STATUS.TRUSTED);
-    expect(res.reasonCode).toBe('GOV-001');
+    expect(res.trustStatus).toBe(TRUST_STATUS.REVIEW_REQUIRED);
+    expect(res.reasonCode).toBe('CTX-005');
   });
 
   test('A.3 TRUSTED requires no policy exception', async () => {
     const res = await evaluateTrust({
       sbomDocument: validSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: internalCtx, policyExceptions: approvedExc
+      vexStatements: noVex, activeContextAssertion: internalCtx, policyExceptions: approvedExc
     });
     // Having an exception doesn't downgrade TRUSTED to CONDITIONALLY_ACCEPTED
     // unless there is a policy violation that the exception covers
@@ -78,7 +86,7 @@ describe('B. CONDITIONALLY_ACCEPTED — valid exception covers policy violation'
   test('B.1 Returns CONDITIONALLY_ACCEPTED via EXC-001 when public PROD_CRITICAL + active approved exception', async () => {
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: approvedExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: approvedExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.CONDITIONALLY_ACCEPTED);
     expect(res.reasonCode).toBe('EXC-001');
@@ -88,7 +96,7 @@ describe('B. CONDITIONALLY_ACCEPTED — valid exception covers policy violation'
   test('B.2 Exception must be APPROVED status — REVOKED exception does not produce CONDITIONALLY_ACCEPTED', async () => {
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: revokedExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: revokedExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.REJECTED);
     expect(res.trustStatus).not.toBe(TRUST_STATUS.CONDITIONALLY_ACCEPTED);
@@ -97,17 +105,17 @@ describe('B. CONDITIONALLY_ACCEPTED — valid exception covers policy violation'
   test('B.3 Exception must be unexpired — expired exception does not produce CONDITIONALLY_ACCEPTED', async () => {
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: expiredExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: expiredExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.REJECTED);
     expect(res.trustStatus).not.toBe(TRUST_STATUS.CONDITIONALLY_ACCEPTED);
   });
 
   test('B.4 Exception with no valid_until (unlimited) is treated as active', async () => {
-    const unlimitedExc = [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', valid_until: null }];
+    const unlimitedExc = [{ status: 'ACTIVE', assurance_state: 'VERIFIED_TRUSTED', policy_rule_id: 'CAECTD-R017', vulnerability_ids: ['CVE-2026-9999'], remediation_plan: 'Fix', compensating_controls: ['WAF'], residual_risk: 'LOW', valid_until: null }];
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: unlimitedExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: unlimitedExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.CONDITIONALLY_ACCEPTED);
   });
@@ -170,7 +178,7 @@ describe('D. REJECTED — mandatory check failed', () => {
   test('D.7 Returns REJECTED when policy violation has no valid exception (expired)', async () => {
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: expiredExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: expiredExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.REJECTED);
   });
@@ -178,7 +186,7 @@ describe('D. REJECTED — mandatory check failed', () => {
   test('D.8 Returns REJECTED when policy violation has no valid exception (empty)', async () => {
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: noExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: noExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.REJECTED);
   });
@@ -191,7 +199,7 @@ describe('E. Decision precedence: REJECTED > REVIEW_REQUIRED > CONDITIONALLY_ACC
     // Even with an approved exception, a missing signature = REJECTED (signature is mandatory)
     const res = await evaluateTrust({
       sbomDocument: validSBOM, provenance: validProv, signatures: [],
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: approvedExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: approvedExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.REJECTED);
     expect(res.reasonCode).toBe('SIG-002');
@@ -200,7 +208,7 @@ describe('E. Decision precedence: REJECTED > REVIEW_REQUIRED > CONDITIONALLY_ACC
   test('E.2 REJECTED overrides even when exception exists: missing provenance always REJECTED', async () => {
     const res = await evaluateTrust({
       sbomDocument: validSBOM, provenance: [], signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: approvedExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: approvedExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.REJECTED);
     expect(res.reasonCode).toBe('PRV-005');
@@ -209,7 +217,7 @@ describe('E. Decision precedence: REJECTED > REVIEW_REQUIRED > CONDITIONALLY_ACC
   test('E.3 Exception covers context violation → CONDITIONALLY_ACCEPTED, not TRUSTED', async () => {
     const res = await evaluateTrust({
       sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: approvedExc
+      vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: approvedExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.CONDITIONALLY_ACCEPTED);
     expect(res.trustStatus).not.toBe(TRUST_STATUS.TRUSTED);
@@ -218,7 +226,7 @@ describe('E. Decision precedence: REJECTED > REVIEW_REQUIRED > CONDITIONALLY_ACC
   test('E.4 No context violation → TRUSTED regardless of exception availability', async () => {
     const res = await evaluateTrust({
       sbomDocument: validSBOM, provenance: validProv, signatures: validSig,
-      vexStatements: noVex, deploymentContext: internalCtx, policyExceptions: approvedExc
+      vexStatements: noVex, activeContextAssertion: internalCtx, policyExceptions: approvedExc
     });
     expect(res.trustStatus).toBe(TRUST_STATUS.TRUSTED);
   });
@@ -230,9 +238,9 @@ describe('F. UNEVALUATED — evaluateTrust never returns UNEVALUATED', () => {
   const cases = [
     { name: 'no args', args: {} },
     { name: 'null sbom', args: { sbomDocument: null } },
-    { name: 'empty everything', args: { sbomDocument: validSBOM, provenance: [], signatures: [], vexStatements: [], deploymentContext: null, policyExceptions: [] } },
-    { name: 'valid all-pass', args: { sbomDocument: validSBOM, provenance: validProv, signatures: validSig, vexStatements: noVex, deploymentContext: internalCtx, policyExceptions: noExc } },
-    { name: 'conditionally', args: { sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig, vexStatements: noVex, deploymentContext: publicProdCtx, policyExceptions: approvedExc } },
+    { name: 'empty everything', args: { sbomDocument: validSBOM, provenance: [], signatures: [], vexStatements: [], activeContextAssertion: null, policyExceptions: [] } },
+    { name: 'valid all-pass', args: { sbomDocument: validSBOM, provenance: validProv, signatures: validSig, vexStatements: noVex, activeContextAssertion: internalCtx, policyExceptions: noExc } },
+    { name: 'conditionally', args: { sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig, vexStatements: noVex, activeContextAssertion: publicProdCtx, policyExceptions: approvedExc } },
   ];
 
   cases.forEach(({ name, args }) => {
@@ -290,8 +298,8 @@ describe('G. Historical UNTRUSTED normalization — read-only, never emitted', (
       evaluateTrust({ sbomDocument: null }),
       evaluateTrust({ sbomDocument: validSBOM, provenance: [], signatures: validSig }),
       evaluateTrust({ sbomDocument: validSBOM, provenance: validProv, signatures: [] }),
-      evaluateTrust({ sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig, deploymentContext: publicProdCtx, policyExceptions: [] }),
-      evaluateTrust({ sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig, deploymentContext: publicProdCtx, policyExceptions: approvedExc }),
+      evaluateTrust({ sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig, activeContextAssertion: publicProdCtx, policyExceptions: [] }),
+      evaluateTrust({ sbomDocument: vulnSBOM, provenance: validProv, signatures: validSig, activeContextAssertion: publicProdCtx, policyExceptions: approvedExc }),
       evaluateTrust({ sbomDocument: validSBOM, provenance: validProv, signatures: validSig }),
     ]);
     pathResults.forEach((res) => {

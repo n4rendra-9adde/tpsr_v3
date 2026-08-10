@@ -150,7 +150,7 @@ async function evaluateTrust(evidenceBundle = {}) {
   };
 
   const policy = provenanceEngine.getTrustPolicy();
-  const contextRequired = policy.requireDeploymentContext === true;
+  const contextRequired = policy.requireDeploymentContext === true || (policy.contextRiskPolicy && policy.contextRiskPolicy.operations.includes('verify'));
   result.policyVersion = policy.version || '3.0';
   result.trustPolicyHash = policy.hash || 'unknown';
 

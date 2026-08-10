@@ -14,6 +14,7 @@ export function useSbomEvidence() {
   const [vexData, setVexData] = useState([]);
   const [contextAssertionData, setContextAssertionData] = useState(null);
   const [exceptionsData, setExceptionsData] = useState([]);
+  const [trustDecisionData, setTrustDecisionData] = useState(null);
   
   // Diagnostics
   const [diagnostics, setDiagnostics] = useState([]);
@@ -25,6 +26,7 @@ export function useSbomEvidence() {
     setVexData([]);
     setContextAssertionData(null);
     setExceptionsData([]);
+    setTrustDecisionData(null);
     setError(null);
     setDiagnostics([]);
   }, []);
@@ -46,7 +48,8 @@ export function useSbomEvidence() {
       { name: 'provenance', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/provenance` },
       { name: 'vex', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/vex` },
       { name: 'contextAssertions', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/context/assertions` },
-      { name: 'exceptions', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/exceptions` }
+      { name: 'exceptions', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/exceptions` },
+      { name: 'trustDecision', url: `${API_BASE_URL}/v1/sbom/${encodeURIComponent(sbomId)}/trust-decision` }
     ];
 
     try {
@@ -171,6 +174,11 @@ export function useSbomEvidence() {
               } else {
                 emptyReason = 'No policy exceptions requested or active';
               }
+            } else if (ep.name === 'trustDecision') {
+              count = 1;
+              if (data.latestDecision) {
+                setTrustDecisionData(data.latestDecision);
+              }
             }
           } catch (err) {
             parseError = err.message;
@@ -212,6 +220,7 @@ export function useSbomEvidence() {
     vexData,
     contextAssertionData,
     exceptionsData,
+    trustDecisionData,
     diagnostics,
     fetchEvidence,
     reset
