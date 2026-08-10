@@ -89,6 +89,7 @@ function evaluateContextRisk(input) {
         if (input.vexTrusted && input.vexCurrent && input.vexExactScope) {
           expl = 'NOT_EXPLOITABLE';
           explBasis = 'Trusted NOT_AFFECTED VEX';
+          triggeredRules.add('CAECTD-R016');
         } else {
           explBasis = 'Untrusted or invalid NOT_AFFECTED VEX';
           needsReview = true;
@@ -114,9 +115,14 @@ function evaluateContextRisk(input) {
       let sens = input.contextVector.dataSensitivity;
       
       let sev = vuln.originalSeverity || vuln.severity || 'UNKNOWN';
-      if (expl === 'UNDER_INVESTIGATION') {
+      if (expl === 'UNDER_INVESTIGATION' || explBasis === 'Component PRESENT_NOT_EXECUTED') {
         blockStatus = 'REVIEW_REQUIRED';
         risk = 'UNKNOWN';
+        triggeredRules.add('GOV-003');
+        reasonCodes.add('GOV-003');
+        if (expl === 'UNDER_INVESTIGATION') {
+          triggeredRules.add('CAECTD-R019');
+        }
       } else if (env === 'PRODUCTION' && (exp === 'PUBLIC' || exp === 'RESTRICTED_PUBLIC') && expl !== 'NOT_EXPLOITABLE' && sev === 'CRITICAL') {
         risk = 'CRITICAL';
         blockStatus = 'BLOCKING';

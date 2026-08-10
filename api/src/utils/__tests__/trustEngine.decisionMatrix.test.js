@@ -74,9 +74,9 @@ describe('A. TRUSTED — all mandatory checks pass, no exception needed', () => 
       sbomDocument: validSBOM, provenance: validProv, signatures: validSig,
       vexStatements: noVex, activeContextAssertion: internalCtx, policyExceptions: approvedExc
     });
-    // Having an exception doesn't downgrade TRUSTED to CONDITIONALLY_ACCEPTED
-    // unless there is a policy violation that the exception covers
-    expect(res.trustStatus).toBe(TRUST_STATUS.TRUSTED);
+    // Having an active exception unnecessarily triggers REVIEW_REQUIRED
+    expect(res.trustStatus).toBe(TRUST_STATUS.REVIEW_REQUIRED);
+    expect(res.reasonCode).toBe('GOV-003');
   });
 });
 
@@ -228,7 +228,8 @@ describe('E. Decision precedence: REJECTED > REVIEW_REQUIRED > CONDITIONALLY_ACC
       sbomDocument: validSBOM, provenance: validProv, signatures: validSig,
       vexStatements: noVex, activeContextAssertion: internalCtx, policyExceptions: approvedExc
     });
-    expect(res.trustStatus).toBe(TRUST_STATUS.TRUSTED);
+    expect(res.trustStatus).toBe(TRUST_STATUS.REVIEW_REQUIRED);
+    expect(res.reasonCode).toBe('GOV-003');
   });
 });
 

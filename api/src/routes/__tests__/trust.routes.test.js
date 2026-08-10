@@ -61,6 +61,7 @@ describe('TPSR v3 Trust Evaluation & Outbox Routes Unit Tests', () => {
     sbomRepository.getDeploymentContextBySBOMID.mockResolvedValue([]);
     sbomRepository.getPolicyExceptionsBySBOMID.mockResolvedValue([]);
     contextAssertionRepository.listContextAssertionsBySbomId.mockResolvedValue([{ status: 'ACTIVE', verification_status: 'VERIFIED', environment: 'PROD', internetExposure: 'INTERNAL', componentPresence: 'PRESENT', runtimeExecution: 'EXECUTED' }]);
+    trustRepository.getTrustDecisionHistoryBySBOMID.mockResolvedValue([]);
 
     trustRepository.insertTrustDecision.mockResolvedValue({
       id: 'dec-301',

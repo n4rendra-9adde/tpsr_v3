@@ -1,0 +1,196 @@
+{
+  "modelId": "CAECTD_TRUST_STATE_MODEL",
+  "modelVersion": "0.1",
+  "states": [
+    "TRUSTED",
+    "CONDITIONALLY_ACCEPTED",
+    "REVIEW_REQUIRED",
+    "REJECTED"
+  ],
+  "terminalStates": [
+    "TRUSTED",
+    "REJECTED"
+  ],
+  "precedence": [
+    "REJECTED",
+    "REVIEW_REQUIRED",
+    "CONDITIONALLY_ACCEPTED",
+    "TRUSTED"
+  ],
+  "entryConditions": {
+    "ANY": "Initial state for first evaluation before rules are processed"
+  },
+  "transitions": [
+    {
+      "transitionId": "TR-001",
+      "fromState": "ANY",
+      "toState": "TRUSTED",
+      "triggerRuleIds": ["GOV-001"],
+      "requiredConditions": ["ALL_MANDATORY_CHECKS_PASS", "NO_BLOCKING_FAILURES"],
+      "prohibitedConditions": ["MISSING_CONTEXT", "CLASS_A_FAILURE", "ACTIVE_EXCEPTION_REQUIRED"],
+      "requiredEvidence": ["sbom", "provenance", "signature", "contextAssertion"],
+      "evidenceAssuranceRequirements": ["VERIFIED_TRUSTED"],
+      "reasonCodes": ["GOV-001"],
+      "lifecycleEffect": "ALLOW_ALL",
+      "exceptionPolicy": "NOT_APPLICABLE",
+      "reversible": true,
+      "reevaluationTrigger": ["NEW_EVIDENCE", "CONTEXT_ASSERTION_REVOKED", "CONTEXT_ASSERTION_EXPIRED", "MANUAL_REEVALUATION"],
+      "implementationStatus": "IMPLEMENTED"
+    },
+    {
+      "transitionId": "TR-002",
+      "fromState": "ANY",
+      "toState": "REJECTED",
+      "triggerRuleIds": ["CAECTD-R007", "CAECTD-R003", "CR-001"],
+      "requiredConditions": ["CLASS_A_FAILURE_OR_UNMITIGATED_BLOCKING_FAILURE"],
+      "prohibitedConditions": [],
+      "requiredEvidence": [],
+      "evidenceAssuranceRequirements": [],
+      "reasonCodes": ["PRV-005", "SIG-002", "CTX-001"],
+      "lifecycleEffect": "BLOCK_ALL",
+      "exceptionPolicy": "NOT_APPLICABLE_FOR_CLASS_A",
+      "reversible": true,
+      "reevaluationTrigger": ["EXCEPTION_APPROVED", "NEW_EVIDENCE", "MANUAL_REEVALUATION"],
+      "implementationStatus": "IMPLEMENTED"
+    },
+    {
+      "transitionId": "TR-003",
+      "fromState": "ANY",
+      "toState": "CONDITIONALLY_ACCEPTED",
+      "triggerRuleIds": ["CAECTD-R017"],
+      "requiredConditions": ["EXCEPTIONABLE_CLASS_B_FAILURE", "ACTIVE_VALID_EXCEPTION"],
+      "prohibitedConditions": ["CLASS_A_FAILURE", "MISSING_CONTEXT"],
+      "requiredEvidence": ["policyException"],
+      "evidenceAssuranceRequirements": ["VERIFIED_TRUSTED"],
+      "reasonCodes": ["EXC-001"],
+      "lifecycleEffect": "ALLOW_WITH_RESTRICTIONS",
+      "exceptionPolicy": "REQUIRES_ACTIVE_EXCEPTION",
+      "reversible": true,
+      "reevaluationTrigger": ["EXCEPTION_EXPIRED", "EXCEPTION_REVOKED", "MANUAL_REEVALUATION"],
+      "implementationStatus": "IMPLEMENTED"
+    },
+    {
+      "transitionId": "TR-004",
+      "fromState": "ANY",
+      "toState": "REVIEW_REQUIRED",
+      "triggerRuleIds": ["CAECTD-R024", "CAECTD-R031"],
+      "requiredConditions": ["MISSING_OR_CONFLICTING_EVIDENCE_OR_INVESTIGATION"],
+      "prohibitedConditions": ["CLASS_A_FAILURE"],
+      "requiredEvidence": [],
+      "evidenceAssuranceRequirements": [],
+      "reasonCodes": ["CTX-005", "CTX-017", "GOV-003"],
+      "lifecycleEffect": "HOLD_FOR_REVIEW",
+      "exceptionPolicy": "NOT_APPLICABLE",
+      "reversible": true,
+      "reevaluationTrigger": ["CONTEXT_ASSERTION_CREATED", "VEX_RECORDED", "MANUAL_REEVALUATION"],
+      "implementationStatus": "IMPLEMENTED"
+    },
+    {
+      "transitionId": "TR-005",
+      "fromState": "REVIEW_REQUIRED",
+      "toState": "TRUSTED",
+      "triggerRuleIds": ["GOV-001"],
+      "requiredConditions": ["MISSING_EVIDENCE_SUPPLIED", "ALL_MANDATORY_CHECKS_PASS"],
+      "prohibitedConditions": ["CLASS_A_FAILURE"],
+      "requiredEvidence": ["contextAssertion"],
+      "evidenceAssuranceRequirements": ["VERIFIED_TRUSTED"],
+      "reasonCodes": ["GOV-001"],
+      "lifecycleEffect": "ALLOW_ALL",
+      "exceptionPolicy": "NOT_APPLICABLE",
+      "reversible": true,
+      "reevaluationTrigger": ["CONTEXT_ASSERTION_EXPIRED", "MANUAL_REEVALUATION"],
+      "implementationStatus": "IMPLEMENTED"
+    },
+    {
+      "transitionId": "TR-006",
+      "fromState": "REJECTED",
+      "toState": "CONDITIONALLY_ACCEPTED",
+      "triggerRuleIds": ["CAECTD-R017"],
+      "requiredConditions": ["EXCEPTION_APPROVED", "NO_CLASS_A_FAILURE"],
+      "prohibitedConditions": ["CLASS_A_FAILURE"],
+      "requiredEvidence": ["policyException"],
+      "evidenceAssuranceRequirements": ["VERIFIED_TRUSTED"],
+      "reasonCodes": ["EXC-001"],
+      "lifecycleEffect": "ALLOW_WITH_RESTRICTIONS",
+      "exceptionPolicy": "REQUIRES_ACTIVE_EXCEPTION",
+      "reversible": true,
+      "reevaluationTrigger": ["EXCEPTION_EXPIRED", "EXCEPTION_REVOKED", "MANUAL_REEVALUATION"],
+      "implementationStatus": "IMPLEMENTED"
+    },
+    {
+      "transitionId": "TR-007",
+      "fromState": "CONDITIONALLY_ACCEPTED",
+      "toState": "REJECTED",
+      "triggerRuleIds": ["CAECTD-R017_REVERT", "CR-001"],
+      "requiredConditions": ["EXCEPTION_EXPIRED_OR_REVOKED"],
+      "prohibitedConditions": [],
+      "requiredEvidence": [],
+      "evidenceAssuranceRequirements": [],
+      "reasonCodes": ["CTX-001"],
+      "lifecycleEffect": "BLOCK_ALL",
+      "exceptionPolicy": "EXCEPTION_INVALID",
+      "reversible": true,
+      "reevaluationTrigger": ["EXCEPTION_APPROVED", "MANUAL_REEVALUATION"],
+      "implementationStatus": "IMPLEMENTED"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "INV-001",
+      "description": "TRUSTED is allowed only when: All mandatory Class A controls pass, no non-exceptionable Class B failure exists, no unresolved REVIEW_ONLY condition exists, no evidence conflict exists, required authenticated context is present and trusted, no active exception is required, and policy-blocking status is not BLOCKING."
+    },
+    {
+      "id": "INV-002",
+      "description": "CONDITIONALLY_ACCEPTED is allowed only when: All Class A controls pass, one or more exceptionable Class B failures remain visible, every mitigated failure is covered by an ACTIVE, VERIFIED_TRUSTED, exactly scoped governed exception, separation of duties passes, exception is current, required remediation and controls exist, and no REVIEW_ONLY uncertainty remains."
+    },
+    {
+      "id": "INV-003",
+      "description": "CONDITIONALLY_ACCEPTED must never be treated as TRUSTED."
+    },
+    {
+      "id": "INV-004",
+      "description": "REVIEW_REQUIRED applies when: Mandatory context is missing, trusted evidence conflicts, VEX is under investigation, context is stale, invalid, or unauthorized, evidence is insufficient for a deterministic permit/block result, or policy explicitly requires human review."
+    },
+    {
+      "id": "INV-005",
+      "description": "REJECTED applies when: Any Class A failure exists, a non-exceptionable Class B blocking failure exists, an exceptionable Class B blocking failure exists without a valid active exception, or policy explicitly requires blocking."
+    },
+    {
+      "id": "INV-006",
+      "description": "Class A non-override invariant: Missing SBOM, SBOM integrity mismatch, invalid signature, untrusted signer, signature target mismatch, missing mandatory provenance, invalid provenance envelope, unauthorized mandatory builder, repository mismatch, commit mismatch, provenance subject mismatch, evidence replay, and release-binding mismatch must always produce REJECTED regardless of VEX, context, compensating controls, or exceptions."
+    }
+  ],
+  "lifecycleEffects": [
+    "ALLOW_ALL",
+    "ALLOW_WITH_RESTRICTIONS",
+    "HOLD_FOR_REVIEW",
+    "BLOCK_ALL"
+  ],
+  "evidenceRequirements": [
+    "Integrity",
+    "Release binding",
+    "Signature validity",
+    "Signer trust",
+    "Provenance validity",
+    "Builder/source trust",
+    "Replay/freshness",
+    "Vulnerability finding",
+    "VEX trust and scope",
+    "Context assertion",
+    "Exception governance"
+  ],
+  "explanationRequirements": [
+    "triggeredRuleIds",
+    "reasonCodes",
+    "evidenceDependencies",
+    "evidenceAssuranceStates",
+    "policyVersion",
+    "trustPolicyHash",
+    "contextResult",
+    "exceptionResult",
+    "lifecycleEffect"
+  ],
+  "limitations": [
+    "Decisions reflect point-in-time evaluation."
+  ]
+}

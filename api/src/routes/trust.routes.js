@@ -65,6 +65,35 @@ async function handleEvaluateTrust(req, res) {
       allActiveContextAssertions: activeAssertions.filter(a => a.status === 'ACTIVE' || (a.status === 'INVALID' && a.assurance_state === 'CONFLICTING')),
       policyExceptions: exceptions
     });
+    
+    // Add State Transition Metadata for Point 6
+    const history = await trustRepository.getTrustDecisionHistoryBySBOMID(sbomId.trim());
+    const previousDecision = history.length > 0 ? history[0] : null;
+    
+    let reevaluationTrigger = 'NEW_EVIDENCE';
+    if (req.body && req.body.trigger) {
+      reevaluationTrigger = req.body.trigger;
+    } else if (req.headers['x-reevaluation-trigger']) {
+      reevaluationTrigger = req.headers['x-reevaluation-trigger'];
+    }
+
+    let actualLifecycleEffect = "UNKNOWN";
+    if (evalResult.trustStatus === 'TRUSTED') actualLifecycleEffect = "ALLOW_ALL";
+    if (evalResult.trustStatus === 'CONDITIONALLY_ACCEPTED') actualLifecycleEffect = "ALLOW_WITH_RESTRICTIONS";
+    if (evalResult.trustStatus === 'REVIEW_REQUIRED') actualLifecycleEffect = "HOLD_FOR_REVIEW";
+    if (evalResult.trustStatus === 'REJECTED') actualLifecycleEffect = "BLOCK_ALL";
+    
+    const crypto = require('crypto');
+    evalResult.evidenceSummary = evalResult.evidenceSummary || {};
+    evalResult.evidenceSummary.transitionMetadata = {
+      previousDecision: previousDecision ? previousDecision.trust_status : null,
+      previousDecisionId: previousDecision ? previousDecision.id : null,
+      currentDecision: evalResult.trustStatus,
+      transitionId: `TR-${crypto.randomUUID()}`,
+      transitionReason: `Transitioned from ${previousDecision ? previousDecision.trust_status : 'ANY'} to ${evalResult.trustStatus}`,
+      reevaluationTrigger: reevaluationTrigger,
+      lifecycleEffect: actualLifecycleEffect
+    };
 
     const dbDecision = await trustRepository.insertTrustDecision({
       sbomId: sbomId.trim(),
@@ -212,6 +241,24 @@ function sanitizeDecisionRecord(record) {
 
   // Never return raw evidence_dependencies directly to avoid leaking internal keys
   delete result.evidence_dependencies;
+
+  // Extract Transition Metadata for Point 6
+  if (result.evidence_summary && result.evidence_summary.transitionMetadata) {
+    const tm = result.evidence_summary.transitionMetadata;
+    result.previousDecision = tm.previousDecision || 'NOT_AVAILABLE';
+    result.currentDecision = tm.currentDecision || 'NOT_AVAILABLE';
+    result.transitionId = tm.transitionId || 'NOT_AVAILABLE';
+    result.transitionReason = tm.transitionReason || 'NOT_AVAILABLE';
+    result.reevaluationTrigger = tm.reevaluationTrigger || 'NOT_AVAILABLE';
+    result.lifecycleEffect = tm.lifecycleEffect || 'NOT_AVAILABLE';
+  } else {
+    result.previousDecision = 'NOT_AVAILABLE';
+    result.currentDecision = result.trust_status || 'NOT_AVAILABLE';
+    result.transitionId = 'NOT_AVAILABLE';
+    result.transitionReason = 'NOT_AVAILABLE';
+    result.reevaluationTrigger = 'NOT_AVAILABLE';
+    result.lifecycleEffect = 'NOT_AVAILABLE';
+  }
 
   return result;
 }

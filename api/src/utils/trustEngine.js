@@ -82,6 +82,11 @@ async function evaluateTrust(evidenceBundle = {}) {
     result.reasonCode = 'INT-002';
     result.reasonDescription = 'SBOM document record is missing or invalid — mandatory integrity check failed.';
     result.triggeredRuleIds.push('CAECTD-R001');
+    result.evidenceDependencies.integrity = {
+      required: true,
+      assuranceState: 'MISSING',
+      evidenceIds: []
+    };
     finalizeExplanation(result, evalRules);
     return result;
   }
@@ -235,11 +240,20 @@ async function evaluateTrust(evidenceBundle = {}) {
     result.trustStatus = TRUST_STATUS.REVIEW_REQUIRED;
     result.reasonDescription = 'Context risk review required.';
   } else if (contextResult.policyBlockingStatus === 'NON_BLOCKING') {
-    result.trustStatus = TRUST_STATUS.TRUSTED;
-    result.reasonCode = 'GOV-001';
-    result.reasonDescription = 'Full TPSR v3 trust evaluation passed all mandatory governance criteria.';
-    evalRules.add('CAECTD-R031');
-    result.triggeredRuleIds.push('CAECTD-R031');
+    const hasActiveException = exceptions.some(e => e.status === 'ACTIVE');
+    if (hasActiveException) {
+      result.trustStatus = TRUST_STATUS.REVIEW_REQUIRED;
+      result.reasonCode = 'GOV-003';
+      result.reasonDescription = 'All controls pass but an exception remains active unnecessarily.';
+      evalRules.add('CAECTD-R027');
+      result.triggeredRuleIds.push('CAECTD-R027');
+    } else {
+      result.trustStatus = TRUST_STATUS.TRUSTED;
+      result.reasonCode = 'GOV-001';
+      result.reasonDescription = 'Full TPSR v3 trust evaluation passed all mandatory governance criteria.';
+      evalRules.add('CAECTD-R031');
+      result.triggeredRuleIds.push('CAECTD-R031');
+    }
   }
 
   finalizeExplanation(result, evalRules);
