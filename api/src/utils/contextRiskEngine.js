@@ -165,6 +165,16 @@ function evaluateContextRisk(input) {
     }
   }
 
+  if (input.contextVector.hasStaleVex) {
+    reasonCodes.add('VEX-007');
+  }
+  if (input.contextVector.hasInvalidVex) {
+    reasonCodes.add('VEX-010');
+  }
+  if (input.contextVector.hasExpiredException) {
+    reasonCodes.add('EXC-002');
+  }
+
   if (input.conflict) {
     result.contextAssuranceState = 'CONFLICTING';
     result.contextualRisk = 'UNKNOWN';

@@ -22,7 +22,7 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
       
       if (active.length === 1 && conflicting.length === 0) {
         activeContext = active[0];
-      } else if (active.length >= 1 && conflicting.length >= 1) {
+      } else if (conflicting.length > 0) {
         conflict = true;
       } else if (active.length > 1) {
         conflict = true;
@@ -114,6 +114,9 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
          v.vexApplicability = s ? s.toUpperCase() : 'UNKNOWN';
        }
     });
+
+    contextVector.hasStaleVex = vexStatements.some(v => v.assurance_state === 'STALE' || v.status === 'STALE');
+    contextVector.hasInvalidVex = vexStatements.some(v => v.assurance_state === 'INVALID' || v.status === 'INVALID' || v.signature_status === 'FAILED');
   }
   contextVector.vexApplicability = vexApplicability;
 
@@ -156,11 +159,15 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
 
       return true;
     });
+
     if (activeExceptions.length > 0) {
       exceptionStatus = 'ACTIVE';
       exceptionTrusted = true;
     }
+    
+    contextVector.hasExpiredException = policyExceptions.some(e => e.status === 'EXPIRED' || e.assurance_state === 'EXPIRED');
   }
+  
   contextVector.exceptionStatus = exceptionStatus;
 
   return {

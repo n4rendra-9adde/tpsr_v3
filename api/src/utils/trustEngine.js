@@ -114,9 +114,21 @@ async function evaluateTrust(evidenceBundle = {}) {
   const validProv = provenance.find(p => p.status === 'VALID' && p.slsa_level !== 'SLSA_BUILD_LEVEL_0');
   if (!validProv) {
     result.trustStatus = TRUST_STATUS.REJECTED;
-    result.reasonCode = 'PRV-005';
-    result.reasonDescription = 'No valid build provenance attestation found — mandatory provenance check failed.';
-    result.triggeredRuleIds.push('CAECTD-R007');
+    
+    if (provenance.length > 0 && provenance[0].reasonCode) {
+      result.reasonCode = provenance[0].reasonCode;
+      result.reasonDescription = provenance[0].reasonDescription || 'Provenance validation failed.';
+      if (provenance[0].reasonCode === 'PRV-003') {
+        result.triggeredRuleIds.push('CAECTD-R009');
+      } else {
+        result.triggeredRuleIds.push('CAECTD-R007');
+      }
+    } else {
+      result.reasonCode = 'PRV-005';
+      result.reasonDescription = 'No valid build provenance attestation found — mandatory provenance check failed.';
+      result.triggeredRuleIds.push('CAECTD-R007');
+    }
+    
     result.evidenceDependencies.provenance = {
       required: true,
       assuranceState: mapProvenanceEvidence(provenance[0]).normalized,
