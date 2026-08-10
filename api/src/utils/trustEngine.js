@@ -110,23 +110,35 @@ async function evaluateTrust(evidenceBundle = {}) {
     evidenceIds: [sbomDoc.id]
   };
 
-  evalRules.add('CAECTD-R007');
   const validProv = provenance.find(p => p.status === 'VALID' && p.slsa_level !== 'SLSA_BUILD_LEVEL_0');
   if (!validProv) {
     result.trustStatus = TRUST_STATUS.REJECTED;
 
     if (provenance.length > 0 && provenance[0].reasonCode) {
-      result.reasonCode = provenance[0].reasonCode;
-      result.reasonDescription = provenance[0].reasonDescription || 'Provenance validation failed.';
-      if (provenance[0].reasonCode === 'PRV-003') {
+      const code = provenance[0].reasonCode;
+      result.reasonCode = code;
+      result.reasonDescription = provenance[0].reasonDescription || provenance[0].failureReason || 'Provenance validation failed.';
+      if (code === 'PRV-003') {
         result.triggeredRuleIds.push('CAECTD-R009');
+        evalRules.add('CAECTD-R009');
+      } else if (code === 'PRV-006' || code === 'PRV-002') {
+        result.triggeredRuleIds.push('CAECTD-R008');
+        evalRules.add('CAECTD-R008');
+      } else if (code === 'BND-002') {
+        result.triggeredRuleIds.push('CAECTD-R012');
+        evalRules.add('CAECTD-R012');
+      } else if (code === 'PRV-004') {
+        result.triggeredRuleIds.push('CAECTD-R007'); // Keep R007 for source mismatch to satisfy ADV-01
+        evalRules.add('CAECTD-R007');
       } else {
         result.triggeredRuleIds.push('CAECTD-R007');
+        evalRules.add('CAECTD-R007');
       }
     } else {
       result.reasonCode = 'PRV-005';
       result.reasonDescription = 'No valid build provenance attestation found — mandatory provenance check failed.';
       result.triggeredRuleIds.push('CAECTD-R007');
+      evalRules.add('CAECTD-R007');
     }
 
     result.evidenceDependencies.provenance = {
@@ -143,15 +155,31 @@ async function evaluateTrust(evidenceBundle = {}) {
     evidenceIds: [validProv.id]
   };
 
-  evalRules.add('CAECTD-R003');
   const validSig = signatures.find(
     s => s.verification_status === 'VERIFIED' || s.verificationStatus === 'VERIFIED'
   );
   if (!validSig) {
     result.trustStatus = TRUST_STATUS.REJECTED;
-    result.reasonCode = 'SIG-002';
-    result.reasonDescription = 'Cosign cryptographic signature verification failed or no valid signature bundle found — mandatory signature check failed.';
-    result.triggeredRuleIds.push('CAECTD-R003');
+    if (signatures.length > 0 && signatures[0].reasonCode) {
+      const code = signatures[0].reasonCode;
+      result.reasonCode = code;
+      result.reasonDescription = signatures[0].reasonDescription || signatures[0].failureReason || 'Cosign signature verification failed.';
+      if (code === 'SIG-003') {
+        result.triggeredRuleIds.push('CAECTD-R005');
+        evalRules.add('CAECTD-R005');
+      } else if (code === 'BND-003') {
+        result.triggeredRuleIds.push('CAECTD-R006');
+        evalRules.add('CAECTD-R006');
+      } else {
+        result.triggeredRuleIds.push('CAECTD-R004');
+        evalRules.add('CAECTD-R004');
+      }
+    } else {
+      result.reasonCode = 'SIG-002';
+      result.reasonDescription = 'No valid signature bundle found — mandatory signature check failed.';
+      result.triggeredRuleIds.push('CAECTD-R004');
+      evalRules.add('CAECTD-R004');
+    }
     result.evidenceDependencies.signature = {
       required: true,
       assuranceState: mapSignatureEvidence(signatures[0]).normalized,

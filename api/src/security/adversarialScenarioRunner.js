@@ -102,7 +102,7 @@ function buildAdversarialFixture(scenarioId) {
   }
   else if (scenarioId === 'ADV-03') {
     // Unauthorized Signer
-    bundle.signatures = [{ verification_status: 'FAILED', verificationStatus: 'FAILED', id: 'sig-1' }];
+    bundle.signatures = [{ verification_status: 'FAILED', verificationStatus: 'FAILED', reasonCode: 'SIG-003', id: 'sig-1' }];
     bundle.provenance = [{ status: 'VALID', slsa_level: 'SLSA_BUILD_LEVEL_3', assuranceState: 'VERIFIED_TRUSTED', id: 'prov-1' }];
   }
   else if (scenarioId === 'ADV-04') {

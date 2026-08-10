@@ -3,27 +3,53 @@
     "scenarioId": "ADV-01",
     "securityControlId": "CTL-01",
     "controlName": "Source repository authorization",
-    "implementationFiles": ["api/src/utils/provenanceEngine.js"],
-    "implementationFunctions": ["verifyProvenance"],
+    "implementationFiles": [
+      "api/src/utils/provenanceEngine.js"
+    ],
+    "implementationFunctions": [
+      "verifyProvenance"
+    ],
     "policyReference": "NIST SSDF",
-    "CAECTDRules": ["CAECTD-R007"],
-    "reasonCodes": ["PRV-004"],
-    "evidenceDependencies": ["provenance"],
-    "automatedTests": ["compromisedCiRunner.test.js"],
+    "CAECTDRules": [
+      "CAECTD-R007"
+    ],
+    "reasonCodes": [
+      "PRV-004"
+    ],
+    "evidenceDependencies": [
+      "provenance"
+    ],
+    "automatedTests": [
+      "compromisedCiRunner.test.js"
+    ],
     "detectionStatus": "PARTIALLY_DETECTED",
-    "knownLimitations": ["Injected build commands or malicious execution that preserves all validated provenance claims (using the valid source) are not fully detected without stateful SLSA L3 build environment assertions."]
+    "knownLimitations": [
+      "Injected build commands or malicious execution that preserves all validated provenance claims (using the valid source) are not fully detected without stateful SLSA L3 build environment assertions."
+    ]
   },
   {
     "scenarioId": "ADV-02",
     "securityControlId": "CTL-02",
     "controlName": "Provenance envelope validation",
-    "implementationFiles": ["api/src/utils/provenanceEngine.js"],
-    "implementationFunctions": ["verifyProvenance"],
+    "implementationFiles": [
+      "api/src/utils/provenanceEngine.js"
+    ],
+    "implementationFunctions": [
+      "verifyProvenance"
+    ],
     "policyReference": "SLSA v1.0",
-    "CAECTDRules": ["CAECTD-R007"],
-    "reasonCodes": ["PRV-006"],
-    "evidenceDependencies": ["provenance"],
-    "automatedTests": ["forgedProvenance.test.js"],
+    "CAECTDRules": [
+      "CAECTD-R008"
+    ],
+    "reasonCodes": [
+      "PRV-006"
+    ],
+    "evidenceDependencies": [
+      "provenance"
+    ],
+    "automatedTests": [
+      "forgedProvenance.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -31,13 +57,25 @@
     "scenarioId": "ADV-03",
     "securityControlId": "CTL-03",
     "controlName": "Signer authorization",
-    "implementationFiles": ["api/src/utils/cosignEngine.js"],
-    "implementationFunctions": ["verifyCosignSignature"],
+    "implementationFiles": [
+      "api/src/utils/cosignEngine.js"
+    ],
+    "implementationFunctions": [
+      "verifyCosignSignature"
+    ],
     "policyReference": "NIST SSDF",
-    "CAECTDRules": ["CAECTD-R003"],
-    "reasonCodes": ["SIG-002"],
-    "evidenceDependencies": ["signature"],
-    "automatedTests": ["unauthorizedSigner.test.js"],
+    "CAECTDRules": [
+      "CAECTD-R005"
+    ],
+    "reasonCodes": [
+      "SIG-003"
+    ],
+    "evidenceDependencies": [
+      "signature"
+    ],
+    "automatedTests": [
+      "unauthorizedSigner.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -45,13 +83,25 @@
     "scenarioId": "ADV-04",
     "securityControlId": "CTL-04",
     "controlName": "Provenance subject digest binding",
-    "implementationFiles": ["api/src/utils/provenanceEngine.js"],
-    "implementationFunctions": ["verifyProvenance"],
+    "implementationFiles": [
+      "api/src/utils/provenanceEngine.js"
+    ],
+    "implementationFunctions": [
+      "verifyProvenance"
+    ],
     "policyReference": "NIST SSDF",
-    "CAECTDRules": ["CAECTD-R007"],
-    "reasonCodes": ["BND-002"],
-    "evidenceDependencies": ["provenance"],
-    "automatedTests": ["artifactSubstitution.test.js"],
+    "CAECTDRules": [
+      "CAECTD-R012"
+    ],
+    "reasonCodes": [
+      "BND-002"
+    ],
+    "evidenceDependencies": [
+      "provenance"
+    ],
+    "automatedTests": [
+      "artifactSubstitution.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -59,13 +109,25 @@
     "scenarioId": "ADV-05",
     "securityControlId": "CTL-05",
     "controlName": "Canonical SBOM hashing",
-    "implementationFiles": ["api/src/repositories/sbomRepository.js"],
-    "implementationFunctions": ["getSBOMDocumentBySBOMID"],
+    "implementationFiles": [
+      "api/src/repositories/sbomRepository.js"
+    ],
+    "implementationFunctions": [
+      "getSBOMDocumentBySBOMID"
+    ],
     "policyReference": "NIST SSDF",
-    "CAECTDRules": ["CAECTD-R001"],
-    "reasonCodes": ["INT-002"],
-    "evidenceDependencies": ["integrity"],
-    "automatedTests": ["sbomSubstitution.test.js"],
+    "CAECTDRules": [
+      "CAECTD-R001"
+    ],
+    "reasonCodes": [
+      "INT-002"
+    ],
+    "evidenceDependencies": [
+      "integrity"
+    ],
+    "automatedTests": [
+      "sbomSubstitution.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -73,13 +135,26 @@
     "scenarioId": "ADV-06",
     "securityControlId": "CTL-06",
     "controlName": "VEX freshness policy",
-    "implementationFiles": ["api/src/utils/vexEngine.js"],
-    "implementationFunctions": ["verifyVexStatements"],
+    "implementationFiles": [
+      "api/src/utils/vexEngine.js"
+    ],
+    "implementationFunctions": [
+      "verifyVexStatements"
+    ],
     "policyReference": "VEX",
-    "CAECTDRules": ["CR-001"],
-    "reasonCodes": ["VEX-007", "CTX-001"],
-    "evidenceDependencies": ["contextRisk"],
-    "automatedTests": ["staleVex.test.js"],
+    "CAECTDRules": [
+      "CR-001"
+    ],
+    "reasonCodes": [
+      "VEX-007",
+      "CTX-001"
+    ],
+    "evidenceDependencies": [
+      "contextRisk"
+    ],
+    "automatedTests": [
+      "staleVex.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -87,13 +162,26 @@
     "scenarioId": "ADV-07",
     "securityControlId": "CTL-07",
     "controlName": "VEX signature verification",
-    "implementationFiles": ["api/src/utils/vexEngine.js"],
-    "implementationFunctions": ["verifyVexStatements"],
+    "implementationFiles": [
+      "api/src/utils/vexEngine.js"
+    ],
+    "implementationFunctions": [
+      "verifyVexStatements"
+    ],
     "policyReference": "VEX",
-    "CAECTDRules": ["CR-001"],
-    "reasonCodes": ["VEX-010", "CTX-001"],
-    "evidenceDependencies": ["contextRisk"],
-    "automatedTests": ["falsifiedVex.test.js"],
+    "CAECTDRules": [
+      "CR-001"
+    ],
+    "reasonCodes": [
+      "VEX-010",
+      "CTX-001"
+    ],
+    "evidenceDependencies": [
+      "contextRisk"
+    ],
+    "automatedTests": [
+      "falsifiedVex.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -101,13 +189,25 @@
     "scenarioId": "ADV-08",
     "securityControlId": "CTL-08",
     "controlName": "Exact release/digest binding",
-    "implementationFiles": ["api/src/utils/contextRiskEngine.js"],
-    "implementationFunctions": ["evaluateContextRisk"],
+    "implementationFiles": [
+      "api/src/utils/contextRiskEngine.js"
+    ],
+    "implementationFunctions": [
+      "evaluateContextRisk"
+    ],
     "policyReference": "TPSR Context",
-    "CAECTDRules": ["CAECTD-R025"],
-    "reasonCodes": ["CTX-017"],
-    "evidenceDependencies": ["contextRisk"],
-    "automatedTests": ["contextManipulation.test.js"],
+    "CAECTDRules": [
+      "CAECTD-R025"
+    ],
+    "reasonCodes": [
+      "CTX-017"
+    ],
+    "evidenceDependencies": [
+      "contextRisk"
+    ],
+    "automatedTests": [
+      "contextManipulation.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -115,13 +215,27 @@
     "scenarioId": "ADV-09",
     "securityControlId": "CTL-09",
     "controlName": "Validity and expiry",
-    "implementationFiles": ["api/src/services/contextRiskEvidenceAssembler.js"],
-    "implementationFunctions": ["assembleContextRiskEvidence"],
+    "implementationFiles": [
+      "api/src/services/contextRiskEvidenceAssembler.js"
+    ],
+    "implementationFunctions": [
+      "assembleContextRiskEvidence"
+    ],
     "policyReference": "TPSR Policy",
-    "CAECTDRules": ["CR-001"],
-    "reasonCodes": ["EXC-002", "CTX-001"],
-    "evidenceDependencies": ["contextRisk", "exception"],
-    "automatedTests": ["exceptionAbuse.test.js"],
+    "CAECTDRules": [
+      "CR-001"
+    ],
+    "reasonCodes": [
+      "EXC-002",
+      "CTX-001"
+    ],
+    "evidenceDependencies": [
+      "contextRisk",
+      "exception"
+    ],
+    "automatedTests": [
+      "exceptionAbuse.test.js"
+    ],
     "detectionStatus": "DETECTED",
     "knownLimitations": []
   },
@@ -129,14 +243,28 @@
     "scenarioId": "ADV-10",
     "securityControlId": "CTL-10",
     "controlName": "Exact release and digest binding",
-    "implementationFiles": ["api/src/utils/trustEngine.js"],
-    "implementationFunctions": ["evaluateTrust"],
+    "implementationFiles": [
+      "api/src/utils/trustEngine.js"
+    ],
+    "implementationFunctions": [
+      "evaluateTrust"
+    ],
     "policyReference": "TPSR Policy",
-    "CAECTDRules": ["CAECTD-R003"],
-    "reasonCodes": ["SIG-002"],
-    "evidenceDependencies": ["signature"],
-    "automatedTests": ["evidenceReplay.test.js"],
+    "CAECTDRules": [
+      "CAECTD-R004"
+    ],
+    "reasonCodes": [
+      "SIG-002"
+    ],
+    "evidenceDependencies": [
+      "signature"
+    ],
+    "automatedTests": [
+      "evidenceReplay.test.js"
+    ],
     "detectionStatus": "PARTIALLY_DETECTED",
-    "knownLimitations": ["No stateful nonce or previously-seen check exists to prevent same-target replay"]
+    "knownLimitations": [
+      "No stateful nonce or previously-seen check exists to prevent same-target replay"
+    ]
   }
 ]

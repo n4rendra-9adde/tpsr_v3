@@ -170,7 +170,7 @@ function evaluateProvenanceTrustPolicy(claims) {
   const policy = getTrustPolicy();
   const provPolicy = policy.provenancePolicy || {};
   
-  const isApprovedBuilder = (provPolicy.approvedBuilders || []).some(b => claims.builderId.startsWith(b) || b === claims.builderId);
+  const isApprovedBuilder = (provPolicy.approvedBuilders || []).some(b => b === claims.builderId);
   if (!isApprovedBuilder) {
     throw { reasonCode: 'PRV-003', message: `Builder identity ${claims.builderId} unauthorized` };
   }

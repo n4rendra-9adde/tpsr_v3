@@ -4,6 +4,15 @@ const os = require('os');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 const { verifySignature } = require('../cosignEngine');
+const provenanceEngine = require('../provenanceEngine');
+
+jest.mock('../provenanceEngine', () => {
+  const original = jest.requireActual('../provenanceEngine');
+  return {
+    ...original,
+    getTrustPolicy: jest.fn()
+  };
+});
 
 describe('Sigstore Cosign Cryptographic Signature Verification Engine', () => {
   const validHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
@@ -31,6 +40,14 @@ describe('Sigstore Cosign Cryptographic Signature Verification Engine', () => {
 
     testPubKey = fs.readFileSync(pubPath);
     testSigValue = fs.readFileSync(sigPath, 'base64');
+
+    provenanceEngine.getTrustPolicy.mockReturnValue({
+      signaturePolicy: {
+        trustedPublicKeys: {
+          'test-signer@tpsr.com': testPubKey.toString('utf8')
+        }
+      }
+    });
   });
 
   afterAll(() => {
@@ -79,7 +96,8 @@ describe('Sigstore Cosign Cryptographic Signature Verification Engine', () => {
       signatureType: 'OFFLINE_KEYED',
       artifactHash: validHash,
       signatureValue: testSigValue,
-      publicKey: testPubKey
+      publicKey: testPubKey,
+      signerIdentity: 'test-signer@tpsr.com'
     });
 
     expect(res.verificationStatus).toBe('VERIFIED');
@@ -99,7 +117,7 @@ describe('Sigstore Cosign Cryptographic Signature Verification Engine', () => {
     });
 
     expect(res.verificationStatus).toBe('FAILED');
-    expect(res.reasonCode).toBe('SIG-001');
+    expect(res.reasonCode).toBe('SIG-002');
   });
 
   test('KEYLESS: Rejects keyless mode as unsupported', async () => {

@@ -92,28 +92,11 @@ async function verifySignature(params) {
     const pubKeyString = params.publicKey.toString('utf8');
     result.publicKeyFingerprint = calculateFingerprint(pubKeyString);
 
-    if (Buffer.byteLength(params.signatureValue, 'base64') > MAX_FILE_SIZE || 
+    if (Buffer.byteLength(params.signatureValue, 'base64') > MAX_FILE_SIZE ||
         Buffer.byteLength(pubKeyString, 'utf8') > MAX_FILE_SIZE) {
       result.reasonCode = 'SIG-011';
       result.failureReason = 'Input payload exceeds maximum allowed size limit';
       return result;
-    }
-
-    // Check if public key is in trust policy whitelist
-    if (params.signerIdentity && policy.signaturePolicy?.trustedPublicKeys) {
-      const trustedKey = policy.signaturePolicy.trustedPublicKeys[params.signerIdentity];
-      if (!trustedKey) {
-        result.reasonCode = 'SIG-002';
-        result.failureReason = `Signer identity ${params.signerIdentity} has no trusted public key configured`;
-        return result;
-      }
-      
-      const trustedFingerprint = calculateFingerprint(trustedKey);
-      if (trustedFingerprint !== result.publicKeyFingerprint) {
-        result.reasonCode = 'SIG-012';
-        result.failureReason = `Public key fingerprint mismatch. Supplied key does not match trusted root for identity: ${params.signerIdentity}`;
-        return result;
-      }
     }
 
     if (!fs.existsSync(COSIGN_BIN)) {
@@ -127,8 +110,8 @@ async function verifySignature(params) {
     const sigPath = path.join(tmpDir, 'sig.bin');
     const pubPath = path.join(tmpDir, 'pub.pem');
 
+    let cryptoPassed = false;
     try {
-      // Provide the hash as the blob to verify against
       fs.writeFileSync(blobPath, normalizedHash, 'utf8');
       fs.writeFileSync(sigPath, Buffer.from(params.signatureValue, 'base64'));
       fs.writeFileSync(pubPath, pubKeyString, 'utf8');
@@ -139,38 +122,58 @@ async function verifySignature(params) {
       fs.chmodSync(pubPath, 0o600);
 
       const args = [
-        'verify-blob', 
-        '--key', pubPath, 
-        '--signature', sigPath, 
+        'verify-blob',
+        '--key', pubPath,
+        '--signature', sigPath,
         '--insecure-ignore-tlog=true',
         blobPath
       ];
 
       await runExecFile(COSIGN_BIN, args);
-
-      result.verificationStatus = 'VERIFIED';
-      result.status = 'VERIFIED';
-      result.signatureVerified = true;
-      result.reasonCode = 'SIG-000';
-      result.failureReason = 'Real Cosign signature verified and trusted';
-      
-      // Calculate a secure signature hash for evidence mapping
-      result.signatureHash = crypto.createHash('sha256').update(Buffer.from(params.signatureValue, 'base64')).digest('hex');
-      
-      return result;
+      cryptoPassed = true;
     } catch (cliErr) {
       if (cliErr.code === 'ETIMEDOUT' || cliErr.killed) {
         result.reasonCode = 'SIG-008';
         result.failureReason = 'Cosign process timeout exceeded';
       } else {
-        result.reasonCode = 'SIG-001';
-        // Strip multi-line stack traces from cosign binary output to avoid log bloat
+        result.reasonCode = 'SIG-002'; // Cryptographic failure
         let stderrMsg = (cliErr.stderr || cliErr.message).split('\n')[0];
         result.failureReason = `Cryptographic signature invalid: ${stderrMsg}`;
       }
       return result;
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+
+    // Cryptography passed. Now perform Identity Authorization
+    if (cryptoPassed) {
+      if (!params.signerIdentity || !policy.signaturePolicy?.trustedPublicKeys) {
+        result.reasonCode = 'SIG-003';
+        result.failureReason = 'Signer identity unresolved or policy missing';
+        return result;
+      }
+      const trustedKey = policy.signaturePolicy.trustedPublicKeys[params.signerIdentity];
+      if (!trustedKey) {
+        result.reasonCode = 'SIG-003';
+        result.failureReason = `Signer identity ${params.signerIdentity} unauthorized (not in policy)`;
+        return result;
+      }
+
+      const trustedFingerprint = calculateFingerprint(trustedKey);
+      if (trustedFingerprint !== result.publicKeyFingerprint) {
+        result.reasonCode = 'SIG-003';
+        result.failureReason = `Signer identity unauthorized: public key fingerprint mismatch for ${params.signerIdentity}`;
+        return result;
+      }
+
+      result.verificationStatus = 'VERIFIED';
+      result.status = 'VERIFIED';
+      result.signatureVerified = true;
+      result.reasonCode = 'SIG-000';
+      result.failureReason = 'Real Cosign signature verified and trusted';
+      result.signatureHash = crypto.createHash('sha256').update(Buffer.from(params.signatureValue, 'base64')).digest('hex');
+
+      return result;
     }
   }
 
