@@ -16,7 +16,7 @@ describe('Adversarial Runner Negative Paths', () => {
         }
       ]
     }));
-    
+
     const results = await runAdversarialScenarios('/dummy/path.json');
     expect(results[0].decisionMatch).toBe(false);
     expect(results[0].detected).toBe(false);
@@ -34,7 +34,7 @@ describe('Adversarial Runner Negative Paths', () => {
         }
       ]
     }));
-    
+
     const results = await runAdversarialScenarios('/dummy/path.json');
     expect(results[0].ruleMatch).toBe(false);
     expect(results[0].detected).toBe(false);
@@ -52,7 +52,7 @@ describe('Adversarial Runner Negative Paths', () => {
         }
       ]
     }));
-    
+
     const results = await runAdversarialScenarios('/dummy/path.json');
     expect(results[0].reasonMatch).toBe(false);
     expect(results[0].detected).toBe(false);
@@ -70,7 +70,7 @@ describe('Adversarial Runner Negative Paths', () => {
         }
       ]
     }));
-    
+
     const results = await runAdversarialScenarios('/dummy/path.json');
     expect(results[0].evidenceTraceabilityMatch).toBe(false);
     expect(results[0].detected).toBe(false);
@@ -79,7 +79,7 @@ describe('Adversarial Runner Negative Paths', () => {
   it('fails validator when control-map entry is missing', () => {
     const model = { scenarios: [{ scenarioId: 'ADV-01' }] };
     const controlMapPath = '/dummy/map.json';
-    
+
     jest.spyOn(fs, 'readFileSync').mockImplementation((path) => {
       if (path.includes('map')) return JSON.stringify([]);
       return JSON.stringify(model);
@@ -94,7 +94,7 @@ describe('Adversarial Runner Negative Paths', () => {
   it('fails validator when a scenario is skipped (nonexecuted)', () => {
     const model = { scenarios: [] };
     const controlMapPath = '/dummy/map.json';
-    
+
     jest.spyOn(fs, 'readFileSync').mockImplementation((path) => {
       if (path.includes('map')) return JSON.stringify([{ scenarioId: 'ADV-01' }]);
       return JSON.stringify(model);

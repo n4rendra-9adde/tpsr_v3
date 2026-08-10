@@ -5,30 +5,30 @@ const { evaluateTrust } = require('../utils/trustEngine');
 async function runAdversarialScenarios(modelPath, evaluateOverrides = {}) {
   const model = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
   const results = [];
-  
+
   for (const s of model.scenarios) {
     const bundle = buildAdversarialFixture(s.scenarioId);
-    
+
     // Evaluate using existing trust engine
     const actualResult = await evaluateTrust(bundle);
-    
+
     const expectedRules = new Set(s.expectedRuleIds);
     const actualRules = new Set(actualResult.triggeredRuleIds);
     let ruleMatch = true;
     for (const r of expectedRules) {
       if (!actualRules.has(r)) ruleMatch = false;
     }
-    
+
     const reasonMatch = s.expectedReasonCodes.includes(actualResult.reasonCode);
     const decisionMatch = actualResult.trustStatus === s.expectedDecision;
-    
+
     let expectedLifecycleEffect = s.expectedLifecycleEffect;
     let actualLifecycleEffect = "UNKNOWN";
     if (actualResult.trustStatus === 'TRUSTED') actualLifecycleEffect = "ALLOW_ALL";
     if (actualResult.trustStatus === 'CONDITIONALLY_ACCEPTED') actualLifecycleEffect = "ALLOW_WITH_RESTRICTIONS";
     if (actualResult.trustStatus === 'REVIEW_REQUIRED') actualLifecycleEffect = "HOLD_FOR_REVIEW";
     if (actualResult.trustStatus === 'REJECTED') actualLifecycleEffect = "BLOCK_ALL";
-    
+
     const actualEvidenceDependencies = Object.keys(actualResult.evidenceDependencies);
     let evidenceTraceabilityMatch = true;
     for (const dep of s.expectedEvidenceDependencies) {
@@ -36,11 +36,11 @@ async function runAdversarialScenarios(modelPath, evaluateOverrides = {}) {
         evidenceTraceabilityMatch = false;
       }
     }
-    
+
     // In our runner, we only report detection if the outcome matches expected.
     // If the expected outcome is REJECTED, and it rejected, it's DETECTED.
     const detected = decisionMatch && ruleMatch && reasonMatch && evidenceTraceabilityMatch;
-    
+
     results.push({
       scenarioId: s.scenarioId,
       attackName: s.attackName,
@@ -63,13 +63,13 @@ async function runAdversarialScenarios(modelPath, evaluateOverrides = {}) {
       errors: []
     });
   }
-  
+
   return results;
 }
 
 function buildAdversarialFixture(scenarioId) {
   const bundle = {
-    sbomDocument: { 
+    sbomDocument: {
       sbom_id: 'adv-sbom-001',
       sbom_json: {
         vulnerabilities: [{ id: 'CVE-ADV-TEST', severity: 'CRITICAL' }]
@@ -89,7 +89,9 @@ function buildAdversarialFixture(scenarioId) {
       status: 'INVALID',
       reasonCode: 'PRV-004',
       reasonDescription: 'Source repository mismatch',
-      assuranceState: 'INVALID', 
+      builderIdentity: 'AUTHORIZED_BUILDER_ID',
+      sourceRepository: 'UNAUTHORIZED_SOURCE_URL',
+      assuranceState: 'INVALID',
       id: 'prov-1'
     }];
   }

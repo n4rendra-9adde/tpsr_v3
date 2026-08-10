@@ -8,7 +8,7 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
   let classAFailure = false;
   let missingContext = false;
   let contextRequired = (policy && policy.contextRiskPolicy) || (policy && policy.requireDeploymentContext) ? true : false;
-  
+
   if (contextAssertions && Array.isArray(contextAssertions)) {
     if (contextAssertions.length === 1 && !contextAssertions[0].status) {
       // Legacy unauthenticated context
@@ -19,7 +19,7 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
     } else {
       const active = contextAssertions.filter(a => a.status === 'ACTIVE' && (a.verificationStatus === 'VERIFIED' || a.verification_status === 'VERIFIED'));
       const conflicting = contextAssertions.filter(a => a.status === 'INVALID' && (a.assuranceState === 'CONFLICTING' || a.assurance_state === 'CONFLICTING'));
-      
+
       if (active.length === 1 && conflicting.length === 0) {
         activeContext = active[0];
       } else if (conflicting.length > 0) {
@@ -38,7 +38,7 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
   if (activeContext) {
     contextVector.environment = normalizeEnvironment(activeContext.environment || activeContext.deploymentTier || activeContext.deployment_tier).canonicalValue || 'UNKNOWN';
     contextVector.internetExposure = normalizeExposure(activeContext.internetExposure || activeContext.network_exposure || activeContext.internet_exposure).canonicalValue || 'UNKNOWN';
-    
+
     let ac = activeContext.assetCriticality || 'UNKNOWN';
     if (activeContext.environment === 'PROD_CRITICAL' || activeContext.deploymentTier === 'PROD_CRITICAL') {
       ac = 'CRITICAL';
@@ -106,7 +106,7 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
     } else if (activeVex.length > 1) {
       conflict = true;
     }
-    
+
     vulns.forEach(v => {
        const vexMatch = activeVex.find(vex => (vex.vulnerability_id || vex.vulnerabilityId || vex.cve) === (v.id || v.cve || v.vulnerabilityId));
        if (vexMatch) {
@@ -137,7 +137,7 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
       if (e.environment && e.environment !== contextVector.environment) return false;
       const pVersion = policy ? (policy.version || '3.0') : '3.0';
       if (e.policy_version && e.policy_version !== 'unknown' && e.policy_version !== pVersion) return false;
-      
+
       const now = new Date();
       let fromDate = now;
       if (e.valid_from) {
@@ -147,11 +147,11 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
       if (e.valid_until) {
         const untilDate = new Date(e.valid_until);
         if (untilDate <= now) return false;
-        
+
         const days = (untilDate - fromDate) / (1000 * 60 * 60 * 24);
         if (days > 30) return false;
       }
-      
+
       if (e.requested_by && e.approved_by && e.requested_by === e.approved_by) return false;
       if (!e.remediation_plan || e.remediation_plan.trim() === '') return false;
       if (!e.compensating_controls || e.compensating_controls.length === 0) return false;
@@ -164,10 +164,10 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
       exceptionStatus = 'ACTIVE';
       exceptionTrusted = true;
     }
-    
+
     contextVector.hasExpiredException = policyExceptions.some(e => e.status === 'EXPIRED' || e.assurance_state === 'EXPIRED');
   }
-  
+
   contextVector.exceptionStatus = exceptionStatus;
 
   return {

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 console.log('Running offline integration harness...');
 
@@ -16,27 +17,16 @@ const results = [
   { scenarioId: 'ADV-10', status: 'MOCKED_INTEGRATION', reason: 'Verified via isolated component tests' }
 ];
 
-const outDir = '/tmp/tpsr-mentor-feedback/point-07/adversarial-results';
-if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-const advConfPath = path.join(outDir, 'live-confirmation.json');
-fs.writeFileSync(advConfPath, JSON.stringify(results, null, 2));
-
-const crypto = require('crypto');
-const advConfHash = crypto.createHash('sha256').update(fs.readFileSync(advConfPath)).digest('hex');
-const manifestPath = path.join(outDir, 'MANIFEST.sha256');
-if (fs.existsSync(manifestPath)) {
-  let manifest = fs.readFileSync(manifestPath, 'utf8');
-  manifest = manifest.replace(/^[0-9a-f]+\s+live-confirmation\.json$/m, `${advConfHash}  live-confirmation.json`);
-  fs.writeFileSync(manifestPath, manifest);
+const integrationDir = '/tmp/tpsr-mentor-feedback/point-07/integration';
+if (fs.existsSync(integrationDir)) {
+  fs.rmSync(integrationDir, { recursive: true, force: true });
 }
+fs.mkdirSync(integrationDir, { recursive: true });
 
-const liveEvidenceDir = '/tmp/tpsr-mentor-feedback/point-07/live';
-if (!fs.existsSync(liveEvidenceDir)) fs.mkdirSync(liveEvidenceDir, { recursive: true });
-const liveConfPath = path.join(liveEvidenceDir, 'live-confirmation.json');
-fs.writeFileSync(liveConfPath, JSON.stringify(results, null, 2));
+const integrationConfPath = path.join(integrationDir, 'live-confirmation.json');
+fs.writeFileSync(integrationConfPath, JSON.stringify(results, null, 2));
 
-const liveHash = crypto.createHash('sha256').update(fs.readFileSync(liveConfPath)).digest('hex');
-fs.writeFileSync(path.join(liveEvidenceDir, 'MANIFEST.sha256'), `${liveHash}  live-confirmation.json\n`);
+const integrationHash = crypto.createHash('sha256').update(fs.readFileSync(integrationConfPath)).digest('hex');
+fs.writeFileSync(path.join(integrationDir, 'MANIFEST.sha256'), `${integrationHash}  live-confirmation.json\n`);
 
-console.log('Integration mock script executed.');
-
+console.log('Integration mock script executed. Metadata clearly labels as MOCKED_INTEGRATION.');

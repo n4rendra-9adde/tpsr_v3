@@ -74,7 +74,7 @@ async function evaluateTrust(evidenceBundle = {}) {
   };
 
   const evalRules = new Set();
-  
+
   const sbomDoc = evidenceBundle.sbomDocument;
   evalRules.add('CAECTD-R001');
   if (!sbomDoc || !sbomDoc.sbom_id) {
@@ -114,7 +114,7 @@ async function evaluateTrust(evidenceBundle = {}) {
   const validProv = provenance.find(p => p.status === 'VALID' && p.slsa_level !== 'SLSA_BUILD_LEVEL_0');
   if (!validProv) {
     result.trustStatus = TRUST_STATUS.REJECTED;
-    
+
     if (provenance.length > 0 && provenance[0].reasonCode) {
       result.reasonCode = provenance[0].reasonCode;
       result.reasonDescription = provenance[0].reasonDescription || 'Provenance validation failed.';
@@ -128,7 +128,7 @@ async function evaluateTrust(evidenceBundle = {}) {
       result.reasonDescription = 'No valid build provenance attestation found — mandatory provenance check failed.';
       result.triggeredRuleIds.push('CAECTD-R007');
     }
-    
+
     result.evidenceDependencies.provenance = {
       required: true,
       assuranceState: mapProvenanceEvidence(provenance[0]).normalized,
@@ -208,7 +208,7 @@ async function evaluateTrust(evidenceBundle = {}) {
     contextEvaluatedAt: new Date().toISOString(),
     evidenceIds: assembledEvidence.contextAssertionId ? [assembledEvidence.contextAssertionId] : []
   };
-  
+
   result.evidenceDependencies.exception = {
     required: false,
     assuranceState: contextResult.exceptionRequired ? 'VERIFIED_TRUSTED' : 'NOT_APPLICABLE',
@@ -274,7 +274,7 @@ async function evaluateTrust(evidenceBundle = {}) {
 
 function finalizeExplanation(result, evalRules) {
   result.evaluatedRuleIds = Array.from(evalRules);
-  
+
   const reqChecks = result.explanationCompleteness.requiredChecks;
   reqChecks.triggeredRulesPresent = result.triggeredRuleIds.length > 0;
   reqChecks.reasonCodesMapped = !!result.reasonCode;
@@ -282,7 +282,7 @@ function finalizeExplanation(result, evalRules) {
   reqChecks.policyVersionPresent = !!result.policyVersion;
   reqChecks.trustPolicyHashPresent = !!result.trustPolicyHash && result.trustPolicyHash !== 'unknown';
   reqChecks.lifecycleEffectPresent = true; // Derived based on state
-  
+
   if (result.evidenceDependencies.contextRisk && result.evidenceDependencies.contextRisk.required) {
     reqChecks.contextPolicyResultPresent = !!result.contextResult;
     reqChecks.contextAssertionEvaluated = !!result.evidenceDependencies.contextRisk.contextAssuranceState;
@@ -294,11 +294,11 @@ function finalizeExplanation(result, evalRules) {
     reqChecks.requiredVexEvaluated = true;
     reqChecks.exceptionEvaluated = true;
   }
-  
-  result.explanationCompleteness.complete = 
-    reqChecks.triggeredRulesPresent && 
-    reqChecks.reasonCodesMapped && 
-    reqChecks.mandatoryDependenciesEvaluated && 
+
+  result.explanationCompleteness.complete =
+    reqChecks.triggeredRulesPresent &&
+    reqChecks.reasonCodesMapped &&
+    reqChecks.mandatoryDependenciesEvaluated &&
     reqChecks.policyVersionPresent &&
     reqChecks.trustPolicyHashPresent &&
     reqChecks.lifecycleEffectPresent &&
@@ -306,7 +306,7 @@ function finalizeExplanation(result, evalRules) {
     reqChecks.contextAssertionEvaluated &&
     reqChecks.requiredVexEvaluated &&
     reqChecks.exceptionEvaluated;
-    
+
   if (!reqChecks.triggeredRulesPresent) result.explanationCompleteness.missingFields.push('triggeredRuleIds');
   if (!reqChecks.mandatoryDependenciesEvaluated) result.explanationCompleteness.missingFields.push('evidenceDependencies');
   if (!reqChecks.contextPolicyResultPresent) result.explanationCompleteness.missingFields.push('contextResult');

@@ -11,7 +11,7 @@
     "evidenceDependencies": ["provenance"],
     "automatedTests": ["compromisedCiRunner.test.js"],
     "detectionStatus": "PARTIALLY_DETECTED",
-    "knownLimitations": []
+    "knownLimitations": ["Injected build commands or malicious execution that preserves all validated provenance claims (using the valid source) are not fully detected without stateful SLSA L3 build environment assertions."]
   },
   {
     "scenarioId": "ADV-02",

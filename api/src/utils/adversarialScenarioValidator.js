@@ -128,6 +128,20 @@ function validateAdversarialScenariosAndControlMap(scenariosPath, controlMapPath
     }
   }
 
+  for (const s of scenarios) {
+    const mapEntry = map.find(m => m.scenarioId === s.scenarioId);
+    if (!mapEntry) {
+      errors.push({ scenarioId: s.scenarioId, field: 'controlMap', expected: 'Mapped entry', actual: 'Missing', remediation: 'Missing control map entry for scenario' });
+    }
+  }
+
+  for (const m of map) {
+    const modelEntry = scenarios.find(s => s.scenarioId === m.scenarioId);
+    if (!modelEntry) {
+      errors.push({ scenarioId: m.scenarioId, field: 'modelScenario', expected: 'Model entry', actual: 'Missing', remediation: 'Control map references missing scenario' });
+    }
+  }
+
   return errors;
 }
 

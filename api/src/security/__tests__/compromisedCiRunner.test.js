@@ -8,5 +8,7 @@ test('Compromised CI Runner - ADV-01', async () => {
   expect(res.trustStatus).toBe('REJECTED');
   expect(res.triggeredRuleIds).toContain('CAECTD-R007');
   expect(res.reasonCode).toBe('PRV-004');
+  expect(bundle.provenance[0].builderIdentity).toBe('AUTHORIZED_BUILDER_ID');
+  expect(bundle.provenance[0].sourceRepository).toBe('UNAUTHORIZED_SOURCE_URL');
   expect(res.evidenceDependencies.provenance.assuranceState).toBe('INVALID');
 });
