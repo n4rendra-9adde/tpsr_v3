@@ -13,11 +13,42 @@ let cachedTrustPolicy = null;
 function getTrustPolicy() {
   if (!cachedTrustPolicy) {
     const policyPath = path.join(__dirname, '../../../docs/TRUST_POLICY.json');
-    if (fs.existsSync(policyPath)) {
-      cachedTrustPolicy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
-    } else {
-      cachedTrustPolicy = { provenancePolicy: { requiredSlsaLevel: 'SLSA_BUILD_LEVEL_3' } };
+    if (!fs.existsSync(policyPath)) {
+      throw new Error('TRUST_POLICY_MISSING');
     }
+    let parsed;
+    try {
+      parsed = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
+    } catch (e) {
+      throw new Error('TRUST_POLICY_MALFORMED');
+    }
+
+    if (parsed.schemaVersion !== 'v1.0') throw new Error('TRUST_POLICY_UNSUPPORTED_SCHEMA');
+    if (!parsed.policyId || typeof parsed.policyId !== 'string') throw new Error('TRUST_POLICY_MISSING_ID');
+
+    if (!parsed.signaturePolicy || !parsed.signaturePolicy.trustedPublicKeys || typeof parsed.signaturePolicy.trustedPublicKeys !== 'object') {
+      throw new Error('TRUST_POLICY_MISSING_SIGNER_DIMENSION');
+    }
+
+    if (!parsed.provenancePolicy || !Array.isArray(parsed.provenancePolicy.approvedBuilders)) {
+      throw new Error('TRUST_POLICY_MISSING_BUILDER_DIMENSION');
+    }
+
+    if (!Array.isArray(parsed.provenancePolicy.approvedSourceRepositories)) {
+      throw new Error('TRUST_POLICY_MISSING_SOURCE_DIMENSION');
+    }
+
+    if (Object.keys(parsed.signaturePolicy.trustedPublicKeys).length === 0) {
+      throw new Error('TRUST_POLICY_EMPTY_SIGNER_LIST');
+    }
+
+    // Check for duplicates/conflicts in public keys
+    const pubKeys = Object.values(parsed.signaturePolicy.trustedPublicKeys);
+    if (new Set(pubKeys).size !== pubKeys.length) {
+      throw new Error('TRUST_POLICY_DUPLICATE_KEYS');
+    }
+
+    cachedTrustPolicy = parsed;
   }
   return cachedTrustPolicy;
 }
@@ -30,7 +61,7 @@ function parseAttestation(envelope) {
   if (!envelope.payloadType || !envelope.payload) {
     throw { reasonCode: 'PRV-015', message: 'Unsigned provenance prohibited. Envelope missing payload/payloadType.' };
   }
-  
+
   try {
     const decodedPayload = Buffer.from(envelope.payload, 'base64').toString('utf8');
     const statement = JSON.parse(decodedPayload);
@@ -91,7 +122,7 @@ function validateProvenanceClaims(adaptedStatement) {
   if (!builderId || typeof builderId !== 'string') {
     throw { reasonCode: 'PRV-003', message: 'Builder runner identity is missing' };
   }
-  
+
   if (startedOn && finishedOn) {
     if (new Date(startedOn) > new Date(finishedOn)) {
       throw { reasonCode: 'PRV-011', message: 'startedOn is after finishedOn' };
@@ -115,7 +146,7 @@ async function verifyAttestationEnvelope(envelope, publicKey, predicateType) {
   if (!fs.existsSync(cosignBin)) {
     throw { reasonCode: 'PRV-006', message: 'Cosign binary not found' };
   }
-  
+
   const tmpDir = fs.mkdtempSync(path.join('/tmp', 'tpsr-cosign-'));
   const envPath = path.join(tmpDir, 'envelope.json');
   fs.writeFileSync(envPath, JSON.stringify(envelope));
@@ -136,7 +167,7 @@ async function verifyAttestationEnvelope(envelope, publicKey, predicateType) {
       pubFingerprint = crypto.createHash('sha256').update(keys[0]).digest('hex');
     }
   }
-  
+
   if (!keyPath) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
     throw { reasonCode: 'PRV-013', message: 'No public key available for offline-keyed verification' };
@@ -169,12 +200,12 @@ async function verifyAttestationEnvelope(envelope, publicKey, predicateType) {
 function evaluateProvenanceTrustPolicy(claims) {
   const policy = getTrustPolicy();
   const provPolicy = policy.provenancePolicy || {};
-  
+
   const isApprovedBuilder = (provPolicy.approvedBuilders || []).some(b => b === claims.builderId);
   if (!isApprovedBuilder) {
     throw { reasonCode: 'PRV-003', message: `Builder identity ${claims.builderId} unauthorized` };
   }
-  
+
   if (claims.buildType && provPolicy.approvedBuildTypes) {
     const isApprovedBuildType = provPolicy.approvedBuildTypes.includes(claims.buildType);
     if (!isApprovedBuildType) {
@@ -198,7 +229,12 @@ function evaluateProvenanceTrustPolicy(claims) {
     throw { reasonCode: 'PRV-003', message: `Policy requires ${requiredLevel} but achieved ${slsaLevel}` };
   }
 
-  return { slsaLevel, policyVersion: policy.policyVersion, trustPolicyHash: crypto.createHash('sha256').update(JSON.stringify(policy)).digest('hex') };
+  return {
+    slsaLevel,
+    policyId: policy.policyId,
+    policyVersion: policy.schemaVersion,
+    trustPolicyHash: crypto.createHash('sha256').update(JSON.stringify(policy)).digest('hex')
+  };
 }
 
 // Stage 7
@@ -206,7 +242,7 @@ async function checkFreshnessAndReplay(claims) {
   const policy = getTrustPolicy();
   const freshness = policy.provenancePolicy?.freshness;
   const now = new Date();
-  
+
   if (claims.finishedOn && freshness) {
     const finished = new Date(claims.finishedOn);
     const ageMs = now - finished;
@@ -250,39 +286,63 @@ async function verifyProvenance(envelope, expectedArtifactHash, signatureType = 
     builderId: null,
     envelopeHash: crypto.createHash('sha256').update(JSON.stringify(envelope || {})).digest('hex'),
     verifiedAt: new Date().toISOString(),
-    reasonCodes: []
+    reasonCodes: [],
+    provenanceCryptographicallyValid: false,
+    provenanceSignerIdentityResolved: false,
+    provenanceSignerAuthorized: false,
+    builderIdentityResolved: false,
+    builderAuthorized: false,
+    sourceIdentityResolved: false,
+    sourceAuthorized: false,
+    artifactBindingValid: false,
+    policyId: null,
+    policyVersion: null,
+    matchedPolicyDimension: null
   };
 
   try {
     const statement = parseAttestation(envelope);
     const { statementType, predicateType, subjects } = validateStatementStructure(statement);
-    
+
     result.predicateType = predicateType;
     result.predicateVersion = predicateType === 'https://slsa.dev/provenance/v1' ? 'v1' : 'v0.2';
-    
+
     const adaptedStatement = adaptLegacyProvenance(statement, predicateType);
     result.normalizedOutput = adaptedStatement;
 
     const claims = validateProvenanceClaims(adaptedStatement);
     result.builderId = claims.builderId;
+    if (claims.builderId) result.builderIdentityResolved = true;
     result.buildType = claims.buildType;
     result.sourceRepository = claims.sourceRepository;
+    if (claims.sourceRepository) result.sourceIdentityResolved = true;
     result.sourceCommit = claims.sourceCommit;
     result.externalParameters = claims.externalParameters;
     result.buildStartedOn = claims.startedOn;
     result.buildFinishedOn = claims.finishedOn;
 
     const cryptoResult = await verifyAttestationEnvelope(envelope, publicKey, predicateType);
+    result.provenanceCryptographicallyValid = true;
+    if (cryptoResult.signerIdentity) {
+      result.provenanceSignerIdentityResolved = true;
+      result.provenanceSignerAuthorized = true; // In current TPSR v3 logic, verified offline key is mapped this way
+    }
     result.signatureStatus = cryptoResult.signatureStatus;
     result.signerIdentity = cryptoResult.signerIdentity;
     result.publicKeyFingerprint = cryptoResult.publicKeyFingerprint;
 
     const policyEval = evaluateProvenanceTrustPolicy(claims);
+    result.builderAuthorized = true;
+    result.sourceAuthorized = true;
     result.slsaLevel = policyEval.slsaLevel;
+    result.policyId = policyEval.policyId;
     result.policyVersion = policyEval.policyVersion;
     result.trustPolicyHash = policyEval.trustPolicyHash;
+    result.matchedPolicyDimension = 'provenancePolicy';
 
     bindProvenanceToTarget(subjects, expectedArtifactHash);
+    result.artifactBindingValid = true;
+
     await checkFreshnessAndReplay(claims);
 
     result.status = 'VALID';

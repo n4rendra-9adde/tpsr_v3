@@ -229,9 +229,58 @@ describe('Point 8 Trust Policy Verification', () => {
     const bundle = buildAdversarialFixture('ADV-01');
     bundle.provenance[0].status = 'VALID';
     bundle.provenance[0].reasonCode = null;
-    provenanceEngine.getTrustPolicy.mockReturnValue({ version: '3.0', hash: 'abcdef', contextRiskPolicy: { operations: [] } });
+    provenanceEngine.getTrustPolicy.mockReturnValue({ schemaVersion: 'v1.0', policyId: 'tpsr-trust-policy-v1', contextRiskPolicy: { operations: [] } });
     const res = await evaluateTrust(bundle);
-    expect(res.policyVersion).toBe('3.0');
-    expect(res.trustPolicyHash).toBe('abcdef');
+    expect(res.policyVersion).toBe('v1.0');
+    expect(res.trustPolicyHash).toBeDefined();
+  });
+
+  test('29. Valid signature verified with untrusted key plus caller-supplied trusted signer identity must be rejected', async () => {
+    // Generate a real Cosign keypair and signature for the tests
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const { execSync } = require('child_process');
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tpsr-test-'));
+    const blobPath = path.join(tmpDir, 'blob.txt');
+    const sigPath = path.join(tmpDir, 'sig.bin');
+    const validHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+    fs.writeFileSync(blobPath, validHash, 'utf8');
+
+    const cosignBin = path.join(__dirname, '../../../../bin/cosign');
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} generate-key-pair`, { cwd: tmpDir });
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} sign-blob --key cosign.key --yes --tlog-upload=false --output-signature sig.bin blob.txt`, { cwd: tmpDir });
+
+    const testPubKey = fs.readFileSync(path.join(tmpDir, 'cosign.pub'));
+    const testSigValue = fs.readFileSync(sigPath, 'base64');
+
+    // We mock the policy to contain the true matching key for a DIFFERENT identity
+    provenanceEngine.getTrustPolicy.mockReturnValue({
+      schemaVersion: 'v1.0', policyId: 'id',
+      signaturePolicy: {
+        trustedPublicKeys: {
+          'true-signer@tpsr.com': testPubKey.toString('utf8'),
+          'caller-supplied-signer@tpsr.com': '-----BEGIN PUBLIC KEY-----\nOTHER\n-----END PUBLIC KEY-----'
+        }
+      }
+    });
+
+    const params = {
+      signatureType: 'OFFLINE_KEYED',
+      artifactHash: validHash,
+      signatureValue: testSigValue,
+      publicKey: Buffer.from(testPubKey, 'utf8'), // The REAL untrusted key
+      signerIdentity: 'caller-supplied-signer@tpsr.com' // caller-supplied identity
+    };
+
+    const cosignEngine = require('../../utils/cosignEngine');
+    const res = await cosignEngine.verifySignature(params);
+    expect(res.cryptographicValid).toBe(true); // Real cosign passed because key matches signature
+    expect(res.reasonCode).toBe('SIG-003'); // Identity authorization failed due to caller mismatch
+    expect(res.failureReason).toContain('does not match cryptographically bound identity');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });

@@ -47,6 +47,14 @@ async function verifySignature(params) {
     signatureType: 'COSIGN',
     verificationStatus: 'FAILED',
     signatureVerified: false,
+    cryptographicValid: false,
+    signerIdentityResolved: false,
+    verifiedSignerIdentity: null,
+    verifiedKeyFingerprint: null,
+    signerAuthorized: false,
+    policyId: null,
+    policyVersion: null,
+    matchedPolicyEntry: null,
     signerIdentity: params?.signerIdentity || 'unknown',
     publicKeyFingerprint: null,
     certificateSubject: null,
@@ -55,7 +63,7 @@ async function verifySignature(params) {
     verifiedAt: new Date().toISOString(),
     failureReason: 'Signature verification failed',
     reasonCode: 'SIG-002',
-    status: 'INVALID', // Legacy field support
+    status: 'INVALID',
     signatureHash: null
   };
 
@@ -147,24 +155,41 @@ async function verifySignature(params) {
 
     // Cryptography passed. Now perform Identity Authorization
     if (cryptoPassed) {
-      if (!params.signerIdentity || !policy.signaturePolicy?.trustedPublicKeys) {
-        result.reasonCode = 'SIG-003';
-        result.failureReason = 'Signer identity unresolved or policy missing';
-        return result;
+      result.cryptographicValid = true;
+      result.verifiedKeyFingerprint = result.publicKeyFingerprint;
+
+      let matchedIdentity = null;
+      if (policy.signaturePolicy && policy.signaturePolicy.trustedPublicKeys) {
+        for (const [identity, keyPem] of Object.entries(policy.signaturePolicy.trustedPublicKeys)) {
+          if (calculateFingerprint(keyPem) === result.publicKeyFingerprint) {
+            matchedIdentity = identity;
+            break;
+          }
+        }
       }
-      const trustedKey = policy.signaturePolicy.trustedPublicKeys[params.signerIdentity];
-      if (!trustedKey) {
+
+      if (!matchedIdentity) {
+        result.signerIdentityResolved = false;
         result.reasonCode = 'SIG-003';
-        result.failureReason = `Signer identity ${params.signerIdentity} unauthorized (not in policy)`;
+        result.failureReason = 'Signer identity unauthorized (not found in policy)';
         return result;
       }
 
-      const trustedFingerprint = calculateFingerprint(trustedKey);
-      if (trustedFingerprint !== result.publicKeyFingerprint) {
-        result.reasonCode = 'SIG-003';
-        result.failureReason = `Signer identity unauthorized: public key fingerprint mismatch for ${params.signerIdentity}`;
-        return result;
+      // Check caller mismatch if provided
+      if (params.signerIdentity && params.signerIdentity !== matchedIdentity) {
+         // Fails caller mismatch
+         result.reasonCode = 'SIG-003';
+         result.failureReason = 'Caller provided signerIdentity does not match cryptographically bound identity';
+         return result;
       }
+
+      result.signerIdentityResolved = true;
+      result.verifiedSignerIdentity = matchedIdentity;
+      result.signerIdentity = matchedIdentity; // backwards compat
+      result.signerAuthorized = true;
+      result.policyId = policy.policyId;
+      result.policyVersion = policy.schemaVersion;
+      result.matchedPolicyEntry = matchedIdentity;
 
       result.verificationStatus = 'VERIFIED';
       result.status = 'VERIFIED';

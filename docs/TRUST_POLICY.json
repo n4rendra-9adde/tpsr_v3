@@ -1,4 +1,6 @@
 {
+  "schemaVersion": "v1.0",
+  "policyId": "tpsr-trust-policy-v1",
   "policyVersion": "v3.0.0-20260725",
   "updatedAt": "2026-07-25T17:00:00Z",
   "description": "Authoritative trust policy governing SLSA provenance builders, Sigstore OIDC issuers, public signing keys, and approved VEX issuers for TPSR v3.",
