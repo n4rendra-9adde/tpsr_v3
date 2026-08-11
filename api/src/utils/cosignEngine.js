@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
-const { getTrustPolicy } = require('./provenanceEngine');
+const { getTrustPolicy, normalizeFingerprint } = require('./trustPolicyLoader');
 
 const COSIGN_BIN = process.env.COSIGN_PATH || path.join(__dirname, '../../../bin/cosign');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
@@ -29,12 +29,6 @@ function runExecFile(bin, args, options = {}) {
   });
 }
 
-/**
- * Calculates a secure public key fingerprint
- */
-function calculateFingerprint(publicKeyPem) {
-  return crypto.createHash('sha256').update(publicKeyPem.trim()).digest('hex');
-}
 
 /**
  * Verifies an offline-keyed signature against an artifact
@@ -98,7 +92,7 @@ async function verifySignature(params) {
     }
 
     const pubKeyString = params.publicKey.toString('utf8');
-    result.publicKeyFingerprint = calculateFingerprint(pubKeyString);
+    result.publicKeyFingerprint = normalizeFingerprint(pubKeyString);
 
     if (Buffer.byteLength(params.signatureValue, 'base64') > MAX_FILE_SIZE ||
         Buffer.byteLength(pubKeyString, 'utf8') > MAX_FILE_SIZE) {
@@ -159,9 +153,9 @@ async function verifySignature(params) {
       result.verifiedKeyFingerprint = result.publicKeyFingerprint;
 
       let matchedIdentity = null;
-      if (policy.signaturePolicy && policy.signaturePolicy.trustedPublicKeys) {
-        for (const [identity, keyPem] of Object.entries(policy.signaturePolicy.trustedPublicKeys)) {
-          if (calculateFingerprint(keyPem) === result.publicKeyFingerprint) {
+      if (policy.signaturePolicy && policy.signaturePolicy.normalizedSigners) {
+        for (const [identity, fp] of Object.entries(policy.signaturePolicy.normalizedSigners)) {
+          if (fp === result.publicKeyFingerprint) {
             matchedIdentity = identity;
             break;
           }

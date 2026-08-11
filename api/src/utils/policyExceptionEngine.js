@@ -3,20 +3,12 @@ const path = require('path');
 const crypto = require('crypto');
 const uuidv4 = crypto.randomUUID;
 const caectdRuleMapper = require('./caectdRuleMapper');
+const { getTrustPolicy } = require('./trustPolicyLoader');
 
 const trustPolicyPath = path.join(__dirname, '../../../docs/TRUST_POLICY.json');
 const caectdModelPath = path.join(__dirname, '../../../docs/models/caectd-model.v0.1.json');
 
-let cachedTrustPolicy = null;
 let cachedCaectdModel = null;
-
-function getTrustPolicy() {
-  if (!cachedTrustPolicy) {
-    cachedTrustPolicy = JSON.parse(fs.readFileSync(trustPolicyPath, 'utf8'));
-  }
-  return cachedTrustPolicy;
-}
-
 function getCaectdModel() {
   if (!cachedCaectdModel) {
     cachedCaectdModel = JSON.parse(fs.readFileSync(caectdModelPath, 'utf8'));

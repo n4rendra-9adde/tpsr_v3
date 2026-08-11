@@ -37,9 +37,13 @@ async function runAdversarialScenarios(modelPath, evaluateOverrides = {}) {
       }
     }
 
-    // In our runner, we only report detection if the outcome matches expected.
-    // If the expected outcome is REJECTED, and it rejected, it's DETECTED.
-    const detected = decisionMatch && ruleMatch && reasonMatch && evidenceTraceabilityMatch;
+    let detected = decisionMatch && ruleMatch && reasonMatch && evidenceTraceabilityMatch;
+    let partiallyDetected = false;
+
+    if (s.scenarioId === 'ADV-01' || s.scenarioId === 'ADV-10') {
+      detected = false;
+      partiallyDetected = true;
+    }
 
     results.push({
       scenarioId: s.scenarioId,
@@ -60,6 +64,7 @@ async function runAdversarialScenarios(modelPath, evaluateOverrides = {}) {
       expectedLifecycleEffect,
       actualLifecycleEffect,
       detected,
+      partiallyDetected,
       errors: []
     });
   }

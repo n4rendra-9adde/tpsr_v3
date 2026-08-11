@@ -52,6 +52,7 @@ async function run() {
 
   for (const r of results) {
     if (r.detected) detectedCount++;
+    else if (r.partiallyDetected) partialCount++;
     else notDetectedCount++;
 
     if (r.decisionMatch) decisionMatches++;
@@ -85,7 +86,7 @@ async function run() {
   const traceability = results.map(r => ({
     scenarioId: r.scenarioId,
     targetedEvidence: r.actualEvidenceDependencies,
-    assuranceResult: r.detected ? 'DETECTED' : 'FAILED',
+    assuranceResult: r.detected ? 'DETECTED' : (r.partiallyDetected ? 'PARTIALLY_DETECTED' : 'FAILED'),
     ruleIds: r.actualRuleIds,
     reasonCodes: r.actualReasonCodes,
     finalDecision: r.actualDecision,

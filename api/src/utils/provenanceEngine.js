@@ -7,51 +7,9 @@ const child_process = require('child_process');
 const util = require('util');
 const execFile = util.promisify(child_process.execFile);
 const sbomRepository = require('../repositories/sbomRepository');
+const { getTrustPolicy } = require('./trustPolicyLoader');
 
-let cachedTrustPolicy = null;
 
-function getTrustPolicy() {
-  if (!cachedTrustPolicy) {
-    const policyPath = path.join(__dirname, '../../../docs/TRUST_POLICY.json');
-    if (!fs.existsSync(policyPath)) {
-      throw new Error('TRUST_POLICY_MISSING');
-    }
-    let parsed;
-    try {
-      parsed = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
-    } catch (e) {
-      throw new Error('TRUST_POLICY_MALFORMED');
-    }
-
-    if (parsed.schemaVersion !== 'v1.0') throw new Error('TRUST_POLICY_UNSUPPORTED_SCHEMA');
-    if (!parsed.policyId || typeof parsed.policyId !== 'string') throw new Error('TRUST_POLICY_MISSING_ID');
-
-    if (!parsed.signaturePolicy || !parsed.signaturePolicy.trustedPublicKeys || typeof parsed.signaturePolicy.trustedPublicKeys !== 'object') {
-      throw new Error('TRUST_POLICY_MISSING_SIGNER_DIMENSION');
-    }
-
-    if (!parsed.provenancePolicy || !Array.isArray(parsed.provenancePolicy.approvedBuilders)) {
-      throw new Error('TRUST_POLICY_MISSING_BUILDER_DIMENSION');
-    }
-
-    if (!Array.isArray(parsed.provenancePolicy.approvedSourceRepositories)) {
-      throw new Error('TRUST_POLICY_MISSING_SOURCE_DIMENSION');
-    }
-
-    if (Object.keys(parsed.signaturePolicy.trustedPublicKeys).length === 0) {
-      throw new Error('TRUST_POLICY_EMPTY_SIGNER_LIST');
-    }
-
-    // Check for duplicates/conflicts in public keys
-    const pubKeys = Object.values(parsed.signaturePolicy.trustedPublicKeys);
-    if (new Set(pubKeys).size !== pubKeys.length) {
-      throw new Error('TRUST_POLICY_DUPLICATE_KEYS');
-    }
-
-    cachedTrustPolicy = parsed;
-  }
-  return cachedTrustPolicy;
-}
 
 // Stage 1
 function parseAttestation(envelope) {

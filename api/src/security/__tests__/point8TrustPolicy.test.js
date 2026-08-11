@@ -3,8 +3,10 @@ const { evaluateTrust, TRUST_STATUS } = require('../../utils/trustEngine');
 const { buildAdversarialFixture } = require('../adversarialScenarioRunner');
 const provenanceEngine = require('../../utils/provenanceEngine');
 
-jest.mock('../../utils/provenanceEngine', () => {
-  const original = jest.requireActual('../../utils/provenanceEngine');
+const trustPolicyLoader = require('../../utils/trustPolicyLoader');
+
+jest.mock('../../utils/trustPolicyLoader', () => {
+  const original = jest.requireActual('../../utils/trustPolicyLoader');
   return {
     ...original,
     getTrustPolicy: jest.fn()
@@ -15,7 +17,7 @@ describe('Point 8 Trust Policy Verification', () => {
   const validHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
   beforeEach(() => {
-    provenanceEngine.getTrustPolicy.mockReturnValue({
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({
       version: '3.0',
       policyVersion: 'v3.0.0-20260725',
       signaturePolicy: {
@@ -63,7 +65,7 @@ describe('Point 8 Trust Policy Verification', () => {
   });
 
   test('5. Malformed signer policy', async () => {
-    provenanceEngine.getTrustPolicy.mockReturnValue({ signaturePolicy: {} });
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({ signaturePolicy: {} });
     const bundle = buildAdversarialFixture('ADV-03');
     bundle.signatures[0].reasonCode = 'SIG-003';
     bundle.signatures[0].verification_status = 'FAILED';
@@ -106,7 +108,7 @@ describe('Point 8 Trust Policy Verification', () => {
   });
 
   test('11. Malformed builder policy', async () => {
-    provenanceEngine.getTrustPolicy.mockReturnValue({ provenancePolicy: {} });
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({ provenancePolicy: {} });
     const bundle = buildAdversarialFixture('ADV-01');
     bundle.provenance[0].reasonCode = 'PRV-003';
     const res = await evaluateTrust(bundle);
@@ -190,7 +192,7 @@ describe('Point 8 Trust Policy Verification', () => {
     bundle.provenance[0].reasonCode = null;
     bundle.activeContextAssertion = null;
     bundle.vexStatements = [];
-    provenanceEngine.getTrustPolicy.mockReturnValue({ version: '3.0', contextRiskPolicy: { operations: [] } });
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({ version: '3.0', contextRiskPolicy: { operations: [] } });
     const res = await evaluateTrust(bundle);
     expect(res.trustStatus).toBe('REVIEW_REQUIRED'); // missing required VEX
   });
@@ -213,7 +215,7 @@ describe('Point 8 Trust Policy Verification', () => {
   });
 
   test('26. Missing required policy dimension fails closed', async () => {
-    provenanceEngine.getTrustPolicy.mockReturnValue({ signaturePolicy: null });
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({ signaturePolicy: null });
     const bundle = buildAdversarialFixture('ADV-03');
     bundle.signatures[0].verification_status = 'FAILED';
     bundle.signatures[0].reasonCode = 'SIG-003';
@@ -229,13 +231,13 @@ describe('Point 8 Trust Policy Verification', () => {
     const bundle = buildAdversarialFixture('ADV-01');
     bundle.provenance[0].status = 'VALID';
     bundle.provenance[0].reasonCode = null;
-    provenanceEngine.getTrustPolicy.mockReturnValue({ schemaVersion: 'v1.0', policyId: 'tpsr-trust-policy-v1', contextRiskPolicy: { operations: [] } });
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({ schemaVersion: 'v1.0', policyId: 'tpsr-trust-policy-v1', contextRiskPolicy: { operations: [] } });
     const res = await evaluateTrust(bundle);
     expect(res.policyVersion).toBe('v1.0');
     expect(res.trustPolicyHash).toBeDefined();
   });
 
-  test('29. Valid signature verified with untrusted key plus caller-supplied trusted signer identity must be rejected', async () => {
+  test('29. Cryptographically valid authorized key with mismatched caller-supplied signer identity is rejected', async () => {
     // Generate a real Cosign keypair and signature for the tests
     const fs = require('fs');
     const path = require('path');
@@ -257,12 +259,13 @@ describe('Point 8 Trust Policy Verification', () => {
     const testSigValue = fs.readFileSync(sigPath, 'base64');
 
     // We mock the policy to contain the true matching key for a DIFFERENT identity
-    provenanceEngine.getTrustPolicy.mockReturnValue({
+    const fp = trustPolicyLoader.normalizeFingerprint(testPubKey.toString('utf8'));
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({
       schemaVersion: 'v1.0', policyId: 'id',
       signaturePolicy: {
-        trustedPublicKeys: {
-          'true-signer@tpsr.com': testPubKey.toString('utf8'),
-          'caller-supplied-signer@tpsr.com': '-----BEGIN PUBLIC KEY-----\nOTHER\n-----END PUBLIC KEY-----'
+        normalizedSigners: {
+          'true-signer@tpsr.com': fp,
+          'caller-supplied-signer@tpsr.com': 'OTHER'
         }
       }
     });
@@ -280,6 +283,54 @@ describe('Point 8 Trust Policy Verification', () => {
     expect(res.cryptographicValid).toBe(true); // Real cosign passed because key matches signature
     expect(res.reasonCode).toBe('SIG-003'); // Identity authorization failed due to caller mismatch
     expect(res.failureReason).toContain('does not match cryptographically bound identity');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('30. Cryptographically valid untrusted key is rejected even when caller supplies a trusted signer identity', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const { execSync } = require('child_process');
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tpsr-test-30-'));
+    const blobPath = path.join(tmpDir, 'blob.txt');
+    const sigPath = path.join(tmpDir, 'sig.bin');
+    const validHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+    fs.writeFileSync(blobPath, validHash, 'utf8');
+
+    const cosignBin = path.join(__dirname, '../../../../bin/cosign');
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} generate-key-pair`, { cwd: tmpDir });
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} sign-blob --key cosign.key --yes --tlog-upload=false --output-signature sig.bin blob.txt`, { cwd: tmpDir });
+
+    const testPubKey = fs.readFileSync(path.join(tmpDir, 'cosign.pub'));
+    const testSigValue = fs.readFileSync(sigPath, 'base64');
+
+    // MOCK policy to only have a different trusted key for the caller-supplied identity.
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({
+      schemaVersion: 'v1.0', policyId: 'id',
+      signaturePolicy: {
+        normalizedSigners: {
+          'caller-supplied-signer@tpsr.com': 'some-other-trusted-fingerprint'
+        }
+      }
+    });
+
+    const params = {
+      signatureType: 'OFFLINE_KEYED',
+      artifactHash: validHash,
+      signatureValue: testSigValue,
+      publicKey: Buffer.from(testPubKey, 'utf8'), // The REAL untrusted key
+      signerIdentity: 'caller-supplied-signer@tpsr.com' // caller-supplied identity
+    };
+
+    const cosignEngine = require('../../utils/cosignEngine');
+    const res = await cosignEngine.verifySignature(params);
+    expect(res.cryptographicValid).toBe(true);
+    expect(res.signerIdentityResolved).toBe(false);
+    expect(res.reasonCode).toBe('SIG-003');
+    expect(res.failureReason).toContain('Signer identity unauthorized');
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });

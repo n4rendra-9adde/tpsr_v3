@@ -4,10 +4,10 @@ const os = require('os');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 const { verifySignature } = require('../cosignEngine');
-const provenanceEngine = require('../provenanceEngine');
+const trustPolicyLoader = require('../trustPolicyLoader');
 
-jest.mock('../provenanceEngine', () => {
-  const original = jest.requireActual('../provenanceEngine');
+jest.mock('../trustPolicyLoader', () => {
+  const original = jest.requireActual('../trustPolicyLoader');
   return {
     ...original,
     getTrustPolicy: jest.fn()
@@ -41,10 +41,12 @@ describe('Sigstore Cosign Cryptographic Signature Verification Engine', () => {
     testPubKey = fs.readFileSync(pubPath);
     testSigValue = fs.readFileSync(sigPath, 'base64');
 
-    provenanceEngine.getTrustPolicy.mockReturnValue({
+    const fp = trustPolicyLoader.normalizeFingerprint(testPubKey.toString('utf8'));
+    trustPolicyLoader.getTrustPolicy.mockReturnValue({
+      schemaVersion: 'v1.0', policyId: 'id',
       signaturePolicy: {
-        trustedPublicKeys: {
-          'test-signer@tpsr.com': testPubKey.toString('utf8')
+        normalizedSigners: {
+          'test-signer@tpsr.com': fp
         }
       }
     });
