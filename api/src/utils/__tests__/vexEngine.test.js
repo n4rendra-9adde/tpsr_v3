@@ -2,7 +2,7 @@ const { evaluateVexStatement, applyVexOverlays } = require('../vexEngine');
 
 describe('TPSR v3 VEX Applicability Overlay Engine', () => {
   test('evaluateVexStatement: Rejects missing or invalid VEX payload', () => {
-    const res = evaluateVexStatement({});
+    const res = evaluateVexStatement({ vexAuthoritative: true, signatureStatus: 'VERIFIED', publicKeyFingerprint: 'x', policyVersion: '1', targetBinding: {}, canonicalPayloadDigest: 'x' });
     expect(res.status).toBe('affected');
     expect(res.policyBlockingStatus).toBe('BLOCKING');
     expect(res.reasonCode).toBe('VEX-003');
@@ -10,7 +10,7 @@ describe('TPSR v3 VEX Applicability Overlay Engine', () => {
 
   test('evaluateVexStatement: Rejects not_affected VEX statement without approved justification', () => {
     // In current simplified form, just testing the status mapping
-    const res = evaluateVexStatement({ status: 'under_investigation', justification: 'unapproved_reason' });
+    const res = evaluateVexStatement({ status: 'under_investigation', justification: 'unapproved_reason', vexAuthoritative: true, signatureStatus: 'VERIFIED', publicKeyFingerprint: 'x', policyVersion: '1', targetBinding: {}, canonicalPayloadDigest: 'x' });
     expect(res.status).toBe('under_investigation');
     expect(res.reasonCode).toBe('VEX-002');
   });
@@ -19,7 +19,8 @@ describe('TPSR v3 VEX Applicability Overlay Engine', () => {
     const res = evaluateVexStatement({
       status: 'not_affected',
       justification: 'component_not_present',
-      impactStatement: 'Lib is included as optional dev dependency and not packaged.'
+      impactStatement: 'Lib is included as optional dev dependency and not packaged.',
+      vexAuthoritative: true, signatureStatus: 'VERIFIED', publicKeyFingerprint: 'x', policyVersion: '1', targetBinding: {}, canonicalPayloadDigest: 'x'
     });
     expect(res.status).toBe('not_affected');
     expect(res.applicabilityDisposition).toBe('NOT_AFFECTED');
@@ -33,7 +34,7 @@ describe('TPSR v3 VEX Applicability Overlay Engine', () => {
       { id: 'CVE-2026-1002', cvssScore: 5.3, severity: 'MEDIUM' }
     ];
     const vexStatements = [
-      { id: 'vex-001', vulnerability_id: 'CVE-2026-1001', status: 'not_affected', justification: 'vulnerable_code_not_in_execute_path' }
+      { id: 'vex-001', vulnerability_id: 'CVE-2026-1001', status: 'not_affected', justification: 'vulnerable_code_not_in_execute_path', vexAuthoritative: true, signatureStatus: 'VERIFIED', publicKeyFingerprint: 'x', policyVersion: '1', targetBinding: {}, canonicalPayloadDigest: 'x' }
     ];
 
     const overlay = applyVexOverlays(vulns, vexStatements);

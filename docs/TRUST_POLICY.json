@@ -55,7 +55,7 @@
       "cve-coordination@tpsr.com",
       "vendor-security@tpsr.com"
     ],
-    "maxOverlayValidityDays": 365,
+    "maxOverlayValidityDays": 30,
     "requireImpactStatementForNotAffected": true,
     "allowedJustifications": [
       "component_not_present",
@@ -63,7 +63,10 @@
       "vulnerable_code_not_in_execute_path",
       "vulnerable_code_cannot_be_controlled_by_adversary",
       "inline_mitigations_already_exist"
-    ]
+    ],
+    "allowedClockSkewSeconds": 600,
+    "expiryRequired": false,
+    "maxStatementAgeDays": 365
   },
   "contextAuthorities": {
     "PRODUCTION": {

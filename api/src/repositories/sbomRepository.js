@@ -466,8 +466,9 @@ async function insertVexStatement(record) {
       component_identifiers, vulnerability_identifiers, applicability_disposition,
       policy_blocking_status, reason_codes, trust_policy_hash, action_statement,
       verified_at, policy_version, verification_mode, transparency_log_status,
-      digest_manifest_reference, statement_id
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
+      digest_manifest_reference, statement_id, vex_authoritative,
+      canonical_payload_digest, policy_id, target_binding, verifier_version
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)
     RETURNING *;
   `;
   var now = new Date().toISOString();
@@ -504,7 +505,12 @@ async function insertVexStatement(record) {
     record.verificationMode || null,
     record.transparencyLogStatus || null,
     record.digestManifestReference ? JSON.stringify(record.digestManifestReference) : null,
-    record.statementId || null
+    record.statementId || null,
+    record.vexAuthoritative || false,
+    record.canonicalPayloadDigest || null,
+    record.policyId || null,
+    record.targetBinding ? JSON.stringify(record.targetBinding) : null,
+    record.verifierVersion || null
   ];
   var client = await db.pool.connect();
   try {

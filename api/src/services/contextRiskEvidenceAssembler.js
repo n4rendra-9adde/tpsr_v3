@@ -91,9 +91,15 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
   if (vexStatements && Array.isArray(vexStatements)) {
     const activeVex = vexStatements.filter(v => {
       // VEX must be structurally valid, verified, and not logically rejected
-      if (v.signature_status !== 'VERIFIED') return false;
-      if (v.deleted_at !== null) return false;
-      if (v.applicability_disposition === 'VEX_INVALID') return false;
+      if (v.vex_authoritative !== true && v.vexAuthoritative !== true) return false;
+      if (v.signature_status !== 'VERIFIED' && v.signatureStatus !== 'VERIFIED') return false;
+      if (!v.public_key_fingerprint && !v.publicKeyFingerprint) return false;
+      if (!v.policy_version && !v.policyVersion) return false;
+      if (!v.target_binding && !v.targetBinding) return false;
+      if (!v.canonical_payload_digest && !v.canonicalPayloadDigest) return false;
+
+      if (v.deleted_at !== null && v.deleted_at !== undefined) return false;
+      if (v.applicability_disposition === 'VEX_INVALID' || v.applicabilityDisposition === 'VEX_INVALID') return false;
       // Optional: check assurance_state if it exists in a newer schema, otherwise assume verified signatures are trusted
       if (v.assurance_state && v.assurance_state !== 'VERIFIED_TRUSTED') return false;
       return true;

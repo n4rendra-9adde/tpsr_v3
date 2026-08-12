@@ -148,7 +148,12 @@ function buildFixtureEvidence(cond) {
            verification_status: cond.vexApplicability === 'Untrusted' ? 'UNTRUSTED' : 
                                 cond.vexApplicability === 'Forged' ? 'INVALID' : 
                                 cond.vexApplicability === 'BadScope' ? 'CONFLICT' : 'VERIFIED',
-           deleted_at: null
+           deleted_at: null,
+           vex_authoritative: cond.vexApplicability !== 'Untrusted' && cond.vexApplicability !== 'Forged' && cond.vexApplicability !== 'BadScope',
+           public_key_fingerprint: 'mock-fp',
+           policy_version: 'v1.1',
+           canonical_payload_digest: 'mock-digest',
+           target_binding: { artifact: 'mock' }
         });
       }
     }

@@ -59,7 +59,7 @@ function getTrustPolicy(options = {}) {
     }
   }
 
-  if (parsed.schemaVersion !== 'v1.0') throw new Error('TRUST_POLICY_UNSUPPORTED_SCHEMA');
+  if (parsed.schemaVersion !== 'v1.0' && parsed.schemaVersion !== 'v1.1') throw new Error('TRUST_POLICY_UNSUPPORTED_SCHEMA');
   if (!parsed.policyId || typeof parsed.policyId !== 'string' || !parsed.policyId.trim()) {
     throw new Error('TRUST_POLICY_MISSING_ID');
   }
@@ -140,6 +140,32 @@ function getTrustPolicy(options = {}) {
       approvedSourceRepositories: normalizedSources
     }
   };
+
+  if (parsed.schemaVersion === 'v1.1' && parsed.vexPolicy) {
+    if (!parsed.vexPolicy.authorizedIssuers || typeof parsed.vexPolicy.authorizedIssuers !== 'object') {
+      throw new Error('TRUST_POLICY_MISSING_VEX_ISSUER_DIMENSION');
+    }
+    const vexIssuers = parsed.vexPolicy.authorizedIssuers;
+    const normalizedVexIssuers = {};
+    const vexFpSet = new Set();
+    for (const [id, cfg] of Object.entries(vexIssuers)) {
+      if (!cfg.publicKey) throw new Error('TRUST_POLICY_MISSING_VEX_ISSUER_DIMENSION');
+      const fp = normalizeFingerprint(cfg.publicKey);
+      if (vexFpSet.has(fp)) throw new Error('TRUST_POLICY_DUPLICATE_VEX_KEYS');
+      vexFpSet.add(fp);
+      normalizedVexIssuers[id] = {
+        ...cfg,
+        publicKey: cfg.publicKey,
+        fingerprint: fp,
+        globalAuthority: cfg.globalAuthority === true,
+        allowedProducts: Array.isArray(cfg.allowedProducts) ? cfg.allowedProducts : []
+      };
+    }
+    normalizedPolicy.vexPolicy = {
+      ...parsed.vexPolicy,
+      authorizedIssuers: normalizedVexIssuers
+    };
+  }
 
   if (!options.injectedPolicy && !options.policyPath) {
     cachedTrustPolicy = normalizedPolicy;

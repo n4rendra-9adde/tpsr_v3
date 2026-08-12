@@ -64,7 +64,12 @@ async function handleRecordVex(req, res) {
       policyVersion: evalResult.policyVersion,
       verificationMode: evalResult.verificationMode,
       transparencyLogStatus: evalResult.transparencyLogStatus,
-      statementId: evalResult.statementId
+      statementId: evalResult.statementId,
+      vexAuthoritative: evalResult.vexAuthoritative,
+      canonicalPayloadDigest: evalResult.canonicalPayloadDigest,
+      policyId: evalResult.policyId,
+      targetBinding: evalResult.targetBinding,
+      verifierVersion: evalResult.verifierVersion
     });
 
     const statusCode = evalResult.isValid ? 201 : 422;
