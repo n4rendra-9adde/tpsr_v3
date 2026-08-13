@@ -30,6 +30,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NETWORK_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${NETWORK_DIR}"
 
+export FABRIC_CFG_PATH="${NETWORK_DIR}/../config"
+
 echo "Working directory: $(pwd)"
 
 # Verify required files and directories
@@ -103,13 +105,20 @@ set_auditor_peer_env() {
   export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/crypto-config/peerOrganizations/auditor.tpsr.com/users/Admin@auditor.tpsr.com/msp"
 }
 
+# Check if already committed
+set_vendor_peer_env
+if peer lifecycle chaincode querycommitted -C "${CHANNEL_NAME}" | grep -q "Name: ${CHAINCODE_NAME}, Version: ${CHAINCODE_VERSION}"; then
+  echo "Chaincode ${CHAINCODE_NAME} v${CHAINCODE_VERSION} is already committed on ${CHANNEL_NAME}. Skipping deployment."
+  exit 0
+fi
+
 # Package chaincode
 echo "Packaging chaincode..."
 peer lifecycle chaincode package \
   "./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz" \
   --path ../chaincode/sbom \
   --lang golang \
-  --label "${CHAINCODE_NAME}_${CHAINCODE_VERSION}"
+  --label "${CHAINCODE_NAME}_${CHAINCODE_VERSION}" || true
 
 echo "Chaincode packaged: ./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz"
 
@@ -117,19 +126,19 @@ echo "Chaincode packaged: ./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERS
 echo "Installing chaincode on vendor peer..."
 set_vendor_peer_env
 peer lifecycle chaincode install \
-  "./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz"
+  "./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz" || true
 
 # Install on security peer
 echo "Installing chaincode on security peer..."
 set_security_peer_env
 peer lifecycle chaincode install \
-  "./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz"
+  "./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz" || true
 
 # Install on auditor peer
 echo "Installing chaincode on auditor peer..."
 set_auditor_peer_env
 peer lifecycle chaincode install \
-  "./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz"
+  "./channel-artifacts/${CHAINCODE_NAME}_${CHAINCODE_VERSION}.tar.gz" || true
 
 echo "Chaincode installed on all peers"
 

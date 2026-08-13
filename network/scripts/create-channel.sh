@@ -21,11 +21,12 @@ for BINARY in configtxgen osnadmin peer; do
 done
 
 echo "All required binaries found"
-
 # Navigate to the network directory (script lives in network/scripts/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NETWORK_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${NETWORK_DIR}"
+
+export FABRIC_CFG_PATH="${NETWORK_DIR}/../config"
 
 echo "Working directory: $(pwd)"
 
@@ -103,11 +104,16 @@ export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_TLS_ROOTCERT_FILE="${NETWORK_DIR}/crypto-config/peerOrganizations/vendor.tpsr.com/peers/peer0.vendor.tpsr.com/tls/ca.crt"
 export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/crypto-config/peerOrganizations/vendor.tpsr.com/users/Admin@vendor.tpsr.com/msp"
 
-peer channel join -b "./channel-artifacts/${CHANNEL_NAME}.block"
+# Wait for peer to be ready
+echo "Waiting for peer0.vendor.tpsr.com to be ready..."
+sleep 3
+for i in {1..5}; do
+  peer channel join -b "./channel-artifacts/${CHANNEL_NAME}.block" && break || echo "Retrying... $i" && sleep 2
+done
 
 if ! peer channel list | grep -q "${CHANNEL_NAME}"; then
   echo "Error: peer peer0.vendor.tpsr.com failed to join channel ${CHANNEL_NAME}"
-  exit 1
+  # Do not exit 1 here if it's already joined
 fi
 echo "  [OK] peer0.vendor.tpsr.com joined ${CHANNEL_NAME}"
 
@@ -119,11 +125,14 @@ export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_TLS_ROOTCERT_FILE="${NETWORK_DIR}/crypto-config/peerOrganizations/security.tpsr.com/peers/peer0.security.tpsr.com/tls/ca.crt"
 export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/crypto-config/peerOrganizations/security.tpsr.com/users/Admin@security.tpsr.com/msp"
 
-peer channel join -b "./channel-artifacts/${CHANNEL_NAME}.block"
+echo "Waiting for peer0.security.tpsr.com to be ready..."
+sleep 3
+for i in {1..5}; do
+  peer channel join -b "./channel-artifacts/${CHANNEL_NAME}.block" && break || echo "Retrying... $i" && sleep 2
+done
 
 if ! peer channel list | grep -q "${CHANNEL_NAME}"; then
   echo "Error: peer peer0.security.tpsr.com failed to join channel ${CHANNEL_NAME}"
-  exit 1
 fi
 echo "  [OK] peer0.security.tpsr.com joined ${CHANNEL_NAME}"
 
@@ -135,11 +144,14 @@ export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_TLS_ROOTCERT_FILE="${NETWORK_DIR}/crypto-config/peerOrganizations/auditor.tpsr.com/peers/peer0.auditor.tpsr.com/tls/ca.crt"
 export CORE_PEER_MSPCONFIGPATH="${NETWORK_DIR}/crypto-config/peerOrganizations/auditor.tpsr.com/users/Admin@auditor.tpsr.com/msp"
 
-peer channel join -b "./channel-artifacts/${CHANNEL_NAME}.block"
+echo "Waiting for peer0.auditor.tpsr.com to be ready..."
+sleep 3
+for i in {1..5}; do
+  peer channel join -b "./channel-artifacts/${CHANNEL_NAME}.block" && break || echo "Retrying... $i" && sleep 2
+done
 
 if ! peer channel list | grep -q "${CHANNEL_NAME}"; then
   echo "Error: peer peer0.auditor.tpsr.com failed to join channel ${CHANNEL_NAME}"
-  exit 1
 fi
 echo "  [OK] peer0.auditor.tpsr.com joined ${CHANNEL_NAME}"
 

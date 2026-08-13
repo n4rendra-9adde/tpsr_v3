@@ -88,6 +88,27 @@ app.get('/health', function (req, res) {
   });
 });
 
+app.get('/readiness', async function (req, res) {
+  try {
+    await db.testDatabaseConnection();
+    const policy = trustPolicyLoader.getTrustPolicy();
+    if (!policy) {
+      return res.status(503).json({ status: 'unavailable', reason: 'Trust policy not loaded' });
+    }
+    const fabricEnabled = process.env.FABRIC_ENABLED === 'true';
+    const fabricMode = fabricEnabled ? 'ENABLED/READY' : 'DISABLED/DEGRADED';
+    res.json({ 
+      status: 'ready', 
+      policyGeneration: policy.generation,
+      fabricMode,
+      version: '1.0.0',
+      buildIdentifier: 'tpsr-v3-rc'
+    });
+  } catch (err) {
+    res.status(503).json({ status: 'unavailable', reason: 'Database connection failed' });
+  }
+});
+
 function getAllowedRoles(method, reqPath) {
   if (method === 'POST' && reqPath === '/submit') {
     return auth.ROUTE_ROLE_MAP.submit;
