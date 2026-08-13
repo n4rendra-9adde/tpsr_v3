@@ -14,7 +14,8 @@ import {
   ContextRiskSummary,
   VexApplicabilityTable, 
   ReasonCodeList, 
-  SimulationNotice 
+  SimulationNotice,
+  DecisionSnapshotCard 
 } from './components';
 
 
@@ -576,9 +577,14 @@ function SBOMListPage({ selectedIdentity }) {
                   {selectedRecord.fabric_channel || 'tpsrchannel'}
                 </Descriptions.Item>
                 <Descriptions.Item label="Policy Status">
-                  {selectedRecord.policyStatus
-                    ? <Tag color={selectedRecord.policyStatus === 'PASS' ? 'success' : 'error'}>{selectedRecord.policyStatus}</Tag>
-                    : <Tag>UNKNOWN</Tag>}
+                  <Space>
+                    {selectedRecord.policyStatus
+                      ? <Tag color={selectedRecord.policyStatus === 'PASS' ? 'success' : 'error'}>{selectedRecord.policyStatus}</Tag>
+                      : <Tag>UNKNOWN</Tag>}
+                    {selectedRecord.policyVersion && (
+                      <Tag color="purple">v{selectedRecord.policyVersion}</Tag>
+                    )}
+                  </Space>
                 </Descriptions.Item>
                 {selectedRecord.policyReason && (
                   <Descriptions.Item label="Policy Reason">{selectedRecord.policyReason}</Descriptions.Item>
@@ -861,7 +867,10 @@ function VerifyPage({ selectedIdentity }) {
                   <Card size="small">
                     <Typography.Text type="secondary">Policy Status</Typography.Text>
                     <Typography.Title level={5} style={{ margin: 0 }}>
-                      <Tag color={anchorDoc.policyStatus === 'PASS' ? 'success' : 'error'}>{anchorDoc.policyStatus || 'UNKNOWN'}</Tag>
+                      <Space>
+                        <Tag color={anchorDoc.policyStatus === 'PASS' ? 'success' : 'error'}>{anchorDoc.policyStatus || 'UNKNOWN'}</Tag>
+                        {anchorDoc.policyVersion && <Tag color="purple">v{anchorDoc.policyVersion}</Tag>}
+                      </Space>
                     </Typography.Title>
                   </Card>
                 </Col>
@@ -881,6 +890,12 @@ function VerifyPage({ selectedIdentity }) {
             contextRisk={trustDecisionData?.contextRisk}
             originalVulnerabilities={trustDecisionData?.originalVulnerabilities || []}
             isSimulation={false}
+          />
+
+          <DecisionSnapshotCard 
+            decisionData={trustDecisionData} 
+            sbomId={result.sbomID} 
+            identity={selectedIdentity} 
           />
 
           {anchorDoc && (
