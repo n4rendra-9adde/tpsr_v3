@@ -5,6 +5,7 @@ const router = express.Router();
 const sbomRepository = require('../repositories/sbomRepository');
 const trustRepository = require('../repositories/trustRepository');
 const { evaluateTrust } = require('../utils/trustEngine');
+const snapshotService = require('../services/snapshotService');
 
 /**
  * Handle full trust evaluation execution with Idempotency-Key support
@@ -129,6 +130,17 @@ async function handleEvaluateTrust(req, res) {
       }
     });
 
+    const snapshot = await snapshotService.captureAndPersistSnapshot(
+        sbomId.trim(),
+        evalResult,
+        {
+          provenance, signatures, vexStatements, deploymentContext: latestLegacyContext,
+          activeContextAssertion: activeAssertion, allActiveContextAssertions: activeAssertions.filter(a => a.status === 'ACTIVE' || (a.status === 'INVALID' && a.assurance_state === 'CONFLICTING')),
+          policyExceptions: exceptions
+        },
+        dbDecision
+    );
+
     // HTTP status code: 201 Created for all new authoritative evaluation records.
     // The trust decision (TRUSTED, CONDITIONALLY_ACCEPTED, REVIEW_REQUIRED, REJECTED)
     // is communicated via the response body `trustStatus` field — not the HTTP status code.
@@ -154,7 +166,8 @@ async function handleEvaluateTrust(req, res) {
       evidenceSummary: evalResult.evidenceSummary,
       idempotent: false,
       ledgerStatus: outboxRecord.status,
-      evaluatedAt: dbDecision.evaluated_at
+      evaluatedAt: dbDecision.evaluated_at,
+      snapshotId: snapshot.snapshotId
     });
   } catch (err) {
     console.error('[TPSR] Error evaluating trust:', err);

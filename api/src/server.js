@@ -30,6 +30,7 @@ var exceptionsRoute = require('./routes/exceptions.routes');
 var trustRoute = require('./routes/trust.routes');
 var outboxRoute = require('./routes/outbox.routes');
 var policyRoute = require('./routes/policy.routes');
+var replayRoute = require('./routes/replay.routes');
 var outboxWorker = require('./workers/outboxWorker');
 var exceptionExpiryWorker = require('./workers/exceptionExpiryWorker');
 var trustPolicyLoader = require('./utils/trustPolicyLoader');
@@ -145,6 +146,9 @@ function getAllowedRoles(method, reqPath) {
   if (reqPath.match(/^\/(v1\/)?policy(\/.*)?$/)) {
     return auth.ROUTE_ROLE_MAP.policy;
   }
+  if (reqPath.match(/^\/(v1\/)?replay(\/.*)?$/)) {
+    return auth.ROUTE_ROLE_MAP.trust; // Reuse auditor/security role mapping
+  }
   return null;
 }
 
@@ -180,6 +184,7 @@ app.use('/api', trustRoute);
 app.use('/api', outboxRoute);
 
 app.use('/api/v1/policy', policyRoute);
+app.use('/api', replayRoute);
 
 app.use(function (req, res) {
   res.status(404).json({ error: 'Route not found' });
