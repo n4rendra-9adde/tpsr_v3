@@ -41,6 +41,10 @@ var pool = new Pool({
   ssl: sslEnabled ? { rejectUnauthorized: false } : false,
 });
 
+pool.on('error', (err, client) => {
+  console.error('[TPSR] Unexpected error on idle PostgreSQL client:', err.message);
+});
+
 /**
  * Test database connectivity by running SELECT 1.
  * Acquires a client from the pool, queries, then releases it.
