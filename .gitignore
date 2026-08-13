@@ -35,7 +35,7 @@ bin/cosign
 api/api.log
 
 # Fabric install artifacts
-bin/
-builders/
-config/
+/bin/
+/builders/
+/config/
 fabric-samples/
