@@ -1,6 +1,34 @@
 'use strict';
 
 const trustEngine = require('../../utils/trustEngine');
+const trustPolicyLoader = require('../../utils/trustPolicyLoader');
+const policyRepo = require('../../repositories/policy.repository');
+const crypto = require('crypto');
+
+function generateSnapshot(input, result, policySnapshot) {
+  const payload = {
+    input: input,
+    result: {
+      trustStatus: result.trustStatus,
+      reasonCode: result.reasonCode,
+      triggeredRuleIds: result.triggeredRuleIds
+    },
+    policySnapshot: policySnapshot
+  };
+  // Canonical serialization for deterministic hashing
+  const stringifyDeterministic = (obj) => {
+    if (typeof obj !== 'object' || obj === null) return obj;
+    if (Array.isArray(obj)) return obj.map(stringifyDeterministic);
+    const sorted = {};
+    Object.keys(obj).sort().forEach(k => {
+      sorted[k] = stringifyDeterministic(obj[k]);
+    });
+    return sorted;
+  };
+  const stringified = JSON.stringify(stringifyDeterministic(payload));
+  const hash = crypto.createHash('sha256').update(stringified).digest('hex');
+  return { hash, payload };
+}
 
 /**
  * Enhanced TPSR CAECTD Evaluator
@@ -104,6 +132,15 @@ async function evaluate(input) {
     case 'REJECTED': outcome = 'BLOCK'; break;
   }
 
+  const policy = trustPolicyLoader.getTrustPolicy();
+  const policySnapshot = {
+    policyId: policy.policyId,
+    generation: policy.generation,
+    trustPolicyHash: crypto.createHash('sha256').update(JSON.stringify(policy)).digest('hex')
+  };
+
+  const snapshotData = generateSnapshot(input, result, policySnapshot);
+
   return {
     outcome,
     decision: result.trustStatus,
@@ -111,8 +148,41 @@ async function evaluate(input) {
     ruleIds: result.triggeredRuleIds || [],
     evidenceDependencies: result.evidenceDependencies,
     explanationCompleteness: result.explanationCompleteness,
-    rawResult: result
+    rawResult: result,
+    snapshot: snapshotData
   };
 }
 
-module.exports = { evaluate };
+async function verifyReplay(snapshotHash, snapshotPayload) {
+  try {
+     const replayResult = await evaluate(snapshotPayload.input);
+     const replayedSnapshot = generateSnapshot(snapshotPayload.input, replayResult.rawResult, snapshotPayload.policySnapshot);
+     
+     // Detect drift
+     if (replayedSnapshot.hash !== snapshotHash || replayedSnapshot.hash !== generateSnapshot(snapshotPayload.input, snapshotPayload.result, snapshotPayload.policySnapshot).hash) {
+       await policyRepo.insertObservabilityEvent({
+           eventType: 'DECISION_REPLAY_FAILED',
+           correlationId: snapshotHash,
+           policyId: snapshotPayload.policySnapshot.policyId,
+           generation: snapshotPayload.policySnapshot.generation,
+           severity: 'CRITICAL',
+           description: 'Decision replay failed due to drift'
+       });
+       return false;
+     }
+
+     await policyRepo.insertObservabilityEvent({
+           eventType: 'DECISION_REPLAY_VERIFIED',
+           correlationId: snapshotHash,
+           policyId: snapshotPayload.policySnapshot.policyId,
+           generation: snapshotPayload.policySnapshot.generation,
+           severity: 'INFO',
+           description: 'Decision replay successfully verified'
+     });
+     return true;
+  } catch (err) {
+     return false;
+  }
+}
+
+module.exports = { evaluate, verifyReplay, generateSnapshot };
