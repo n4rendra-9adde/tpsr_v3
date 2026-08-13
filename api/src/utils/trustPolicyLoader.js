@@ -33,7 +33,7 @@ function normalizeSource(s) {
 }
 
 /**
- * @param {Object} options 
+ * @param {Object} options
  * @param {Object} [options.injectedPolicy] - For testing
  * @param {string} [options.policyPath] - For testing alternative files
  * @param {boolean} [options.forceReload] - Ignore cache
@@ -165,6 +165,46 @@ function getTrustPolicy(options = {}) {
       ...parsed.vexPolicy,
       authorizedIssuers: normalizedVexIssuers
     };
+  }
+
+  if (parsed.contextAuthorizationRules) {
+    const rules = parsed.contextAuthorizationRules;
+    const knownOperations = ['assert_environment', 'assert_exposure', 'assert_criticality', 'assert_component_state', 'request_exception', 'approve_exception', 'revoke_assertion', 'supersede_assertion', 'view_context_history'];
+
+    // Known roles check - hardcoded list or fetch from somewhere. We'll use a hardcoded list of known roles for validation
+    const knownRoles = ['developer', 'security', 'auditor', 'admin', 'release_manager', 'network_admin', 'asset_owner'];
+
+    for (const op of Object.keys(rules)) {
+      if (!knownOperations.includes(op)) {
+        throw new Error('TRUST_POLICY_UNKNOWN_OPERATION');
+      }
+
+      if (op === 'assert_environment') {
+        for (const env of Object.keys(rules[op])) {
+          const envConf = rules[op][env];
+          if (!envConf.allowedRoles || envConf.allowedRoles.length === 0) throw new Error('TRUST_POLICY_EMPTY_ROLES');
+          if (envConf.allowedRoles.includes('*')) throw new Error('TRUST_POLICY_WILDCARD_SCOPE_UNSAFE');
+          if (!envConf.maximumValidityHours || envConf.maximumValidityHours <= 0) throw new Error('TRUST_POLICY_INVALID_LIFETIME');
+          for (const r of envConf.allowedRoles) {
+            if (!knownRoles.includes(r)) throw new Error('TRUST_POLICY_UNKNOWN_ROLE');
+          }
+        }
+      } else {
+        const opConf = rules[op];
+        if (!opConf.allowedRoles || opConf.allowedRoles.length === 0) throw new Error('TRUST_POLICY_EMPTY_ROLES');
+        if (opConf.allowedRoles.includes('*')) throw new Error('TRUST_POLICY_WILDCARD_SCOPE_UNSAFE');
+        for (const r of opConf.allowedRoles) {
+          if (!knownRoles.includes(r)) throw new Error('TRUST_POLICY_UNKNOWN_ROLE');
+        }
+      }
+    }
+  }
+
+  if (parsed.exceptionGovernance) {
+    const gov = parsed.exceptionGovernance;
+    if (gov.allowCriticalRiskExceptions && !gov.requireIndependentApprover) {
+       throw new Error('TRUST_POLICY_SELF_APPROVAL_PROHIBITED');
+    }
   }
 
   if (!options.injectedPolicy && !options.policyPath) {

@@ -17,18 +17,26 @@ async function requestException(req, res) {
   const pgDocument = await ensureSbomExists(sbomId);
   if (!pgDocument) return res.status(404).json({ error: `SBOM not found: ${sbomId}` });
 
-  const role = req.headers['x-user-role'] || 'developer';
-  if (!['developer', 'security'].includes(role)) {
-    return res.status(403).json({ error: 'Unauthorized role' });
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ error: 'Unauthenticated principal' });
+  }
+  const role = req.auth.role;
+  const actor = req.auth.userId;
+
+  const provenanceEngine = require('../utils/provenanceEngine');
+  const policy = provenanceEngine.getTrustPolicy();
+  const requestAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.request_exception;
+  if (!requestAuth || !requestAuth.allowedRoles || !requestAuth.allowedRoles.includes(role)) {
+    return res.status(403).json({ error: 'Unauthorized role to request exception' });
   }
 
   const parsed = policyExceptionEngine.parseExceptionRequest({ ...req.body, sbomId });
   parsed.requestedByRole = role;
-  parsed.requestedBy = req.headers['x-user-id'] || 'test-user';
-  parsed.ownedBy = parsed.ownedBy || parsed.requestedBy;
-  parsed.ownerRole = parsed.ownerRole || role;
+  parsed.requestedBy = actor;
+  parsed.ownedBy = actor;
+  parsed.ownerRole = role;
   parsed.digestManifestDigest = pgDocument.sbom_hash;
-  
+
   if (!policyExceptionEngine.validateExceptionStructure(parsed)) {
     return res.status(400).json({ error: 'Invalid exception structure' });
   }
@@ -56,11 +64,17 @@ async function requestException(req, res) {
 async function approveException(req, res) {
   const sbomId = req.params.sbomId.trim();
   const exceptionId = req.params.exceptionId.trim();
-  const role = req.headers['x-user-role'] || 'security';
-  const actor = req.headers['x-user-id'] || 'test-approver';
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ error: 'Unauthenticated principal' });
+  }
+  const role = req.auth.role;
+  const actor = req.auth.userId;
 
-  if (!['security', 'admin'].includes(role)) {
-    return res.status(403).json({ error: 'Unauthorized role' });
+  const provenanceEngine = require('../utils/provenanceEngine');
+  const policy = provenanceEngine.getTrustPolicy();
+  const approveAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.approve_exception;
+  if (!approveAuth || !approveAuth.allowedRoles || !approveAuth.allowedRoles.includes(role)) {
+    return res.status(403).json({ error: 'Unauthorized role to approve exception' });
   }
 
   const pgDocument = await ensureSbomExists(sbomId);
@@ -137,8 +151,18 @@ async function approveException(req, res) {
 async function rejectException(req, res) {
   const sbomId = req.params.sbomId.trim();
   const exceptionId = req.params.exceptionId.trim();
-  const role = req.headers['x-user-role'] || 'security';
-  const actor = req.headers['x-user-id'] || 'test-approver';
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ error: 'Unauthenticated principal' });
+  }
+  const role = req.auth.role;
+  const actor = req.auth.userId;
+
+  const provenanceEngine = require('../utils/provenanceEngine');
+  const policy = provenanceEngine.getTrustPolicy();
+  const approveAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.approve_exception;
+  if (!approveAuth || !approveAuth.allowedRoles || !approveAuth.allowedRoles.includes(role)) {
+    return res.status(403).json({ error: 'Unauthorized role to reject exception' });
+  }
 
   if (!req.body.rejectionReason) return res.status(400).json({ error: 'Mandatory rejectionReason missing' });
 
@@ -176,8 +200,18 @@ async function rejectException(req, res) {
 // Revoke Exception
 async function revokeException(req, res) {
   const exceptionId = req.params.exceptionId.trim();
-  const role = req.headers['x-user-role'] || 'security';
-  const actor = req.headers['x-user-id'] || 'test-approver';
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ error: 'Unauthenticated principal' });
+  }
+  const role = req.auth.role;
+  const actor = req.auth.userId;
+
+  const provenanceEngine = require('../utils/provenanceEngine');
+  const policy = provenanceEngine.getTrustPolicy();
+  const revokeAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.revoke_assertion; // Treat exception revoke similar to assertion revoke for auth
+  if (!revokeAuth || !revokeAuth.allowedRoles || !revokeAuth.allowedRoles.includes(role)) {
+    return res.status(403).json({ error: 'Unauthorized role to revoke exception' });
+  }
 
   if (!req.body.revocationReason) return res.status(400).json({ error: 'Mandatory revocationReason missing' });
 

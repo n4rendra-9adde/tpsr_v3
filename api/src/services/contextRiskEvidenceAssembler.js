@@ -17,7 +17,16 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
         invalidContext = true; // Cannot use unauthenticated context when context is required
       }
     } else {
-      const active = contextAssertions.filter(a => a.status === 'ACTIVE' && (a.verificationStatus === 'VERIFIED' || a.verification_status === 'VERIFIED'));
+      const active = contextAssertions.filter(a => {
+        if (a.status !== 'ACTIVE') return false;
+        if (a.verificationStatus !== 'VERIFIED' && a.verification_status !== 'VERIFIED' && a.verificationStatus !== 'AUTHORIZED' && a.verification_status !== 'AUTHORIZED') return false;
+
+        if (a.valid_until || a.validUntil) {
+          const validUntil = new Date(a.valid_until || a.validUntil);
+          if (validUntil <= new Date()) return false;
+        }
+        return true;
+      });
       const conflicting = contextAssertions.filter(a => a.status === 'INVALID' && (a.assuranceState === 'CONFLICTING' || a.assurance_state === 'CONFLICTING'));
 
       if (active.length === 1 && conflicting.length === 0) {

@@ -68,46 +68,36 @@
     "expiryRequired": false,
     "maxStatementAgeDays": 365
   },
-  "contextAuthorities": {
-    "PRODUCTION": {
-      "allowedRoles": [
-        "security",
-        "admin"
-      ],
-      "approvedPublicKeyFingerprints": [
-        "6a656e6b696e732d7365727669636540747073722e636f6d"
-      ],
-      "maximumValidityHours": 24
+  "contextAuthorizationRules": {
+    "assert_environment": {
+      "PRODUCTION": { "allowedRoles": ["security", "admin", "release_manager"], "maximumValidityHours": 24 },
+      "STAGING": { "allowedRoles": ["security", "admin", "release_manager"], "maximumValidityHours": 72 },
+      "TEST": { "allowedRoles": ["security", "developer"], "maximumValidityHours": 168 },
+      "DEVELOPMENT": { "allowedRoles": ["developer", "security"], "maximumValidityHours": 168 }
     },
-    "STAGING": {
-      "allowedRoles": [
-        "security",
-        "admin"
-      ],
-      "approvedPublicKeyFingerprints": [
-        "6a656e6b696e732d7365727669636540747073722e636f6d"
-      ],
-      "maximumValidityHours": 72
+    "assert_exposure": {
+      "allowedRoles": ["security", "admin", "network_admin"]
     },
-    "TEST": {
-      "allowedRoles": [
-        "security",
-        "developer"
-      ],
-      "approvedPublicKeyFingerprints": [
-        "6a656e6b696e732d7365727669636540747073722e636f6d"
-      ],
-      "maximumValidityHours": 168
+    "assert_criticality": {
+      "allowedRoles": ["asset_owner", "security", "admin"]
     },
-    "DEVELOPMENT": {
-      "allowedRoles": [
-        "developer",
-        "security"
-      ],
-      "approvedPublicKeyFingerprints": [
-        "6a656e6b696e732d7365727669636540747073722e636f6d"
-      ],
-      "maximumValidityHours": 168
+    "assert_component_state": {
+      "allowedRoles": ["developer", "security"]
+    },
+    "request_exception": {
+      "allowedRoles": ["developer", "security"]
+    },
+    "approve_exception": {
+      "allowedRoles": ["security", "admin"]
+    },
+    "revoke_assertion": {
+      "allowedRoles": ["security", "admin"]
+    },
+    "supersede_assertion": {
+      "allowedRoles": ["security", "admin", "release_manager"]
+    },
+    "view_context_history": {
+      "allowedRoles": ["auditor", "security", "admin"]
     }
   },
   "contextRiskMultipliers": {

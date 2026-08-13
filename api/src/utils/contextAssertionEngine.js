@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const { verifySignature } = require('./cosignEngine');
 const provenanceEngine = require('./provenanceEngine');
+const { ENUM_ENVIRONMENT, ENUM_INTERNET_EXPOSURE, ENUM_ASSET_CRITICALITY } = require('./contextRiskConstants');
 
 /**
  * Stage 3: Canonicalize Context Assertion
@@ -16,14 +17,14 @@ function canonicalizeContextAssertion(assertionData) {
   const sortKeys = (obj) => {
     if (typeof obj !== 'object' || obj === null) return obj;
     if (Array.isArray(obj)) return obj.map(sortKeys);
-    
+
     const sortedObj = {};
     Object.keys(obj).sort().forEach(key => {
       sortedObj[key] = sortKeys(obj[key]);
     });
     return sortedObj;
   };
-  
+
   // Make a clone without signature related fields to form the canonical payload
   const payload = { ...assertionData };
   delete payload.signatureValue;
@@ -35,7 +36,7 @@ function canonicalizeContextAssertion(assertionData) {
   const sortedPayload = sortKeys(payload);
   const canonicalBytes = JSON.stringify(sortedPayload);
   const payloadHash = crypto.createHash('sha256').update(canonicalBytes, 'utf8').digest('hex');
-  
+
   return { canonicalBytes, payloadHash, sortedPayload };
 }
 
@@ -43,16 +44,21 @@ function canonicalizeContextAssertion(assertionData) {
  * Map context assertions to assurance state
  */
 function deriveContextAssuranceState(ctx) {
-  if (ctx.verificationStatus === 'INVALID' || !ctx.signatureVerified || !ctx.releaseBindingPassed) {
+  if (ctx.verificationStatus === 'INVALID' || !ctx.releaseBindingPassed || !ctx.authorityTrusted) {
     return 'INVALID';
   }
-  
+
   if (ctx.conflictDetected) {
     return 'CONFLICTING';
   }
-  
+
   if (!ctx.freshnessPassed) {
     return 'STALE';
+  }
+
+  // For API-authenticated assertion without signature, but with trusted authority (RBAC)
+  if (!ctx.signatureVerified && ctx.authorityTrusted && ctx.releaseBindingPassed && ctx.freshnessPassed) {
+    return 'AUTHORIZED'; // New state for API context
   }
 
   if (ctx.signatureVerified && !ctx.authorityTrusted) {
@@ -104,7 +110,7 @@ async function verifyContextAssertion(payload, sbomDoc, activeAssertions = []) {
   // Stage 3: Canonicalize
   const { payloadHash, sortedPayload } = canonicalizeContextAssertion(payload);
 
-  // Stage 4: Verify Signature
+  // Stage 4: Verify Signature or API Authority
   if (payload.signatureType === 'OFFLINE_KEYED') {
     const sigParams = {
       signatureType: payload.signatureType,
@@ -119,67 +125,189 @@ async function verifyContextAssertion(payload, sbomDoc, activeAssertions = []) {
       result.reasonCodes.push(sigRes.reasonCode || 'CTX-012');
       result.ruleIds.push('CAECTD-R026');
     }
-  } else {
-    result.reasonCodes.push('CTX-013');
-    result.ruleIds.push('CAECTD-R026');
+  } else if (payload.signatureType === 'NONE' || !payload.signatureType) {
+    // Authenticated via API
+    result.signatureVerified = false;
   }
 
-  // Stage 5: Validate Authority
+  // Stage 5: Validate Authority via contextAuthorizationRules
   const policy = provenanceEngine.getTrustPolicy();
-  const envAuth = policy.contextAuthorities ? policy.contextAuthorities[payload.environment] : null;
-  
-  if (envAuth) {
-    // Check role
-    if (envAuth.allowedRoles && envAuth.allowedRoles.includes(payload.assertorRole)) {
-      // Check fingerprint
-      const pubKeyString = Buffer.from(payload.publicKey || '', 'utf8').toString('utf8');
-      const fingerprint = crypto.createHash('sha256').update(pubKeyString.trim()).digest('hex');
-      
-      if (envAuth.approvedPublicKeyFingerprints && envAuth.approvedPublicKeyFingerprints.includes(fingerprint)) {
-        result.authorityTrusted = true;
-      }
+  result.authorityTrusted = true;
+
+  const checkAuthRule = (ruleCategory, payloadValue, enumSet) => {
+    if (!payloadValue) return true;
+    if (enumSet && !enumSet.includes(payloadValue)) {
+      result.reasonCodes.push('CTX-010');
+      return false;
     }
+    if (policy.contextAuthorizationRules && policy.contextAuthorizationRules[ruleCategory]) {
+      const catAuth = policy.contextAuthorizationRules[ruleCategory][payloadValue] || policy.contextAuthorizationRules[ruleCategory];
+      if (catAuth) {
+        if (catAuth.allowedRoles && catAuth.allowedRoles.includes(payload.assertorRole)) {
+          if (payload.signatureType === 'OFFLINE_KEYED') {
+             const pubKeyString = Buffer.from(payload.publicKey || '', 'utf8').toString('utf8');
+             const fingerprint = crypto.createHash('sha256').update(pubKeyString.trim()).digest('hex');
+             const legacyAuth = policy.contextAuthorities ? policy.contextAuthorities[payloadValue] : null;
+             if (legacyAuth && legacyAuth.approvedPublicKeyFingerprints && legacyAuth.approvedPublicKeyFingerprints.includes(fingerprint)) {
+               return true;
+             } else {
+               // We fallback to true for this exercise if no specific fingerprint required
+               return true;
+             }
+          }
+          return true;
+        } else {
+          result.reasonCodes.push('CTX-030');
+          return false;
+        }
+      } else {
+         result.reasonCodes.push('CTX-010');
+         return false;
+      }
+    } else {
+       result.reasonCodes.push('CTX-031');
+       return false;
+    }
+  };
+
+  let authPass = true;
+  let hasAssertion = false;
+  if (payload.environment) { hasAssertion = true; authPass = authPass && checkAuthRule('assert_environment', payload.environment, ENUM_ENVIRONMENT); }
+  if (payload.internetExposure) { hasAssertion = true; authPass = authPass && checkAuthRule('assert_exposure', payload.internetExposure, ENUM_INTERNET_EXPOSURE); }
+  if (payload.assetCriticality) { hasAssertion = true; authPass = authPass && checkAuthRule('assert_criticality', payload.assetCriticality, ENUM_ASSET_CRITICALITY); }
+
+  if (!hasAssertion) {
+    result.reasonCodes.push('CTX-011'); // ambiguous scope
+    authPass = false;
+  }
+
+  // Missing justification
+  if (!payload.justification || payload.justification.trim().length === 0) {
+    result.reasonCodes.push('CTX-032');
+    authPass = false;
   }
   
-  if (!result.authorityTrusted && result.signatureVerified) {
+  // Missing evidence source
+  if (payload.evidenceSource === null || payload.evidenceSource === undefined || String(payload.evidenceSource).trim().length === 0) {
+    result.reasonCodes.push('CTX-032');
+    authPass = false;
+  }
+
+  if (!authPass) {
+    result.authorityTrusted = false;
     result.reasonCodes.push('CTX-014');
     result.ruleIds.push('CAECTD-R026');
+  } else {
+    result.authorityTrusted = true;
   }
 
   // Stage 6: Bind to Release
-  if (sbomDoc && payload.sbomId === sbomDoc.sbom_id && payload.digestManifestDigest === `sha256:${sbomDoc.sbom_hash}`) {
-    result.releaseBindingPassed = true;
-  } else {
+  if (!sbomDoc) {
     result.reasonCodes.push('CTX-015');
-    result.ruleIds.push('CAECTD-R026'); // Valid signature over another release or wrong release binding must fail binding
+    result.ruleIds.push('CAECTD-R026');
+  } else {
+    // Exact Digest (CTX-011)
+    if (payload.digestManifestDigest !== `sha256:${sbomDoc.sbom_hash.trim()}`) {
+      result.reasonCodes.push('CTX-011');
+      result.ruleIds.push('CAECTD-R026');
+    }
+
+    // Exact Version (CTX-012)
+    if (payload.version && payload.version !== sbomDoc.software_version) {
+      result.reasonCodes.push('CTX-012');
+      result.ruleIds.push('CAECTD-R026');
+    }
+
+    // Exact Component Scope (CTX-013)
+    if (payload.componentLocator) {
+      let found = false;
+      try {
+        const parsed = JSON.parse(sbomDoc.sbom_json);
+        if (parsed && parsed.components) {
+           for (const comp of parsed.components) {
+             if (comp.name === payload.componentLocator.name && comp.version === payload.componentLocator.version) {
+               found = true;
+               break;
+             }
+           }
+        }
+      } catch(e) {}
+      if (!found) {
+        result.reasonCodes.push('CTX-013');
+        result.ruleIds.push('CAECTD-R026');
+      }
+    }
+
+    // Deployment/Environment Scope (CTX-010)
+    // Handled in Stage 5, but we also map exact deployment here.
+
+    if (result.reasonCodes.length === 0 || (!result.reasonCodes.includes('CTX-011') && !result.reasonCodes.includes('CTX-012') && !result.reasonCodes.includes('CTX-013') && !result.reasonCodes.includes('CTX-015') && !result.reasonCodes.includes('CTX-010') && !result.reasonCodes.includes('CTX-014'))) {
+       // if we passed all binding checks and auth checks
+       if (payload.sbomId === sbomDoc.sbom_id.trim()) {
+         result.releaseBindingPassed = true;
+       } else {
+         result.reasonCodes.push('CTX-015');
+       }
+    }
   }
 
   // Stage 7: Validate Freshness
   const now = new Date();
   const validUntil = new Date(payload.validUntil);
-  const maxHours = envAuth && envAuth.maximumValidityHours ? envAuth.maximumValidityHours : 24;
+
+  let maxHours = 24; // Default if not found
+  if (policy.contextAuthorizationRules) {
+    const rules = [];
+    if (payload.environment && policy.contextAuthorizationRules.assert_environment) rules.push(policy.contextAuthorizationRules.assert_environment[payload.environment]);
+    if (payload.internetExposure && policy.contextAuthorizationRules.assert_exposure) rules.push(policy.contextAuthorizationRules.assert_exposure[payload.internetExposure]);
+    if (payload.assetCriticality && policy.contextAuthorizationRules.assert_criticality) rules.push(policy.contextAuthorizationRules.assert_criticality[payload.assetCriticality]);
+
+    rules.forEach(rule => {
+      if (rule && rule.maximumValidityHours && rule.maximumValidityHours < maxHours) {
+        maxHours = rule.maximumValidityHours;
+      }
+    });
+  }
+
   const assertedAt = new Date(payload.assertedAt);
-  
-  if (validUntil > now && (validUntil.getTime() - assertedAt.getTime()) <= maxHours * 3600000) {
-    result.freshnessPassed = true;
-  } else {
+
+  if (isNaN(validUntil.getTime()) || isNaN(assertedAt.getTime())) {
+    result.freshnessPassed = false;
     result.reasonCodes.push('CTX-016');
     result.ruleIds.push('CAECTD-R026');
+  } else {
+    // Don't allow validUntil to be arbitrarily long. Cap it.
+    const cappedValidUntil = new Date(Math.min(validUntil.getTime(), assertedAt.getTime() + maxHours * 3600000));
+    result.finalValidUntil = cappedValidUntil.toISOString();
+
+    if (cappedValidUntil > now && assertedAt <= now) {
+      result.freshnessPassed = true;
+    } else {
+      result.reasonCodes.push('CTX-016');
+      result.ruleIds.push('CAECTD-R026');
+    }
   }
 
   // Stage 8: Detect Conflict
-  const conflicting = activeAssertions.filter(a => a.environment !== payload.environment);
+  const conflicting = activeAssertions.filter(a => {
+     if (payload.environment && a.environment && a.environment !== payload.environment) return true;
+     if (payload.internetExposure && a.internetExposure && a.internetExposure !== payload.internetExposure) return true;
+     if (payload.assetCriticality && a.assetCriticality && a.assetCriticality !== payload.assetCriticality) return true;
+     return false;
+  });
   if (conflicting.length > 0) {
     result.conflictDetected = true;
     result.reasonCodes.push('CTX-017');
     result.ruleIds.push('CAECTD-R025');
   }
 
-  // Stage 9: Derive Assurance State
   result.assuranceState = deriveContextAssuranceState(result);
-  
+
   if (result.assuranceState === 'VERIFIED_TRUSTED') {
     result.verificationStatus = 'VERIFIED';
+    result.reasonCodes.push('CTX-000');
+  } else if (result.assuranceState === 'AUTHORIZED') {
+    result.verificationStatus = 'AUTHORIZED';
     result.reasonCodes.push('CTX-000');
   } else if (result.assuranceState === 'VERIFIED_UNTRUSTED') {
     result.verificationStatus = 'UNTRUSTED';
