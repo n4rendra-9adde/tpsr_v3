@@ -132,9 +132,10 @@ describe('Point 11 Exception Governance', () => {
     expect(res.body.status).toBe('REVOKED');
   });
 
-  test('12 production without trusted adapter fails closed', () => {
-    // Verified by core engine design, no bypass for missing authentication headers
-    expect(true).toBe(true); // Replaced by real test below
+  test('12 production without trusted adapter fails closed', async () => {
+    // Missing role header simulates incomplete trusted adapter context
+    const res = await request(app).post(`/api/v1/sbom/${sbomId}/exceptions`).set('x-user-id', 'dev1').send(getValidPayload());
+    expect(res.status).toBeGreaterThanOrEqual(401);
   });
 
   // REQUEST VALIDATION
@@ -260,8 +261,19 @@ describe('Point 11 Exception Governance', () => {
   });
 
   test('48 approval cannot extend lifetime', async () => {
-    // Already enforced because approval does not accept modified scopes
-    expect(true).toBe(true);
+    const payload = getValidPayload();
+    const reqRes = await request(app).post(`/api/v1/sbom/${sbomId}/exceptions`).set('x-user-id', 'dev1').set('x-user-role', 'developer').send(payload);
+    const newEx = reqRes.body.id;
+    const initialExpiry = reqRes.body.valid_until;
+    
+    const appRes = await request(app)
+      .post(`/api/v1/sbom/${sbomId}/exceptions/${newEx}/approve`)
+      .set('x-user-id', 'sec1')
+      .set('x-user-role', 'security')
+      .send({ approvalComment: 'Approved', validUntil: new Date(Date.now() + 86400000 * 5).toISOString() });
+      
+    expect(appRes.status).toBe(200);
+    expect(appRes.body.valid_until).toBe(initialExpiry);
   });
 
   test('22 non-exceptionable rule rejected', async () => {

@@ -181,6 +181,14 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
       if (e.valid_until) {
         const untilDate = new Date(e.valid_until);
         if (untilDate <= now) return false; // Expired
+        
+        if (policy && policy.exceptionGovernance && policy.exceptionGovernance.maximumValidityHoursByRisk && e.residual_risk) {
+          const maxHours = policy.exceptionGovernance.maximumValidityHoursByRisk[e.residual_risk];
+          if (maxHours) {
+            const validHours = (untilDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60);
+            if (validHours > maxHours) return false;
+          }
+        }
       }
 
       // Separation of duties check
