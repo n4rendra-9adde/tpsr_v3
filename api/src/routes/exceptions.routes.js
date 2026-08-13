@@ -159,8 +159,8 @@ async function rejectException(req, res) {
 
   const provenanceEngine = require('../utils/provenanceEngine');
   const policy = provenanceEngine.getTrustPolicy();
-  const approveAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.approve_exception;
-  if (!approveAuth || !approveAuth.allowedRoles || !approveAuth.allowedRoles.includes(role)) {
+  const rejectAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.reject_exception;
+  if (!rejectAuth || !rejectAuth.allowedRoles || !rejectAuth.allowedRoles.includes(role)) {
     return res.status(403).json({ error: 'Unauthorized role to reject exception' });
   }
 
@@ -208,7 +208,7 @@ async function revokeException(req, res) {
 
   const provenanceEngine = require('../utils/provenanceEngine');
   const policy = provenanceEngine.getTrustPolicy();
-  const revokeAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.revoke_assertion; // Treat exception revoke similar to assertion revoke for auth
+  const revokeAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.revoke_exception;
   if (!revokeAuth || !revokeAuth.allowedRoles || !revokeAuth.allowedRoles.includes(role)) {
     return res.status(403).json({ error: 'Unauthorized role to revoke exception' });
   }
@@ -264,6 +264,74 @@ async function listActiveExceptions(req, res) {
   res.json({ sbomId, count: records.length, policyExceptions: records });
 }
 
+async function getExceptionHistory(req, res) {
+  const sbomId = req.params.sbomId.trim();
+  const exceptionId = req.params.exceptionId.trim();
+  
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ error: 'Unauthenticated principal' });
+  }
+  const role = req.auth.role;
+  const policy = require('../utils/provenanceEngine').getTrustPolicy();
+  const viewAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.view_exception_history;
+  if (!viewAuth || !viewAuth.allowedRoles || !viewAuth.allowedRoles.includes(role)) {
+    return res.status(403).json({ error: 'Unauthorized role to view exception history' });
+  }
+
+  const db = require('../config/database');
+  const query = 'SELECT * FROM policy_exception_events WHERE exception_id = $1 ORDER BY event_timestamp ASC';
+  try {
+    const result = await db.pool.query(query, [exceptionId]);
+    return res.json({ exceptionId, history: result.rows });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to retrieve exception history', details: err.message });
+  }
+}
+
+async function supersedeException(req, res) {
+  const sbomId = req.params.sbomId.trim();
+  const exceptionId = req.params.exceptionId.trim();
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ error: 'Unauthenticated principal' });
+  }
+  const role = req.auth.role;
+  const actor = req.auth.userId;
+
+  const provenanceEngine = require('../utils/provenanceEngine');
+  const policy = provenanceEngine.getTrustPolicy();
+  const supersedeAuth = policy.contextAuthorizationRules && policy.contextAuthorizationRules.supersede_exception;
+  if (!supersedeAuth || !supersedeAuth.allowedRoles || !supersedeAuth.allowedRoles.includes(role)) {
+    return res.status(403).json({ error: 'Unauthorized role to supersede exception' });
+  }
+
+  if (!req.body.supersedingExceptionId) return res.status(400).json({ error: 'Mandatory supersedingExceptionId missing' });
+
+  const exception = await policyExceptionRepository.getExceptionById(exceptionId);
+  if (!exception) return res.status(404).json({ error: 'Exception not found' });
+  if (exception.status !== 'ACTIVE' && exception.status !== 'REQUESTED') return res.status(400).json({ error: 'Exception must be ACTIVE or REQUESTED to be superseded' });
+
+  try {
+    const record = await policyExceptionRepository.supersedeException(exceptionId, req.body.supersedingExceptionId);
+
+    await policyExceptionRepository.recordExceptionEvent({
+      exceptionId,
+      sbomId: exception.sbom_id,
+      eventType: 'SUPERSEDED',
+      previousStatus: exception.status,
+      newStatus: 'SUPERSEDED',
+      actorId: actor,
+      actorRole: role,
+      reason: req.body.supersessionReason || 'Superseded',
+      policyVersion: exception.policy_version,
+      trustPolicyHash: exception.trust_policy_hash
+    });
+
+    return res.status(200).json(record);
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to supersede exception', details: err.message });
+  }
+}
+
 async function getException(req, res) {
   const exception = await policyExceptionRepository.getExceptionById(req.params.exceptionId);
   if (!exception) return res.status(404).json({ error: 'Exception not found' });
@@ -274,9 +342,11 @@ router.post('/v1/sbom/:sbomId/exceptions', requestException);
 router.post('/v1/sbom/:sbomId/exceptions/:exceptionId/approve', approveException);
 router.post('/v1/sbom/:sbomId/exceptions/:exceptionId/reject', rejectException);
 router.post('/v1/sbom/:sbomId/exceptions/:exceptionId/revoke', revokeException);
+router.post('/v1/sbom/:sbomId/exceptions/:exceptionId/supersede', supersedeException);
 router.get('/v1/sbom/:sbomId/exceptions', listExceptions);
 router.get('/v1/sbom/:sbomId/exceptions/active', listActiveExceptions);
 router.get('/v1/sbom/:sbomId/exceptions/:exceptionId', getException);
+router.get('/v1/sbom/:sbomId/exceptions/:exceptionId/history', getExceptionHistory);
 
 // Old routes support for tests if needed
 router.post('/sbom/:sbomId/exceptions', requestException);

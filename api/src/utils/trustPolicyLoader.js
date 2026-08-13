@@ -169,10 +169,10 @@ function getTrustPolicy(options = {}) {
 
   if (parsed.contextAuthorizationRules) {
     const rules = parsed.contextAuthorizationRules;
-    const knownOperations = ['assert_environment', 'assert_exposure', 'assert_criticality', 'assert_component_state', 'request_exception', 'approve_exception', 'revoke_assertion', 'supersede_assertion', 'view_context_history'];
+    const knownOperations = ['assert_environment', 'assert_exposure', 'assert_criticality', 'assert_component_state', 'request_exception', 'approve_exception', 'reject_exception', 'revoke_exception', 'supersede_exception', 'apply_exception', 'revoke_assertion', 'supersede_assertion', 'view_context_history', 'view_exception_history'];
 
     // Known roles check - hardcoded list or fetch from somewhere. We'll use a hardcoded list of known roles for validation
-    const knownRoles = ['developer', 'security', 'auditor', 'admin', 'release_manager', 'network_admin', 'asset_owner'];
+    const knownRoles = ['developer', 'security', 'auditor', 'admin', 'release_manager', 'network_admin', 'asset_owner', 'system'];
 
     for (const op of Object.keys(rules)) {
       if (!knownOperations.includes(op)) {

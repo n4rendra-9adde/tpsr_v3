@@ -25,6 +25,7 @@ function parseExceptionRequest(reqBody) {
     vulnerabilityIds: reqBody.vulnerabilityIds || [],
     componentIdentifiers: reqBody.componentIdentifiers || [],
     environment: reqBody.environment,
+    validFrom: reqBody.validFrom,
     validUntil: reqBody.validUntil,
     justification: reqBody.justification,
     businessNeed: reqBody.businessNeed,
@@ -42,6 +43,8 @@ function validateExceptionStructure(parsed) {
   if (!parsed.sbomId || !parsed.digestManifestDigest || !parsed.policyRuleId || !parsed.reasonCode) return false;
   if (!parsed.justification || parsed.justification.trim() === '') return false;
   if (!parsed.validUntil || isNaN(new Date(parsed.validUntil).getTime())) return false;
+  if (parsed.validFrom && isNaN(new Date(parsed.validFrom).getTime())) return false;
+  if (parsed.validFrom && new Date(parsed.validUntil) <= new Date(parsed.validFrom)) return false;
   const allowedRisks = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
   if (!parsed.residualRisk || !allowedRisks.includes(parsed.residualRisk)) return false;
   return true;
@@ -121,7 +124,11 @@ function validateCompensatingControls(controls, risk, policy) {
 function validateValidityPeriod(validFrom, validUntil, risk, policy) {
   const fromTime = new Date(validFrom).getTime();
   const untilTime = new Date(validUntil).getTime();
+  const now = Date.now();
   if (untilTime <= fromTime) return false;
+  
+  // Future skew limit (e.g. validFrom cannot be more than 1 day in the future)
+  if (fromTime > now + 86400000) return false;
   
   const hours = (untilTime - fromTime) / (1000 * 60 * 60);
   const maxHours = policy.exceptionGovernance.maximumValidityHoursByRisk[risk] || 0;

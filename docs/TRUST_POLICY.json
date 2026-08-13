@@ -90,14 +90,29 @@
     "approve_exception": {
       "allowedRoles": ["security", "admin"]
     },
+    "reject_exception": {
+      "allowedRoles": ["security", "admin"]
+    },
     "revoke_assertion": {
+      "allowedRoles": ["security", "admin"]
+    },
+    "revoke_exception": {
       "allowedRoles": ["security", "admin"]
     },
     "supersede_assertion": {
       "allowedRoles": ["security", "admin", "release_manager"]
     },
+    "supersede_exception": {
+      "allowedRoles": ["security", "admin", "release_manager"]
+    },
     "view_context_history": {
       "allowedRoles": ["auditor", "security", "admin"]
+    },
+    "view_exception_history": {
+      "allowedRoles": ["auditor", "security", "admin"]
+    },
+    "apply_exception": {
+      "allowedRoles": ["security", "system", "release_manager"]
     }
   },
   "contextRiskMultipliers": {

@@ -142,14 +142,33 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
     const activeExceptions = policyExceptions.filter(e => {
       if (e.status !== 'ACTIVE' || e.assurance_state !== 'VERIFIED_TRUSTED') return false;
       if (e.sbom_id && sbomDocument.sbom_id && e.sbom_id !== sbomDocument.sbom_id) return false;
+      
+      // Bind exact target scope: exact rule and reason
+      // The exception must exactly match the triggered rule, not just an arbitrary list
+      // Note: we can't fully evaluate if it's the exact rule that caused the blockage yet, but we restrict it to exceptionable rules
       if (e.policy_rule_id && !['CAECTD-R017', 'CAECTD-R024', 'CR-001'].includes(e.policy_rule_id)) return false;
-      if (e.vulnerability_ids && Array.isArray(e.vulnerability_ids) && e.vulnerability_ids.length > 0) {
-        if (!e.vulnerability_ids.some(vid => vulns.some(v => v.id === vid || v.cve === vid || v.vulnerabilityId === vid))) return false;
-      }
-      if (e.component_identifiers && Array.isArray(e.component_identifiers) && e.component_identifiers.length > 0) {
-        if (!e.component_identifiers.some(cid => vulns.some(v => v.componentId === cid))) return false;
-      }
+      
+      // Bind exact release/version (digest is already matched by sbom_id technically, but let's be strict if present)
+      if (e.digest_manifest_digest && sbomDocument.sbom_hash && e.digest_manifest_digest !== sbomDocument.sbom_hash) return false;
+
+      // Exact environment
       if (e.environment && e.environment !== contextVector.environment) return false;
+
+      // Exact vulnerability IDs and Component Identifiers
+      if (e.vulnerability_ids && Array.isArray(e.vulnerability_ids) && e.vulnerability_ids.length > 0) {
+        const hasAllVulns = e.vulnerability_ids.every(vid => 
+          vulns.some(v => v.id === vid || v.cve === vid || v.vulnerabilityId === vid)
+        );
+        if (!hasAllVulns) return false;
+      }
+
+      if (e.component_identifiers && Array.isArray(e.component_identifiers) && e.component_identifiers.length > 0) {
+        const hasAllComps = e.component_identifiers.every(cid => 
+          vulns.some(v => v.componentId === cid)
+        );
+        if (!hasAllComps) return false;
+      }
+
       const pVersion = policy ? (policy.version || '3.0') : '3.0';
       if (e.policy_version && e.policy_version !== 'unknown' && e.policy_version !== pVersion) return false;
 
@@ -157,21 +176,20 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
       let fromDate = now;
       if (e.valid_from) {
         fromDate = new Date(e.valid_from);
-        if (fromDate > now) return false;
+        if (fromDate > now) return false; // Future validFrom
       }
       if (e.valid_until) {
         const untilDate = new Date(e.valid_until);
-        if (untilDate <= now) return false;
-
-        const days = (untilDate - fromDate) / (1000 * 60 * 60 * 24);
-        if (days > 30) return false;
+        if (untilDate <= now) return false; // Expired
       }
 
+      // Separation of duties check
       if (e.requested_by && e.approved_by && e.requested_by === e.approved_by) return false;
+      
+      // Governance properties presence
       if (!e.remediation_plan || e.remediation_plan.trim() === '') return false;
-      if (!e.compensating_controls || e.compensating_controls.length === 0) return false;
-      if (e.residual_risk && ['HIGH', 'CRITICAL'].includes(e.residual_risk.toUpperCase())) return false;
-
+      if (!e.compensating_controls || (Array.isArray(e.compensating_controls) && e.compensating_controls.length === 0)) return false;
+      
       return true;
     });
 
