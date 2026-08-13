@@ -35,7 +35,7 @@ describe('Point 10 Context Route Security', () => {
     const res = await request(app)
       .post(`/api/v1/sbom/${sbomId}/context/assertions`)
       .send({
-        assertion: { environment: 'PRODUCTION', justification: 'test' },
+        assertion: { environment: 'PRODUCTION', justification: 'test', evidenceSource: 'TEST' },
         signature: 'fake', publicKey: 'fake', verificationMode: 'STRICT'
       });
     expect(res.status).toBe(403);
@@ -50,6 +50,7 @@ describe('Point 10 Context Route Security', () => {
         assertion: {
           environment: 'PRODUCTION',
           justification: 'valid test',
+          evidenceSource: 'TEST',
           assertedBy: 'hacker',
           assertedByRole: 'admin',
           digestManifestDigest: 'sha256:test-hash'
@@ -78,6 +79,7 @@ describe('Point 10 Context Route Security', () => {
         assertion: {
           environment: 'DEVELOPMENT',
           justification: 'valid test',
+          evidenceSource: 'TEST',
           digestManifestDigest: 'sha256:test-hash'
         }
       });
@@ -93,7 +95,7 @@ describe('Point 10 Context Route Security', () => {
         assertion: {
           environment: 'PRODUCTION',
           justification: 'valid test',
-          justification: 'valid test', // Developer not allowed
+          evidenceSource: 'TEST', // Developer not allowed
           digestManifestDigest: 'sha256:test-hash'
         }
       });
@@ -118,7 +120,7 @@ describe('Point 10 Context Route Security', () => {
         assertion: {
           environment: 'PRODUCTION',
           justification: 'valid test',
-          justification: 'valid test',
+          evidenceSource: 'TEST',
           authorizationStatus: 'AUTHORIZED',
           digestManifestDigest: 'sha256:test-hash'
         }
@@ -145,7 +147,7 @@ describe('Point 10 Context Route Security', () => {
         assertion: {
           environment: 'PRODUCTION',
           justification: 'valid test',
-          justification: 'valid test',
+          evidenceSource: 'TEST',
           assertedBy: 'hacker',
           assertorRole: 'admin',
           provenanceMode: 'HACKED',
