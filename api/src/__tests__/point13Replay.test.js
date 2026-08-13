@@ -26,7 +26,7 @@ describe('Point 13 Deterministic Decision Reproducibility', () => {
   it('1 identical inputs yield identical outputs (replay verified) & 3 distinct observability event emitted', async () => {
     // Generate snapshot
     const result = await evaluate(sampleInput);
-    expect(result.snapshot).toBeDefined();
+    expect(result.snapshot).toMatchObject({ hash: expect.any(String), payload: expect.any(Object) });
     
     // Verify replay
     const success = await verifyReplay(result.snapshot.hash, result.snapshot.payload);

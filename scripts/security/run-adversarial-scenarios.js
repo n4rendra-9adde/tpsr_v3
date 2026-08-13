@@ -1,11 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-process.env.POSTGRES_HOST = 'localhost';
-process.env.POSTGRES_PORT = '5432';
-process.env.POSTGRES_DB = 'tpsr';
-process.env.POSTGRES_USER = 'user';
-process.env.POSTGRES_PASSWORD = 'password';
 
 const { validateAdversarialScenariosAndControlMap } = require('../../api/src/utils/adversarialScenarioValidator');
 const { runAdversarialScenarios } = require('../../api/src/security/adversarialScenarioRunner');
@@ -27,6 +22,9 @@ async function run() {
     console.error('Input files missing or unreadable.');
     process.exit(1);
   }
+
+  const trustPolicyLoader = require('../../api/src/utils/trustPolicyLoader');
+  await trustPolicyLoader.reloadTrustPolicy();
 
   const errors = validateAdversarialScenariosAndControlMap(modelPath, mapPath);
   fs.writeFileSync(path.join(outDir, 'model-validation.json'), JSON.stringify(errors, null, 2));

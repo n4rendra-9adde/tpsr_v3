@@ -151,7 +151,7 @@ describe('Point 10 Missing Cases Validation', () => {
       { environment: 'PRODUCTION', assetCriticality: 'HIGH', verificationStatus: 'VERIFIED', status: 'ACTIVE' }
     ];
     const risk = contextAssembler.assembleContextRiskEvidence({ sbomDocument: baseSbom, contextAssertions: activeAssertions });
-    expect(risk).toBeDefined();
+    expect(typeof risk).toBe('object');
     expect(risk.conflict).toBe(true);
   });
 
@@ -162,7 +162,7 @@ describe('Point 10 Missing Cases Validation', () => {
       { id: '1', environment: 'PRODUCTION', verificationStatus: 'VERIFIED', status: 'ACTIVE' }
     ];
     const risk = contextAssembler.assembleContextRiskEvidence({ sbomDocument: baseSbom, contextAssertions: activeAssertions });
-    expect(risk).toBeDefined();
+    expect(typeof risk).toBe('object');
     expect(risk.conflict).toBe(true);
   });
 

@@ -187,11 +187,11 @@ describe('Point 10 Context Repository Tests', () => {
   test('46. audit history records actor, time, reason, policy, and scope', async () => {
     const history = await repo.listContextAssertionsBySbomId(sbomId);
     if (history.length > 0) {
-      expect(history[0].asserted_by).toBeDefined();
-      expect(history[0].asserted_at).toBeDefined();
-      expect(history[0].justification).toBeDefined();
-      expect(history[0].policy_version).toBeDefined();
-      expect(history[0].environment).toBeDefined();
+      expect(typeof history[0].asserted_by).toBe('string');
+      expect(history[0].asserted_at instanceof Date || typeof history[0].asserted_at === 'string').toBe(true);
+      expect(typeof history[0].justification).toBe('string');
+      expect(typeof history[0].policy_version).toBe('string');
+      expect(typeof history[0].environment).toBe('string');
     }
   });
 

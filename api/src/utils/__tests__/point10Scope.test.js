@@ -29,7 +29,7 @@ describe('Point 10 Scope Security (Context Assertion Engine)', () => {
 
   test('exact digest and algorithm accepted', async () => {
     const res = await engine.verifyContextAssertion(baseAssertion, baseSbom);
-    expect(res.verificationStatus).toBeDefined();
+    expect(typeof res.verificationStatus).toBe('string');
     expect(res.reasonCodes).not.toContain('CTX-011');
   });
 
@@ -109,6 +109,6 @@ describe('Point 10 Scope Security (Context Assertion Engine)', () => {
     // In this implementation, global assertion is OK if it doesn't specify component locator.
     // If it's missing entirely (e.g. no sbom_hash to match), we check digestManifestDigest.
     // Wait, the test states: "missing/ambiguous scope rejected". Let's check reasonCodes.
-    expect(res.reasonCodes).toBeDefined();
+    expect(Array.isArray(res.reasonCodes)).toBe(true);
   });
 });

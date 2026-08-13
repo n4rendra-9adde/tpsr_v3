@@ -24,6 +24,8 @@ async function main() {
   }
 
   console.log('Running Matrix Evaluator Runner...');
+  const trustPolicyLoader = require('../../api/src/utils/trustPolicyLoader');
+  await trustPolicyLoader.reloadTrustPolicy();
   const results = await runDecisionMatrix(MATRIX_PATH, MODEL_PATH);
   fs.writeFileSync(path.join(OUTPUT_DIR, 'scenario-results.json'), JSON.stringify(results, null, 2));
   

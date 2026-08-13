@@ -94,15 +94,16 @@ describe('Point 11 Exception Lifecycle and History', () => {
     // Authorized
     const auth = await request(app).get(`/api/v1/sbom/${sbomId}/exceptions/${exceptionId}/history`).set('x-user-id', 'sec1').set('x-user-role', 'security');
     expect(auth.status).toBe(200);
-    expect(auth.body.history).toBeDefined();
+    expect(Array.isArray(auth.body.history)).toBe(true);
+    expect(auth.body.history.length).toBeGreaterThan(0);
     expect(auth.body.history.length).toBeGreaterThanOrEqual(2); // REQUESTED, APPROVED, SUPERSEDED (3 actually)
 
     const reqEvent = auth.body.history.find(h => h.event_type === 'REQUESTED');
-    expect(reqEvent).toBeDefined();
+    expect(reqEvent).toMatchObject({ event_type: 'REQUESTED' });
     expect(reqEvent.actor_role).toBe('developer');
     
     const supEvent = auth.body.history.find(h => h.event_type === 'SUPERSEDED');
-    expect(supEvent).toBeDefined();
+    expect(supEvent).toMatchObject({ event_type: 'SUPERSEDED' });
     expect(supEvent.actor_role).toBe('security');
   });
 });

@@ -58,7 +58,7 @@ describe('Point 12 Operational Trust Lifecycle', () => {
 
   it('6 cache loadedAt traceable', async () => {
     const p = await trustPolicyLoader.reloadTrustPolicy();
-    expect(p.loadedAt).toBeDefined();
+    expect(p.loadedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it('7 cache reload updates generation atomically', async () => {
@@ -70,7 +70,7 @@ describe('Point 12 Operational Trust Lifecycle', () => {
 
   it('8 concurrent reads never see mixed policy', async () => {
     const p = await trustPolicyLoader.reloadTrustPolicy();
-    expect(p.generation).toBeDefined();
+    expect(p.generation).toEqual(expect.any(Number));
     expect(trustPolicyLoader.getTrustPolicy().generation).toBe(p.generation);
   });
 
@@ -257,7 +257,7 @@ describe('Point 12 Operational Trust Lifecycle', () => {
 
   it('48 signature/provenance/VEX/context/exception engines share snapshot ID & 49 one evaluation cannot mix policy generations', async () => {
     const p = await trustPolicyLoader.reloadTrustPolicy();
-    expect(p.generation).toBeDefined();
+    expect(p.generation).toEqual(expect.any(Number));
   });
 
   it('50 stale/revoked policy state cannot force TRUSTED & 51 stronger integrity/signature/provenance controls remain authoritative & 52 Point 6 remains 30/0/0 & 53 Point 7 remains 8 full/2 partial & 54 Points 8-11 focused suites pass', async () => {
