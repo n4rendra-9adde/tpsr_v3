@@ -53,6 +53,7 @@ describe('Fabric Startup Configuration Validation', () => {
     };
     Wallets.newFileSystemWallet.mockResolvedValue(mockWallet);
 
+    delete process.env.FABRIC_VENDOR_IDENTITY;
     await expect(fabric.getVendorContract()).rejects.toThrow('FABRIC_VENDOR_IDENTITY is required');
     
     process.env.FABRIC_VENDOR_IDENTITY = 'missingAdmin';

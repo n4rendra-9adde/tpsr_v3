@@ -196,23 +196,27 @@ function getTrustPolicy(options = {}) {
     return injectedPolicyOverride;
   }
 
-  if (!cachedTrustPolicy && (options.policyPath || process.env.NODE_ENV === 'test')) {
+  if ((!cachedTrustPolicy || options.forceReload) && (options.policyPath || process.env.NODE_ENV === 'test')) {
     // For synchronous tests that rely on policyPath but didn't initialize
     const pPath = options.policyPath || path.join(__dirname, '../../../docs/TRUST_POLICY.json');
-    if (fs.existsSync(pPath)) {
-        const data = fs.readFileSync(pPath, 'utf8');
-        let parsedData;
-        try {
-            parsedData = JSON.parse(data);
-        } catch (e) {
-            throw new Error('TRUST_POLICY_MALFORMED');
-        }
-        const parsed = _parseAndValidatePolicy(parsedData);
-        parsed.generation = 1;
-        parsed.loadedAt = new Date().toISOString();
-        parsed.isRevoked = function() { return false; }; // Polyfill for synchronous read without DB
+    if (!fs.existsSync(pPath)) {
+      if (options.policyPath) throw new Error('TRUST_POLICY_MISSING');
+    } else {
+      const data = fs.readFileSync(pPath, 'utf8');
+      let parsedData;
+      try {
+          parsedData = JSON.parse(data);
+      } catch (e) {
+          throw new Error('TRUST_POLICY_MALFORMED');
+      }
+      const parsed = _parseAndValidatePolicy(parsedData);
+      parsed.generation = 1;
+      parsed.loadedAt = new Date().toISOString();
+      parsed.isRevoked = function() { return false; }; // Polyfill for synchronous read without DB
+      if (!options.forceReload) {
         cachedTrustPolicy = parsed;
-        return parsed;
+      }
+      return parsed;
     }
   }
 

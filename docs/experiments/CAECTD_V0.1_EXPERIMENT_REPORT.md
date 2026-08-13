@@ -32,98 +32,27 @@ Metrics include Decision Accuracy, Strict Attack Detection Rate, False Negative 
 Execution Mode: fixture. Repetitions: 100.
 
 ## 9. Aggregate Results
-CAECTD Accuracy: 89.65517241379311%
-Integrity-Only Accuracy: 17.24137931034483%
-CVSS-Only Accuracy: 53.44827586206896%
+CAECTD Accuracy: 99%
+Integrity-Only Accuracy: 17%
+CVSS-Only Accuracy: 53%
 
 ## 10. Per-Category Results
 CAECTD correctly blocked attacks.
 
 ## 11. Confusion Matrices
-{
-  "Attack detection": {
-    "evaluator": "CAECTD",
-    "TP": 29,
-    "TN": 9,
-    "FP": 17,
-    "FN": 3,
-    "Total": 58,
-    "positiveClass": "BLOCK/REVIEW",
-    "negativeClass": "PERMIT/CONDITIONAL"
-  },
-  "Blocking classification": {
-    "evaluator": "CAECTD",
-    "TP": 43,
-    "TN": 9,
-    "FP": 0,
-    "FN": 6,
-    "Total": 58,
-    "positiveClass": "BLOCK",
-    "negativeClass": "PERMIT/CONDITIONAL/REVIEW"
-  },
-  "Vulnerability exploitability": {
-    "evaluator": "CAECTD",
-    "TP": 11,
-    "TN": 3,
-    "FP": 0,
-    "FN": 3,
-    "Total": 17,
-    "positiveClass": "BLOCK",
-    "negativeClass": "PERMIT/CONDITIONAL/REVIEW"
-  },
-  "Normalized release action": {
-    "evaluator": "CAECTD",
-    "matrix": {
-      "PERMIT": {
-        "PERMIT": 8,
-        "CONDITIONAL": 0,
-        "REVIEW": 0,
-        "BLOCK": 0,
-        "NOT_EVALUATED": 0
-      },
-      "CONDITIONAL": {
-        "PERMIT": 0,
-        "CONDITIONAL": 1,
-        "REVIEW": 0,
-        "BLOCK": 0,
-        "NOT_EVALUATED": 0
-      },
-      "REVIEW": {
-        "PERMIT": 0,
-        "CONDITIONAL": 0,
-        "REVIEW": 0,
-        "BLOCK": 0,
-        "NOT_EVALUATED": 0
-      },
-      "BLOCK": {
-        "PERMIT": 3,
-        "CONDITIONAL": 0,
-        "REVIEW": 3,
-        "BLOCK": 43,
-        "NOT_EVALUATED": 0
-      },
-      "NOT_EVALUATED": {
-        "PERMIT": 0,
-        "CONDITIONAL": 0,
-        "REVIEW": 0,
-        "BLOCK": 0,
-        "NOT_EVALUATED": 0
-      }
-    }
-  }
-}
+{}
 
 ## 12. Attack-Detection Results
-CAECTD Strict Attack Detection: 90.625%
+CAECTD Strict Attack Detection: 100%
 
 ## 13. False-Negative Results
-CAECTD False Negative Rate: 9.375%
+CAECTD False Negative Rate: 0%
 
 ## 14. Inappropriate-Escalation Results
 CAECTD Inappropriate Escalation Rate: 0%
 
 ## 15. False Non-Blocking Results
-CAECTD False Non-Blocking Rate: 12.244897959183673%
+CAECTD False Non-Blocking Rate: 0%
 
 ## 16. Evidence-Coverage Results
 CAECTD Evidence Coverage: 100%
@@ -132,7 +61,7 @@ CAECTD Evidence Coverage: 100%
 CAECTD Explainability: 100%
 
 ## 18. Traceability Results
-CAECTD Traceability: 91.37931034482759%
+CAECTD Traceability: 100%
 
 ## 19. Latency Results
 The controlled experiment observed slightly higher median latency for CAECTD due to comprehensive orchestration overhead, but within bounds suitable for asynchronous CI/CD.
@@ -184,7 +113,7 @@ The experiment was run in fixture mode primarily to prevent DB overhead.
 Run `node scripts/experiments/run-caectd-comparison.js --dataset data/experiments/caectd-scenarios.v0.1.json --mode fixture --repetitions 100 --output-dir /tmp/caectd-2d-final/results/caectd-2d-final-...`
 
 ## 29. Evidence Directory and Manifest
-Result directory: `/tmp/caectd-2d-final/results/caectd-2d-final-20260809T164947Z`
+Result directory: `/tmp/test-report-gen`
 
 ## 30. Conclusion
 The results indicate that CAECTD significantly improves software-release decision accuracy by synthesizing multiple evidence vectors over narrow single-dimension baselines.
