@@ -21,6 +21,7 @@ var ROUTE_ROLE_MAP = {
   exceptions: ['developer', 'security', 'admin'],
   trust: ['developer', 'security', 'auditor', 'admin'],
   outbox: ['security', 'admin'],
+  policy: ['admin']
 };
 
 // Isolation of Authentication Adapter for development/test

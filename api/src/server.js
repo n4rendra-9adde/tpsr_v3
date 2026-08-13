@@ -29,10 +29,10 @@ var contextAssertionsRoute = require('./routes/contextAssertions.routes');
 var exceptionsRoute = require('./routes/exceptions.routes');
 var trustRoute = require('./routes/trust.routes');
 var outboxRoute = require('./routes/outbox.routes');
+var policyRoute = require('./routes/policy.routes');
 var outboxWorker = require('./workers/outboxWorker');
 var exceptionExpiryWorker = require('./workers/exceptionExpiryWorker');
-
-
+var trustPolicyLoader = require('./utils/trustPolicyLoader');
 // Startup environment validation
 var REQUIRED_ENV = [
   'FABRIC_CONNECTION_PROFILE',
@@ -142,6 +142,9 @@ function getAllowedRoles(method, reqPath) {
   if (reqPath.match(/^\/(v1\/)?admin\/outbox(\/.*)?$/)) {
     return auth.ROUTE_ROLE_MAP.outbox;
   }
+  if (reqPath.match(/^\/(v1\/)?policy(\/.*)?$/)) {
+    return auth.ROUTE_ROLE_MAP.policy;
+  }
   return null;
 }
 
@@ -176,6 +179,7 @@ app.use('/api', exceptionsRoute);
 app.use('/api', trustRoute);
 app.use('/api', outboxRoute);
 
+app.use('/api/v1/policy', policyRoute);
 
 app.use(function (req, res) {
   res.status(404).json({ error: 'Route not found' });
@@ -191,8 +195,12 @@ async function startServer() {
   try {
     await db.testDatabaseConnection();
     console.log('[TPSR] Database connection verified.');
+    
+    // Initialize policy
+    await trustPolicyLoader.reloadTrustPolicy();
+    console.log('[TPSR] Global trust policy loaded.');
   } catch (err) {
-    console.error('[TPSR] Database connection failed:', err.message || err);
+    console.error('[TPSR] Startup failed:', err.message || err);
     process.exit(1);
   }
 

@@ -193,6 +193,18 @@ async function verifyContextAssertion(payload, sbomDoc, activeAssertions = []) {
     authPass = false;
   }
 
+  // Revocation check for Context Asserter Role/Identity
+  if (policy.isRevoked) {
+      if (payload.assertorRole && policy.isRevoked('CONTEXT_ASSERTER', payload.assertorRole, payload.assertedAt || new Date())) {
+          result.reasonCodes.push('CTX-033');
+          authPass = false;
+      }
+      if (payload.signerIdentity && policy.isRevoked('CONTEXT_ASSERTER', payload.signerIdentity, payload.assertedAt || new Date())) {
+          result.reasonCodes.push('CTX-033');
+          authPass = false;
+      }
+  }
+
   if (!authPass) {
     result.authorityTrusted = false;
     result.reasonCodes.push('CTX-014');

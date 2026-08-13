@@ -126,6 +126,14 @@ async function verifyVexDocument(envelope, signatureType, publicKey, targetConte
     return result;
   }
 
+  // Revocation Check
+  // We use Date.now() here as the default check time. Detailed stmt timestamps are evaluated below if needed.
+  if (trustPolicy.isRevoked && trustPolicy.isRevoked('VEX_ISSUER', verifiedIssuerIdentity, new Date())) {
+    result.reasonCode = 'VEX-022';
+    result.reasonCodes.push('VEX-022');
+    return result;
+  }
+
   // Check product authorization if not globally authorized
   if (!issuerConfig.globalAuthority && targetContext?.productIdentifier) {
     const allowed = issuerConfig.allowedProducts || [];

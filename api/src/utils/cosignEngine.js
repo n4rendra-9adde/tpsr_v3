@@ -177,6 +177,14 @@ async function verifySignature(params) {
          return result;
       }
 
+      // Check revocation
+      if (policy.isRevoked && policy.isRevoked('SIGNER', matchedIdentity, params.signedAt || new Date())) {
+         result.signerAuthorized = false;
+         result.reasonCode = 'SIG-004';
+         result.failureReason = 'Signer identity is revoked';
+         return result;
+      }
+
       result.signerIdentityResolved = true;
       result.verifiedSignerIdentity = matchedIdentity;
       result.signerIdentity = matchedIdentity; // backwards compat

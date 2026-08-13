@@ -164,6 +164,10 @@ function evaluateProvenanceTrustPolicy(claims) {
     throw { reasonCode: 'PRV-003', message: `Builder identity ${claims.builderId} unauthorized` };
   }
 
+  if (policy.isRevoked && policy.isRevoked('BUILDER', claims.builderId, claims.finishedOn || new Date())) {
+    throw { reasonCode: 'PRV-016', message: `Builder identity ${claims.builderId} is revoked` };
+  }
+
   if (claims.buildType && provPolicy.approvedBuildTypes) {
     const isApprovedBuildType = provPolicy.approvedBuildTypes.includes(claims.buildType);
     if (!isApprovedBuildType) {

@@ -178,7 +178,17 @@ function evaluateExceptionApproval(exceptionData, approvalData, dbSbomId, dbDige
   
   const requesterValid = validateRequesterAuthority(exceptionData.requestedByRole, policy);
   const ownerValid = validateOwnerAuthority(exceptionData.ownerRole, policy);
-  const approverValid = validateApproverAuthority(approvalData.approverRole, policy);
+  let approverValid = validateApproverAuthority(approvalData.approverRole, policy);
+  
+  if (policy.isRevoked) {
+      if (approvalData.approverRole && policy.isRevoked('EXCEPTION_APPROVER', approvalData.approverRole, approvalData.approvedAt || new Date())) {
+          approverValid = false;
+      }
+      if (approvalData.approvedBy && policy.isRevoked('EXCEPTION_APPROVER', approvalData.approvedBy, approvalData.approvedAt || new Date())) {
+          approverValid = false;
+      }
+  }
+
   const governanceValid = requesterValid && ownerValid && approverValid;
   
   const separationOfDutiesPassed = validateSeparationOfDuties(exceptionData.requestedBy, exceptionData.ownedBy, approvalData.approvedBy, policy);
