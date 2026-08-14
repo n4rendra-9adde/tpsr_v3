@@ -1842,8 +1842,16 @@ function App() {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={200} theme="dark">
+    <>
+      <Alert 
+        message={<><strong style={{ letterSpacing: '0.5px' }}>LOW-ASSURANCE DEVELOPMENT SESSION</strong> - Production administration and cryptographic identities may be simulated or restricted.</>} 
+        type="warning" 
+        banner 
+        showIcon 
+        style={{ position: 'sticky', top: 0, zIndex: 1000, textAlign: 'center', background: '#fffbe6', borderBottom: '1px solid #ffe58f' }} 
+      />
+      <Layout style={{ minHeight: '100vh' }}>
+        <Sider width={200} theme="dark">
         <div style={{ padding: '16px', textAlign: 'center' }}>
           <Title level={4} style={{ color: 'white', margin: 0 }}>TPSR</Title>
         </div>
@@ -1893,7 +1901,7 @@ function App() {
           </Routes>
         </Content>
       </Layout>
-    </Layout>
+    </>
   );
 }
 
