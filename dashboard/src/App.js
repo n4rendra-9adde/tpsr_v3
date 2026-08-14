@@ -1842,7 +1842,15 @@ function App() {
   ];
 
   return (
-    <>
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#1677ff',
+          borderRadius: 4,
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+        }
+      }}
+    >
       <Alert 
         message={<><strong style={{ letterSpacing: '0.5px' }}>LOW-ASSURANCE DEVELOPMENT SESSION</strong> - Production administration and cryptographic identities may be simulated or restricted.</>} 
         type="warning" 
@@ -1902,7 +1910,7 @@ function App() {
         </Content>
       </Layout>
       </Layout>
-    </>
+    </ConfigProvider>
   );
 }
 
