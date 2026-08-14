@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Descriptions, Tag, Alert, Typography } from 'antd';
+import { Card, Descriptions, Tag, Alert, Typography, Tooltip } from 'antd';
+import { getReasonDescription } from '../utils/reasonCodeMap';
 
 const { Text } = Typography;
 
@@ -57,7 +58,11 @@ export function SignatureEvidenceCard({ signatureData }) {
           {verifiedAt ? new Date(verifiedAt).toLocaleString() : 'Not available'}
         </Descriptions.Item>
         <Descriptions.Item label="Reason Codes">
-          {reasonCodes ? <Text strong>{reasonCodes}</Text> : 'Not available'}
+          {reasonCodes ? (
+            <Tooltip title={getReasonDescription(reasonCodes)}>
+              <Text strong style={{ cursor: 'help' }}>{getReasonDescription(reasonCodes)}</Text>
+            </Tooltip>
+          ) : 'Not available'}
         </Descriptions.Item>
       </Descriptions>
     </Card>

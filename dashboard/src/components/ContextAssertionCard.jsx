@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Descriptions, Tag, Typography } from 'antd';
+import { Card, Descriptions, Tag, Typography, Tooltip } from 'antd';
+import { getReasonDescription } from '../utils/reasonCodeMap';
 
 const { Text } = Typography;
 
@@ -49,7 +50,11 @@ export function ContextAssertionCard({ contextData }) {
           {contextData.ruleIds && contextData.ruleIds.length > 0 ? contextData.ruleIds.join(', ') : 'None'}
         </Descriptions.Item>
         <Descriptions.Item label="Reason Codes">
-          {contextData.reasonCodes && contextData.reasonCodes.length > 0 ? contextData.reasonCodes.join(', ') : 'None'}
+          {contextData.reasonCodes && contextData.reasonCodes.length > 0 ? (
+            <Tooltip title={getReasonDescription(contextData.reasonCodes)}>
+              <Text strong style={{ cursor: 'help' }}>{contextData.reasonCodes.join(', ')}</Text>
+            </Tooltip>
+          ) : 'None'}
         </Descriptions.Item>
       </Descriptions>
     </Card>

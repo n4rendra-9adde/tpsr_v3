@@ -1,5 +1,6 @@
 import React from 'react';
-import { Table, Tag, Alert } from 'antd';
+import { Table, Tag, Alert, Tooltip } from 'antd';
+import { getReasonDescription } from '../utils/reasonCodeMap';
 
 export function VexApplicabilityTable({ vulnerabilities }) {
   if (!vulnerabilities || vulnerabilities.length === 0) {
@@ -49,7 +50,16 @@ export function VexApplicabilityTable({ vulnerabilities }) {
     { title: 'Manifest Match', dataIndex: 'digestManifestMatch', key: 'digestManifestMatch', render: (t) => t ? 'Yes' : '-' },
     { title: 'Component Match', dataIndex: 'componentMatch', key: 'componentMatch', render: (t) => t ? 'Yes' : '-' },
     { title: 'Vuln-ID Match', dataIndex: 'vulnerabilityIdMatch', key: 'vulnerabilityIdMatch', render: (t) => t ? 'Yes' : '-' },
-    { title: 'Reason Codes', dataIndex: 'reasonCodes', key: 'reasonCodes', render: (t) => t || '-' }
+    { 
+      title: 'Reason Codes', 
+      dataIndex: 'reasonCodes', 
+      key: 'reasonCodes', 
+      render: (t) => t ? (
+        <Tooltip title={getReasonDescription(t)}>
+          <span style={{ cursor: 'help', fontWeight: 'bold' }}>{getReasonDescription(t)}</span>
+        </Tooltip>
+      ) : '-' 
+    }
   ];
 
   return (

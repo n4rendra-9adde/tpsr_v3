@@ -1,4 +1,6 @@
 import React from 'react';
+import { Tooltip } from 'antd';
+import { getReasonDescription } from '../utils/reasonCodeMap';
 
 const ContextRiskSummary = ({ contextRisk, originalVulnerabilities = [], isSimulation = false }) => {
   if (isSimulation) {
@@ -124,7 +126,14 @@ const ContextRiskSummary = ({ contextRisk, originalVulnerabilities = [], isSimul
           <div className="text-sm space-y-2 h-32 overflow-y-auto">
             <div><strong>Triggered Rules:</strong> {triggeredContextRuleIds?.length ? triggeredContextRuleIds.join(', ') : 'None'}</div>
             <div><strong>Evaluated Rules:</strong> {evaluatedContextRuleIds?.length ? evaluatedContextRuleIds.join(', ') : 'None'}</div>
-            <div><strong>Reason Codes:</strong> {contextReasonCodes?.length ? contextReasonCodes.join(', ') : 'None'}</div>
+            <div>
+              <strong>Reason Codes:</strong>{' '}
+              {contextReasonCodes?.length ? (
+                <Tooltip title={getReasonDescription(contextReasonCodes)}>
+                  <span style={{ cursor: 'help' }}>{contextReasonCodes.join(', ')}</span>
+                </Tooltip>
+              ) : 'None'}
+            </div>
             {conflictResults && (
                <div className="bg-orange-50 text-orange-800 p-2 rounded mt-2 border border-orange-200">
                  <strong>Conflicts detected:</strong>
