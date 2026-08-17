@@ -8,6 +8,8 @@ var sbomRepository = require('../repositories/sbomRepository');
 var canonicalize = require('../utils/canonicalize');
 var hash = require('../utils/hash');
 var policy = require('../utils/policy');
+var automaticEvaluationService = require('../services/automaticEvaluationService');
+const crypto = require('crypto');
 
 var STRING_FIELDS = [
   'sbomID',
@@ -277,9 +279,22 @@ router.post('/submit', async function (req, res) {
 
     console.log('[TPSR][PERF] submit', JSON.stringify(performanceMetrics));
 
+    // ── Automatic Synchronous Evaluation ───────────────────────────────────────
+    var correlationId = crypto.randomUUID();
+    var recommendationObj = await automaticEvaluationService.evaluateSubmittedSbom({
+      sbomId: sbomID,
+      correlationId: correlationId,
+      principal: req.headers['x-user-id'] || 'anonymous',
+      triggerType: 'SBOM_SUBMITTED'
+    });
+
+    var analysisStatus = recommendationObj.recommendation === 'ANALYSIS_INCOMPLETE' ? 'INCOMPLETE' : 'COMPLETED';
+
     return res.status(201).json({
-      message: 'SBOM submitted successfully',
-      sbomID: sbomID,
+      sbomId: sbomID,
+      submissionStatus: 'ACCEPTED',
+      analysisStatus: analysisStatus,
+      recommendation: recommendationObj,
       hash: sbomHash,
       performanceMetrics: performanceMetrics
     });
