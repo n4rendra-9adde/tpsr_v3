@@ -98,6 +98,20 @@ async function handleRecordProvenance(req, res) {
       }
     }
 
+    if (verificationResult.status === 'VALID') {
+      try {
+        const automaticEvaluationService = require('../services/automaticEvaluationService');
+        await automaticEvaluationService.evaluateSubmittedSbom({
+          sbomId: sbomId.trim(),
+          correlationId: null,
+          principal: req.headers['x-user-id'] || 'system-provenance',
+          triggerType: 'PROVENANCE_CHANGED'
+        });
+      } catch (reevalErr) {
+        console.warn(`[TPSR][PROVENANCE] Automatic reevaluation failed for ${sbomId}:`, reevalErr.message);
+      }
+    }
+
     const statusCode = verificationResult.status === 'VALID' ? 201 : 422;
     return res.status(statusCode).json({
       message: verificationResult.status === 'VALID' ? 'Provenance attestation recorded and verified successfully' : 'Provenance verification failed',

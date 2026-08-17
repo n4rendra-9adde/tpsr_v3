@@ -89,6 +89,20 @@ async function handleRecordSignature(req, res) {
       }
     }
 
+    if (verificationResult.status === 'VERIFIED') {
+      try {
+        const automaticEvaluationService = require('../services/automaticEvaluationService');
+        await automaticEvaluationService.evaluateSubmittedSbom({
+          sbomId: sbomId.trim(),
+          correlationId: null,
+          principal: req.headers['x-user-id'] || 'system-signature',
+          triggerType: 'SIGNATURE_ADDED'
+        });
+      } catch (reevalErr) {
+        console.warn(`[TPSR][SIGNATURE] Automatic reevaluation failed for ${sbomId}:`, reevalErr.message);
+      }
+    }
+
     const statusCode = verificationResult.status === 'VERIFIED' ? 201 : 422;
     return res.status(statusCode).json({
       message: verificationResult.status === 'VERIFIED' ? 'Signature verified and recorded successfully' : 'Signature verification failed',
