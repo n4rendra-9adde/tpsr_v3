@@ -6,6 +6,7 @@ const contextAssertionRepository = require('../repositories/contextAssertionRepo
 const { evaluateTrust } = require('../utils/trustEngine');
 const snapshotService = require('../services/snapshotService');
 const crypto = require('crypto');
+const { getRecommendationSuggestions } = require('../utils/recommendationSuggestions');
 
 function mapRecommendation(trustStatus, reasonCode) {
   if (trustStatus === 'TRUSTED') return 'APPROVE';
@@ -130,7 +131,13 @@ async function evaluateSubmittedSbom({ sbomId, correlationId, principal, trigger
       evaluatedAt: dbDecision.evaluated_at,
       correlationId: correlationId || crypto.randomUUID(),
       humanReviewRequired: evalResult.trustStatus === 'REVIEW_REQUIRED',
-      exceptionPermitted: evalResult.trustStatus !== 'REJECTED'
+      exceptionPermitted: evalResult.trustStatus !== 'REJECTED',
+      suggestedActions: getRecommendationSuggestions({
+        ruleIds: evalResult.triggeredRuleIds || [],
+        reasonCodes: evalResult.reasonCode ? [evalResult.reasonCode] : [],
+        blockingFindings: evalResult.trustStatus === 'REJECTED' ? [evalResult.reasonDescription] : [],
+        reviewFindings: evalResult.trustStatus === 'REVIEW_REQUIRED' ? [evalResult.reasonDescription] : []
+      })
     };
 
   } catch (err) {
@@ -153,7 +160,8 @@ async function evaluateSubmittedSbom({ sbomId, correlationId, principal, trigger
       evaluatedAt: new Date().toISOString(),
       correlationId: correlationId || crypto.randomUUID(),
       humanReviewRequired: false,
-      exceptionPermitted: false
+      exceptionPermitted: false,
+      suggestedActions: []
     };
   }
 }

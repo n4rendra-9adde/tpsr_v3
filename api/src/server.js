@@ -158,7 +158,7 @@ function getAllowedRoles(method, reqPath) {
   if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/exceptions(\/.*)?$/)) {
     return auth.ROUTE_ROLE_MAP.exceptions;
   }
-  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/trust-(evaluation|decision|evidence)$/)) {
+  if (reqPath.match(/^\/(v1\/)?sbom\/[^\/]+\/(trust-(evaluation|decision|evidence)|reevaluate)$/)) {
     return auth.ROUTE_ROLE_MAP.trust;
   }
   if (reqPath.match(/^\/(v1\/)?admin\/outbox(\/.*)?$/)) {

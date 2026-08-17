@@ -6,6 +6,7 @@ const sbomRepository = require('../repositories/sbomRepository');
 const trustRepository = require('../repositories/trustRepository');
 const { evaluateTrust } = require('../utils/trustEngine');
 const snapshotService = require('../services/snapshotService');
+const { evaluateSubmittedSbom } = require('../services/automaticEvaluationService');
 
 /**
  * Handle full trust evaluation execution with Idempotency-Key support
@@ -353,11 +354,40 @@ async function handleGetTrustEvidence(req, res) {
   }
 }
 
+/**
+ * Handle reevaluation
+ */
+async function handleReevaluate(req, res) {
+  const sbomId = req.params.sbomId;
+  if (!sbomId || !sbomId.trim()) {
+    return res.status(400).json({ error: 'sbomId parameter is required' });
+  }
+
+  const triggerType = (req.body && req.body.triggerType) || 'PROVENANCE_CHANGED';
+
+  const recommendationObj = await evaluateSubmittedSbom({
+    sbomId: sbomId.trim(),
+    correlationId: null,
+    principal: req.headers['x-user-id'] || 'anonymous',
+    triggerType: triggerType
+  });
+
+  return res.status(200).json({
+    message: 'Reevaluation completed successfully',
+    sbomId: sbomId.trim(),
+    analysisStatus: recommendationObj.recommendation === 'ANALYSIS_INCOMPLETE' ? 'INCOMPLETE' : 'COMPLETED',
+    recommendation: recommendationObj
+  });
+}
+
 router.post('/v1/sbom/:sbomId/trust-evaluation', handleEvaluateTrust);
 router.post('/sbom/:sbomId/trust-evaluation', handleEvaluateTrust);
 router.get('/v1/sbom/:sbomId/trust-decision', handleGetTrustDecision);
 router.get('/sbom/:sbomId/trust-decision', handleGetTrustDecision);
 router.get('/v1/sbom/:sbomId/trust-evidence', handleGetTrustEvidence);
 router.get('/sbom/:sbomId/trust-evidence', handleGetTrustEvidence);
+
+router.post('/v1/sbom/:sbomId/reevaluate', handleReevaluate);
+router.post('/sbom/:sbomId/reevaluate', handleReevaluate);
 
 module.exports = router;

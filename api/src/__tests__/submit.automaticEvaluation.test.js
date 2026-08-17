@@ -39,11 +39,24 @@ describe('SBOM Submit Route - Automatic Evaluation', () => {
     });
 
     automaticEvaluationService.evaluateSubmittedSbom.mockResolvedValue({
-      recommendation: 'APPROVE',
+      recommendation: 'MANUAL_REVIEW_REQUIRED',
       decisionId: 'dec-1',
       snapshotId: 'snap-1',
-      primaryRuleId: 'RULE-1',
-      primaryReasonCode: 'OK'
+      primaryRuleId: 'RULE-PROV-1',
+      primaryReasonCode: 'PROV-001',
+      suggestedActions: [
+        {
+          suggestionId: 'sug-prov-missing-RULE-PROV-1',
+          ruleId: 'RULE-PROV-1',
+          reasonCode: 'PROV-001',
+          message: 'Submit provenance from an approved builder.',
+          priority: 10,
+          requiredRole: 'developer',
+          targetRoute: '/provenance',
+          requiredEvidenceType: 'PROVENANCE',
+          exceptionable: true
+        }
+      ]
     });
 
     const response = await request(app)
@@ -63,10 +76,12 @@ describe('SBOM Submit Route - Automatic Evaluation', () => {
     expect(response.body.submissionStatus).toBe('ACCEPTED');
     expect(response.body.analysisStatus).toBe('COMPLETED');
     expect(response.body.recommendation).toMatchObject({
-      recommendation: 'APPROVE',
+      recommendation: 'MANUAL_REVIEW_REQUIRED',
       decisionId: 'dec-1',
       snapshotId: 'snap-1'
     });
+    expect(response.body.recommendation.suggestedActions).toHaveLength(1);
+    expect(response.body.recommendation.suggestedActions[0].message).toBe('Submit provenance from an approved builder.');
 
     expect(automaticEvaluationService.evaluateSubmittedSbom).toHaveBeenCalledTimes(1);
     expect(automaticEvaluationService.evaluateSubmittedSbom).toHaveBeenCalledWith(
