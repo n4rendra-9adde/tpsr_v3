@@ -50,8 +50,8 @@ test.describe('AUTOMATIC PROVENANCE REEVALUATION', () => {
     expect(evaluateRequests.length).toBe(0);
 
     // 4. Record the original decision ID and snapshot ID.
-    const decisionIdLocator = page.locator('div:has-text("Decision ID:") >> code');
-    const snapshotIdLocator = page.locator('div:has-text("Snapshot ID:") >> code');
+    const decisionIdLocator = page.locator('div').filter({ hasText: /^Decision ID:.*$/ }).locator('code');
+    const snapshotIdLocator = page.locator('div').filter({ hasText: /^Snapshot ID:.*$/ }).locator('code');
     const oldDecisionId = await decisionIdLocator.first().textContent();
     const oldSnapshotId = await snapshotIdLocator.first().textContent();
 
