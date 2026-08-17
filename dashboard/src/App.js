@@ -3,6 +3,7 @@ import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Sp
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useSbomEvidence } from './hooks/useSbomEvidence';
 import { EvidenceApiDiagnostics } from './components';
+import SubmitPage from './components/SubmitPage';
 import axios from 'axios';
 import { 
   TrustDecisionBadge, 
@@ -1828,6 +1829,10 @@ function App() {
       label: <Link to="/sboms">SBOMs</Link>,
     },
     {
+      key: '/submit',
+      label: <Link to="/submit">Submit</Link>,
+    },
+    {
       key: '/verify',
       label: <Link to="/verify">Verify</Link>,
     },
@@ -1903,6 +1908,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/sboms" replace />} />
             <Route path="/sboms" element={<SBOMListPage selectedIdentity={selectedIdentity} />} />
+            <Route path="/submit" element={<SubmitPage selectedIdentity={selectedIdentity} />} />
             <Route path="/verify" element={<VerifyPage selectedIdentity={selectedIdentity} />} />
             <Route path="/history" element={<HistoryPage selectedIdentity={selectedIdentity} />} />
             <Route path="/compliance" element={<CompliancePage selectedIdentity={selectedIdentity} />} />

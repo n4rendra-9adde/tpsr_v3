@@ -10,3 +10,4 @@ export { SimulationNotice } from './SimulationNotice';
 export { DecisionSnapshotCard } from './DecisionSnapshotCard';
 export { EvidenceApiDiagnostics } from './EvidenceApiDiagnostics';
 export { default as ContextRiskSummary } from './ContextRiskSummary';
+export { RecommendationCard } from './RecommendationCard';
