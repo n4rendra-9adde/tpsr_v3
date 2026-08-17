@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Space, Button, Alert, Descriptions, Modal, message, Upload, Tooltip } from 'antd';
+import { Layout, Menu, Typography, Card, Row, Col, Table, Tag, Input, Select, Space, Button, Alert, Descriptions, Modal, message, Upload, Tooltip, ConfigProvider } from 'antd';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useSbomEvidence } from './hooks/useSbomEvidence';
 import { EvidenceApiDiagnostics } from './components';

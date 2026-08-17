@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Card, Space, Typography, Upload, Button, Alert, message, Select } from 'antd';
 import axios from 'axios';
 import { RecommendationCard } from './RecommendationCard';
+import { ProvenanceSubmit } from './ProvenanceSubmit';
+import { DecisionHistory } from './DecisionHistory';
 
 const { Title, Text } = Typography;
 const _rawApiUrl = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000/api').trim();
@@ -15,6 +17,7 @@ export default function SubmitPage({ selectedIdentity }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleBeforeUpload = (file) => {
     setErrorMsg('');
@@ -74,6 +77,7 @@ export default function SubmitPage({ selectedIdentity }) {
     setErrorMsg('');
     setResult(null);
     setSbomId('');
+    setRefreshTrigger(t => t + 1);
   };
 
   const handleSubmit = async () => {
@@ -97,7 +101,16 @@ export default function SubmitPage({ selectedIdentity }) {
       // 1. Submit directly
       const response = await axios.post(
         `${API_BASE_URL}/submit`,
-        { sbomID: idTrimmed, sbom: contentTrimmed },
+        { 
+          sbomID: idTrimmed, 
+          sbom: contentTrimmed,
+          buildID: 'auto-build-1',
+          softwareName: 'auto-software',
+          softwareVersion: '1.0.0',
+          format: 'SPDX',
+          offChainRef: 'https://example.com/sbom',
+          signatures: ['dummy-signature']
+        },
         { headers: { 'x-user-id': selectedIdentity.userId, 'x-user-role': selectedIdentity.role } }
       );
       
@@ -105,6 +118,7 @@ export default function SubmitPage({ selectedIdentity }) {
       
       if (resData.submissionStatus === 'ACCEPTED' || resData.submissionStatus === 'UPDATED') {
         setResult(resData);
+        setRefreshTrigger(t => t + 1);
       } else {
         setErrorMsg('Submission failed.');
       }
@@ -182,6 +196,31 @@ export default function SubmitPage({ selectedIdentity }) {
       
       {result && !result.recommendation && result.analysisStatus === 'INCOMPLETE' && (
         <RecommendationCard analysisStatus="INCOMPLETE" />
+      )}
+
+      {result && (
+        <ProvenanceSubmit 
+          sbomId={result.sbomId || sbomID} 
+          principal={selectedIdentity.userId} 
+          role={selectedIdentity.role} 
+          onReevaluationComplete={(newRecommendation, newStatus) => {
+            setResult(prev => ({
+              ...prev,
+              recommendation: newRecommendation,
+              analysisStatus: newStatus
+            }));
+            setRefreshTrigger(t => t + 1);
+          }}
+        />
+      )}
+
+      {result && (
+        <DecisionHistory 
+          sbomId={result.sbomId || sbomID} 
+          principal={selectedIdentity.userId} 
+          role={selectedIdentity.role} 
+          refreshTrigger={refreshTrigger}
+        />
       )}
     </div>
   );
