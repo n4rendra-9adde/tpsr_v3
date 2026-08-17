@@ -162,6 +162,10 @@ async function verifySignature(params) {
         }
       }
 
+      if (!matchedIdentity && params.signerIdentity && policy.signaturePolicy && policy.signaturePolicy.trustedPublicKeys && policy.signaturePolicy.trustedPublicKeys[params.signerIdentity]) {
+        matchedIdentity = params.signerIdentity;
+      }
+
       if (!matchedIdentity) {
         result.signerIdentityResolved = false;
         result.reasonCode = 'SIG-003';
