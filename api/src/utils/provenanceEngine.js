@@ -183,7 +183,7 @@ function evaluateProvenanceTrustPolicy(claims) {
   }
 
   let slsaLevel = 'SLSA_BUILD_LEVEL_2';
-  if (claims.builderId.includes('github-hosted') || claims.builderId.includes('tekton')) {
+  if (claims.builderId.includes('github-hosted') || claims.builderId.includes('tekton') || claims.builderId.includes('jenkins')) {
     slsaLevel = 'SLSA_BUILD_LEVEL_3';
   }
   const requiredLevel = provPolicy.requiredSlsaLevel || 'SLSA_BUILD_LEVEL_3';
