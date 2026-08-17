@@ -274,6 +274,9 @@ function sanitizeDecisionRecord(record) {
     result.lifecycleEffect = 'NOT_AVAILABLE';
   }
 
+  result.snapshotId = result.snapshot_id || null;
+  result.policyGeneration = result.policy_generation || null;
+
   return result;
 }
 

@@ -102,9 +102,11 @@ async function getLatestTrustDecisionBySBOMID(sbomID) {
 
 async function getTrustDecisionHistoryBySBOMID(sbomID) {
   const query = `
-    SELECT * FROM trust_decision_history
-    WHERE sbom_id = $1 AND deleted_at IS NULL
-    ORDER BY evaluated_at DESC;
+    SELECT t.*, s.snapshot_id, s.policy_generation 
+    FROM trust_decision_history t
+    LEFT JOIN decision_snapshots s ON (s.payload->>'decisionId') = t.id::text
+    WHERE t.sbom_id = $1 AND t.deleted_at IS NULL
+    ORDER BY t.evaluated_at DESC;
   `;
   const client = await db.pool.connect();
   try {

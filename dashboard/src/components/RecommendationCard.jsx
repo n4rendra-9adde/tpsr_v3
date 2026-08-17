@@ -75,7 +75,7 @@ export function RecommendationCard({ recommendation, analysisStatus }) {
             <div><Text type="secondary">Reason Code:</Text> <Text strong>{primaryReasonCode}</Text></div>
           )}
           {evidenceCompleteness && (
-            <div><Text type="secondary">Completeness:</Text> <Text strong>{evidenceCompleteness}</Text></div>
+            <div><Text type="secondary">Completeness:</Text> <Text strong>{typeof evidenceCompleteness === 'object' ? (evidenceCompleteness.complete ? 'Complete' : 'Incomplete') : evidenceCompleteness}</Text></div>
           )}
           {policyGeneration && (
             <div><Text type="secondary">Policy Gen:</Text> <Text code>{policyGeneration}</Text></div>

@@ -72,7 +72,9 @@ export function ProvenanceSubmit({ sbomId, principal, role, onReevaluationComple
     setLoading(true);
     try {
       // 1. Submit Provenance
-      await submitProvenance({ sbomId, provenancePayload: parsedPayload, principal, role });
+      // If the parsed payload already has an envelope property, send it as is, otherwise wrap it
+      const payloadToSend = parsedPayload.envelope ? parsedPayload : { envelope: parsedPayload };
+      await submitProvenance({ sbomId, provenancePayload: payloadToSend, principal, role });
       
       // 2. Clear upload selection
       setSelectedFile(null);
