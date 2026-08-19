@@ -80,6 +80,20 @@ async function handleRecordContext(req, res) {
       riskMultiplier: body.riskMultiplier || ((body.deploymentTier || body.environment) === 'PROD_CRITICAL' ? 1.5 : 1.0)
     });
 
+    if (isCompliant) {
+      try {
+        const automaticEvaluationService = require('../services/automaticEvaluationService');
+        await automaticEvaluationService.evaluateSubmittedSbom({
+          sbomId: sbomId.trim(),
+          correlationId: null,
+          principal: req.headers['x-user-id'] || 'system-context',
+          triggerType: 'CONTEXT_CHANGED'
+        });
+      } catch (reevalErr) {
+        console.warn(`[TPSR][CONTEXT] Automatic reevaluation failed for ${sbomId}:`, reevalErr.message);
+      }
+    }
+
     const statusCode = isCompliant ? 201 : 422;
     return res.status(statusCode).json({
       message: isCompliant ? 'Deployment context recorded and policy check passed' : 'Deployment context policy check failed',

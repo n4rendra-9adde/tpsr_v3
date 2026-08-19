@@ -137,6 +137,20 @@ async function handleRecordContextAssertion(req, res) {
         });
       }
 
+      if (status === 'ACTIVE') {
+        try {
+          const automaticEvaluationService = require('../services/automaticEvaluationService');
+          await automaticEvaluationService.evaluateSubmittedSbom({
+            sbomId: sbomId.trim(),
+            correlationId: body.correlationId || null,
+            principal: req.auth.userId,
+            triggerType: 'CONTEXT_CHANGED'
+          });
+        } catch (reevalErr) {
+          console.warn(`[TPSR][CONTEXT] Automatic reevaluation failed for ${sbomId}:`, reevalErr.message);
+        }
+      }
+
       return res.status(201).json({
         message: 'Context assertion recorded',
         assertionId: created.id,
