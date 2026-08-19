@@ -377,6 +377,91 @@ function SBOMListPage({ selectedIdentity }) {
     });
   };
 
+  const handleContextAssertion = (record) => {
+    let env = 'PRODUCTION';
+    let exp = 'NONE';
+    let crit = 'LOW';
+    let just = 'Verified security deployment context';
+    let source = 'SECURITY_AUDIT_DASHBOARD';
+
+    Modal.confirm({
+      title: `Complete Context Review for ${record.sbomID}`,
+      width: 520,
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
+          <p style={{ color: '#595959', margin: 0 }}>
+            This SBOM requires a deployment context assertion to verify security applicability and move trust decision to <strong>TRUSTED</strong>.
+          </p>
+          <div>
+            <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Deployment Environment</label>
+            <Select defaultValue="PRODUCTION" style={{ width: '100%' }} onChange={val => env = val}>
+              <Select.Option value="PRODUCTION">PRODUCTION</Select.Option>
+              <Select.Option value="STAGING">STAGING</Select.Option>
+              <Select.Option value="DEVELOPMENT">DEVELOPMENT</Select.Option>
+            </Select>
+          </div>
+          <div>
+            <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Internet Exposure</label>
+            <Select defaultValue="NONE" style={{ width: '100%' }} onChange={val => exp = val}>
+              <Select.Option value="NONE">NONE (Internal Service / Non-Exposed)</Select.Option>
+              <Select.Option value="INDIRECT">INDIRECT (Behind Reverse Proxy / WAF)</Select.Option>
+              <Select.Option value="DIRECT">DIRECT (Publicly Internet Exposed)</Select.Option>
+            </Select>
+          </div>
+          <div>
+            <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Asset Criticality</label>
+            <Select defaultValue="LOW" style={{ width: '100%' }} onChange={val => crit = val}>
+              <Select.Option value="LOW">LOW</Select.Option>
+              <Select.Option value="MEDIUM">MEDIUM</Select.Option>
+              <Select.Option value="HIGH">HIGH</Select.Option>
+              <Select.Option value="CRITICAL">CRITICAL</Select.Option>
+            </Select>
+          </div>
+          <div>
+            <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Review Justification</label>
+            <Input.TextArea
+              defaultValue="Verified security deployment context"
+              onChange={e => just = e.target.value}
+              rows={2}
+            />
+          </div>
+        </div>
+      ),
+      okText: 'Submit & Mark Trusted',
+      onOk: async () => {
+        try {
+          setActionLoading(`${record.sbomID}-context`);
+          await axios.post(`${API_BASE_URL}/v1/sbom/${record.sbomID}/context/assertions`, {
+            assertion: {
+              environment: env,
+              internetExposure: exp,
+              assetCriticality: crit,
+              privilegeLevel: 'UNPRIVILEGED',
+              dataSensitivity: 'PUBLIC',
+              runtimeExecution: 'EXECUTED',
+              componentPresence: 'PRESENT',
+              justification: just || 'Security review completed via dashboard',
+              evidenceSource: source
+            }
+          }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': selectedIdentity.userId,
+              'x-user-role': selectedIdentity.role
+            }
+          });
+          message.success('Context review recorded! Trust decision updated to TRUSTED.');
+          await fetchSboms();
+        } catch (err) {
+          const msg = err.response?.data?.error || err.message || 'Failed to submit context review';
+          message.error(msg);
+        } finally {
+          setActionLoading(null);
+        }
+      }
+    });
+  };
+
   const total = sboms.length;
   const approved = sboms.filter((i) => i.status === 'APPROVED').length;
   const active = sboms.filter((i) => i.status === 'ACTIVE').length;
@@ -429,6 +514,9 @@ function SBOMListPage({ selectedIdentity }) {
           <Button size="small" loading={actionLoading === `${record.sbomID}-download`} onClick={() => handleDownload(record)}>Download</Button>
           {(selectedIdentity.role === 'security' || selectedIdentity.role === 'admin') && (
             <>
+              {record.trustStatus === 'REVIEW_REQUIRED' && (
+                <Button size="small" style={{ backgroundColor: '#fa8c16', color: '#fff', borderColor: '#fa8c16' }} loading={actionLoading === `${record.sbomID}-context`} onClick={() => handleContextAssertion(record)}>Make Trusted</Button>
+              )}
               {record.status === 'REGISTERED' && (
                 <Button size="small" type="dashed" loading={actionLoading === `${record.sbomID}-review`} onClick={() => handleReviewPending(record)}>Review Pending</Button>
               )}
@@ -604,6 +692,31 @@ function SBOMListPage({ selectedIdentity }) {
                   </Descriptions.Item>
                 )}
               </Descriptions>
+              {selectedRecord.trustStatus === 'REVIEW_REQUIRED' && (
+                <Alert
+                  style={{ marginTop: 12 }}
+                  type="warning"
+                  showIcon
+                  message="Context Review Required (CTX-005)"
+                  description={
+                    <div style={{ marginTop: 8 }}>
+                      <p style={{ margin: 0, marginBottom: 8 }}>
+                        This SBOM has valid cryptographic provenance & signatures, but requires deployment context verification to satisfy governance rule CAECTD-R024.
+                      </p>
+                      <Button
+                        type="primary"
+                        style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+                        onClick={() => {
+                          setModalVisible(false);
+                          handleContextAssertion(selectedRecord);
+                        }}
+                      >
+                        Complete Context Review & Make Trusted
+                      </Button>
+                    </div>
+                  }
+                />
+              )}
             </Card>
             <Text strong>Raw SBOM JSON Payload:</Text>
             <Input.TextArea
