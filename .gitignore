@@ -39,3 +39,4 @@ api/api.log
 /builders/
 /config/
 fabric-samples/
+bin/cosign
