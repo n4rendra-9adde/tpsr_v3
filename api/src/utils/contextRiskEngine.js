@@ -162,6 +162,8 @@ function evaluateContextRisk(input) {
       needsReview = true;
       reasonCodes.add('CTX-005');
       triggeredRules.add('CAECTD-R024');
+    } else if (input.contextVector.environment) {
+      triggeredRules.add('CAECTD-R031');
     }
   }
 

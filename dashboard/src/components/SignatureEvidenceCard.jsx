@@ -31,8 +31,10 @@ export function SignatureEvidenceCard({ signatureData }) {
 
   return (
     <Card title="Signature Verification" size="small" style={{ marginBottom: 16 }}>
-      {failureReason && (
-        <Alert type="error" showIcon message={failureReason} style={{ marginBottom: 16 }} />
+      {isVerified ? (
+        <Alert type="success" showIcon message="Real Cosign signature verified and trusted" style={{ marginBottom: 16 }} />
+      ) : (
+        failureReason && <Alert type="error" showIcon message={failureReason} style={{ marginBottom: 16 }} />
       )}
       {verificationMode === 'offline-keyed' && (
         <Alert type="info" showIcon message="Transparency log not checked in offline-keyed mode" style={{ marginBottom: 16 }} />

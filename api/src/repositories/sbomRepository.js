@@ -252,7 +252,7 @@ async function deleteSBOMDocumentByID(id) {
  * @returns {Promise<Array>} Array of rows, ordered by created_at descending.
  */
 async function listSBOMDocuments(limit) {
-  var limitVal = 100;
+  var limitVal = 2000;
   if (limit !== undefined && limit !== null) {
     var parsed = parseInt(limit, 10);
     if (!isNaN(parsed) && parsed > 0) {

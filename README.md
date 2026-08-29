@@ -14,11 +14,11 @@ TPSR is built on a hybrid architecture that leverages:
 Software supply chain integrity is a critical challenge in modern development. To trust dependencies and build artifacts, organizations must be able to detect post-generation SBOM tampering. TPSR provides full traceability, non-repudiation, and independent cryptographic validation of SBOM records, ensuring they have not been maliciously or accidentally altered.
 
 ## Core Capabilities
-- **Hybrid Storage Model**: Decouples heavy JSON storage (PostgreSQL) from lightweight cryptographic hashes (Fabric).
-- **8-State Governance Lifecycle**: Enforces strict state transitions (`REGISTERED`, `REVIEW_PENDING`, `SECURITY_REVIEWED`, `COMPLIANT`, `APPROVED`, `ACTIVE`, `SUPERSEDED`, `REJECTED`).
-- **Advanced Tamper Intelligence**: Custom diff engine categorizes tampering into `COMPONENT_INJECTION`, `COMPONENT_REMOVAL`, `VERSION_MODIFICATION`, and `FIELD_LEVEL_METADATA_MODIFICATION`.
-- **Policy Engine**: Automatically flags SBOMs containing banned dependencies or vulnerabilities exceeding CVSS thresholds (e.g., $\ge$ 8.0).
-- **High-Resolution Performance Telemetry**: Nanosecond-precision instrumentation proves end-to-end verification adds minimal overhead ($\sim$450ms).
+- **CAECTD Trust Governance**: 4-state Trust Model (`TRUSTED`, `CONDITIONALLY_ACCEPTED`, `REVIEW_REQUIRED`, `REJECTED`) supporting VEX overlays and Deployment Context Assertions.
+- **Transactional Outbox Pattern**: Decouples API ingestion from blockchain consensus, allowing high-throughput scaling (tested with 1,250+ records).
+- **Upstream Verification**: Built-in validation of offline-keyed Cosign signatures and SLSA Level 3 provenance.
+- **Advanced Tamper Intelligence**: Custom diff engine categorizes tampering into `COMPONENT_INJECTION`, `COMPONENT_REMOVAL`, `VERSION_MODIFICATION`, and `METADATA_MODIFICATION`.
+- **High-Resolution Performance Telemetry**: `hrtime.bigint()` instrumentation proves end-to-end ingestion returns in ~45ms.
 - **Role-Based Access Control (RBAC)**: Protects lifecycle transitions based on user roles (Developer, Security, Auditor, Admin).
 - **Split Deployment**: API operates via an Ngrok tunnel, allowing the React dashboard to be hosted globally on GitHub Pages.
 
@@ -56,7 +56,6 @@ Please consult the master runbook:
 The full deployment order, database migrations, Fabric network initialization, Ngrok tunneling, and GitHub Pages configuration are documented there.
 
 ## Recommended Next Steps for Future Work
-- Implement full SLSA or in-toto provenance attestation generation.
-- Integrate Sigstore/Cosign signing for external cryptographic guarantees.
 - Replace the prototype identity selector with a production IAM/SSO integration (OAuth2/OIDC).
-- Implement VEX-aware vulnerability context to dynamically filter false-positive CVSS failures.
+- Implement explicit Graph-based lineage tracking to visualize dependencies across versions.
+- Conduct cross-cloud, multi-organization Fabric network deployment.

@@ -48,15 +48,15 @@ function assembleContextRiskEvidence({ sbomDocument, contextAssertions, vexState
     contextVector.environment = normalizeEnvironment(activeContext.environment || activeContext.deploymentTier || activeContext.deployment_tier).canonicalValue || 'UNKNOWN';
     contextVector.internetExposure = normalizeExposure(activeContext.internetExposure || activeContext.network_exposure || activeContext.internet_exposure).canonicalValue || 'UNKNOWN';
 
-    let ac = activeContext.assetCriticality || 'UNKNOWN';
-    if (activeContext.environment === 'PROD_CRITICAL' || activeContext.deploymentTier === 'PROD_CRITICAL') {
+    let ac = activeContext.assetCriticality || activeContext.asset_criticality || 'UNKNOWN';
+    if (activeContext.environment === 'PROD_CRITICAL' || activeContext.deploymentTier === 'PROD_CRITICAL' || activeContext.deployment_tier === 'PROD_CRITICAL') {
       ac = 'CRITICAL';
     }
     contextVector.assetCriticality = ac;
-    contextVector.privilegeLevel = activeContext.privilegeLevel || 'UNKNOWN';
+    contextVector.privilegeLevel = activeContext.privilegeLevel || activeContext.privilege_level || 'UNKNOWN';
     contextVector.dataSensitivity = activeContext.dataSensitivity || activeContext.data_sensitivity || 'UNKNOWN';
     contextVector.runtimeExecution = activeContext.runtimeExecution || activeContext.runtime_execution || 'UNKNOWN';
-    contextVector.componentPresence = activeContext.componentPresence || 'UNKNOWN';
+    contextVector.componentPresence = activeContext.componentPresence || activeContext.component_presence || 'UNKNOWN';
   }
 
   let rawSbom = {};

@@ -201,7 +201,7 @@ async function verifySignature(params) {
       result.status = 'VERIFIED';
       result.signatureVerified = true;
       result.reasonCode = 'SIG-000';
-      result.failureReason = 'Real Cosign signature verified and trusted';
+      result.failureReason = null;
       result.signatureHash = crypto.createHash('sha256').update(Buffer.from(params.signatureValue, 'base64')).digest('hex');
 
       return result;

@@ -82,6 +82,8 @@ function SBOMListPage({ selectedIdentity }) {
   const [selectedSbomJson, setSelectedSbomJson] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     fetchSboms();
@@ -377,6 +379,87 @@ function SBOMListPage({ selectedIdentity }) {
     });
   };
 
+  const computeSecuritySuggestions = (record) => {
+    let sbomJson = {};
+    try {
+      sbomJson = typeof record.sbom_json === 'string' ? JSON.parse(record.sbom_json) : (record.sbom_json || {});
+    } catch (_) {}
+
+    const components = sbomJson.components || [];
+    const compCount = components.length;
+
+    const licenses = new Set();
+    components.forEach(c => {
+      if (c.licenses && Array.isArray(c.licenses)) {
+        c.licenses.forEach(l => {
+          if (l.license && l.license.id) licenses.add(l.license.id);
+          else if (l.license && l.license.name) licenses.add(l.license.name);
+          else if (typeof l === 'string') licenses.add(l);
+        });
+      }
+    });
+
+    const allVulns = [];
+    if (Array.isArray(record.vulnerabilities)) {
+      allVulns.push(...record.vulnerabilities);
+    }
+    if (Array.isArray(sbomJson.vulnerabilities)) {
+      allVulns.push(...sbomJson.vulnerabilities);
+    }
+    components.forEach(c => {
+      if (c.vulnerabilities && Array.isArray(c.vulnerabilities)) {
+        allVulns.push(...c.vulnerabilities);
+      }
+    });
+
+    let vulnCount = allVulns.length;
+    let criticalCount = 0;
+    let highCount = 0;
+
+    allVulns.forEach(v => {
+      const sev = (v.severity || v.originalSeverity || '').toUpperCase();
+      if (sev === 'CRITICAL') criticalCount++;
+      else if (sev === 'HIGH') highCount++;
+    });
+
+    const isPolicyFail = record.policy_status === 'FAIL' || record.policyStatus === 'FAIL';
+    const violations = record.policy_violations || record.policyViolations || [];
+
+    let suggestedDecision = 'MARK TRUSTED';
+    let decisionReason = 'SBOM passes structural integrity, policy compliance, and zero critical vulnerabilities.';
+    let decisionBadgeColor = '#52c41a';
+
+    if (isPolicyFail || criticalCount > 0) {
+      suggestedDecision = 'REQUIRE POLICY EXCEPTION';
+      if (isPolicyFail && violations.length > 0) {
+        decisionReason = `Policy Failure: ${violations.slice(0, 2).join(' | ')}`;
+      } else {
+        decisionReason = `${criticalCount} Critical & ${highCount} High vulnerability finding(s) detected. Governed policy exception required before approval.`;
+      }
+      decisionBadgeColor = '#ff4d4f';
+    } else if (highCount > 0 || vulnCount > 0) {
+      suggestedDecision = 'CONDITIONAL APPROVAL';
+      decisionReason = `${vulnCount} vulnerability finding(s) present (${highCount} High). Restrict exposure to NONE.`;
+      decisionBadgeColor = '#fa8c16';
+    }
+
+    const tips = [
+      `📦 Dependency Profile: ${compCount > 0 ? `${compCount} components cataloged` : 'Clean payload'}.`,
+      `📜 License Profile: ${licenses.size > 0 ? Array.from(licenses).slice(0, 3).join(', ') : 'Permissive licenses'}.`,
+      `⚠️ Security Findings: ${vulnCount > 0 ? `${vulnCount} vulnerabilities detected (${criticalCount} Critical, ${highCount} High)` : 'No CVE findings'}.`,
+      isPolicyFail ? `🚨 Policy Violations: ${violations.length} policy rule(s) violated.` : `🔐 Ledger Anchor: Hyperledger Fabric Tx verified.`
+    ];
+
+    return {
+      suggestedDecision,
+      decisionReason,
+      decisionBadgeColor,
+      compCount,
+      vulnCount,
+      tips
+    };
+  };
+
   const handleContextAssertion = (record) => {
     let env = 'PRODUCTION';
     let exp = 'NONE';
@@ -384,13 +467,42 @@ function SBOMListPage({ selectedIdentity }) {
     let just = 'Verified security deployment context';
     let source = 'SECURITY_AUDIT_DASHBOARD';
 
+    const aiAnalysis = computeSecuritySuggestions(record);
+
     Modal.confirm({
       title: `Complete Context Review for ${record.sbomID}`,
-      width: 520,
+      width: 580,
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
-          <p style={{ color: '#595959', margin: 0 }}>
-            This SBOM requires a deployment context assertion to verify security applicability and move trust decision to <strong>TRUSTED</strong>.
+          <div style={{
+            background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%)',
+            border: '1px solid #91caff',
+            borderRadius: '8px',
+            padding: '12px 16px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{ fontWeight: 700, color: '#1677ff', fontSize: '13px' }}>🛡️ CAECTD Security Review & Decision Recommendation</span>
+              <span style={{
+                backgroundColor: aiAnalysis.decisionBadgeColor,
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '11px',
+                padding: '2px 8px',
+                borderRadius: '10px'
+              }}>{aiAnalysis.suggestedDecision}</span>
+            </div>
+            <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#262626', fontWeight: 500 }}>
+              {aiAnalysis.decisionReason}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px dashed #adc6ff', paddingTop: '8px' }}>
+              {aiAnalysis.tips.map((tip, idx) => (
+                <div key={idx} style={{ fontSize: '11px', color: '#434343' }}>{tip}</div>
+              ))}
+            </div>
+          </div>
+
+          <p style={{ color: '#595959', margin: 0, fontSize: '13px' }}>
+            Declare the deployment context assertion below to complete review and establish <strong>TRUSTED</strong> state:
           </p>
           <div>
             <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Deployment Environment</label>
@@ -617,7 +729,20 @@ function SBOMListPage({ selectedIdentity }) {
           columns={columns}
           dataSource={filteredData}
           rowKey="sbomID"
-          pagination={{ pageSize: 10 }}
+          pagination={{ 
+            current: currentPage,
+            pageSize: pageSize,
+            showSizeChanger: true, 
+            pageSizeOptions: ['10', '20', '50', '100', '200'],
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+            },
+            onShowSizeChange: (current, size) => {
+              setCurrentPage(1);
+              setPageSize(size);
+            }
+          }}
           loading={loading}
         />
       </Card>
@@ -1372,7 +1497,7 @@ function HistoryPage({ selectedIdentity }) {
               columns={columns} 
               dataSource={history} 
               rowKey={(item, index) => item.txID || index} 
-              pagination={{ pageSize: 10 }}
+              pagination={{ defaultPageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100', '200'] }}
             />
           </Card>
         </>

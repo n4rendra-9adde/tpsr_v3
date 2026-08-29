@@ -121,8 +121,29 @@ router.post('/activate', async function (req, res) {
 
     await sbomRepository.updateSBOMStatus(sbomID, 'ACTIVE', fabricTxID, activatorSubmitterID);
 
+    // Automatically supersede any previous ACTIVE SBOMs for the same software
+    try {
+      var allSboms = await sbomRepository.listSBOMDocuments(500);
+      for (var i = 0; i < allSboms.length; i++) {
+        var prevSbom = allSboms[i];
+        if (prevSbom.sbom_id !== sbomID && prevSbom.software_name === record.software_name && prevSbom.status === 'ACTIVE') {
+          try {
+            var superTx = contract.createTransaction('SupersedeSBOM');
+            var superTxID = superTx.getTransactionId();
+            await superTx.submit(prevSbom.sbom_id);
+            await sbomRepository.updateSBOMStatus(prevSbom.sbom_id, 'SUPERSEDED', superTxID, activatorSubmitterID);
+            console.log(`[TPSR] Automatically superseded previous active SBOM: ${prevSbom.sbom_id}`);
+          } catch (superErr) {
+            console.error(`[TPSR] Failed to auto-supersede ${prevSbom.sbom_id}:`, superErr.message);
+          }
+        }
+      }
+    } catch (autoSuperErr) {
+      console.error('[TPSR] Error during auto-supersede check:', autoSuperErr.message);
+    }
+
     return res.status(200).json({
-      message: 'SBOM activated successfully',
+      message: 'SBOM activated successfully and previous releases superseded',
       sbomID: sbomID,
       status: 'ACTIVE',
       fabricTxID: fabricTxID
