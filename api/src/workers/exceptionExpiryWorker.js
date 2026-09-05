@@ -23,6 +23,8 @@ async function processExpiredExceptions() {
     const now = new Date().toISOString();
     const expiredExceptions = await policyExceptionRepository.findExceptionsExpiringBefore(now, client);
     
+    const sbomIdsToReevaluate = new Set();
+
     if (expiredExceptions.length > 0) {
       console.log(`[ExceptionExpiryWorker] Found ${expiredExceptions.length} expired exceptions`);
       
@@ -30,8 +32,6 @@ async function processExpiredExceptions() {
       
       // 3. Mark exceptions EXPIRED.
       const marked = await policyExceptionRepository.markExpiredExceptions(ids, client);
-      
-      const sbomIdsToReevaluate = new Set();
       
       // 4. Record an append-oriented expiry event.
       for (const exc of marked) {
@@ -49,7 +49,22 @@ async function processExpiredExceptions() {
           trustPolicyHash: exc.trust_policy_hash
         }, client);
       }
+    }
+    
+    // Find VEX Statements whose policy_valid_until is in the past
+    const expiredVexStatements = await sbomRepository.findVexStatementsExpiringBefore(now, client);
+    if (expiredVexStatements.length > 0) {
+      console.log(`[ExceptionExpiryWorker] Found ${expiredVexStatements.length} expired VEX statements`);
       
+      const vexIds = expiredVexStatements.map(v => v.id);
+      const markedVex = await sbomRepository.markExpiredVexStatements(vexIds, client);
+      
+      for (const vex of markedVex) {
+        sbomIdsToReevaluate.add(vex.sbom_id);
+      }
+    }
+
+    if (sbomIdsToReevaluate.size > 0) {
       await client.query('COMMIT');
       
       // 6. Trigger authoritative CAECTD reevaluation.

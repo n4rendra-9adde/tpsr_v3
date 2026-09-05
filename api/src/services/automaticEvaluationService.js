@@ -66,6 +66,17 @@ async function evaluateSubmittedSbom({ sbomId, correlationId, principal, trigger
       lifecycleEffect: actualLifecycleEffect
     };
 
+    // Construct cryptographic Evidence Bundle Hash (Observation 3)
+    const evidenceBundle = {
+        policyVersion: evalResult.policyVersion,
+        provenanceHashes: provenance.map(p => p.attestation_hash).sort(),
+        vexStatementHashes: vexStatements.map(v => v.statement_hash).sort(),
+        policyExceptionIds: exceptions.map(e => e.id).sort(),
+        contextAssertionId: activeAssertion ? activeAssertion.id : (latestLegacyContext ? latestLegacyContext.id : null)
+    };
+    const evidenceBundleHash = crypto.createHash('sha256').update(JSON.stringify(evidenceBundle)).digest('hex');
+    evalResult.evidenceSummary.evidenceBundleHash = evidenceBundleHash;
+
     const dbDecision = await trustRepository.insertTrustDecision({
       sbomId: sbomId,
       trustStatus: evalResult.trustStatus,
@@ -95,7 +106,8 @@ async function evaluateSubmittedSbom({ sbomId, correlationId, principal, trigger
         reasonDescription: evalResult.reasonDescription,
         policyVersion: evalResult.policyVersion || '3.0',
         idempotencyKey: null,
-        evidenceSummary: evalResult.evidenceSummary
+        evidenceSummary: evalResult.evidenceSummary,
+        evidenceBundleHash: evidenceBundleHash
       }
     });
 

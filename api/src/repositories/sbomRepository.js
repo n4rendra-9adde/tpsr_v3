@@ -608,6 +608,26 @@ async function getPolicyExceptionsBySBOMID(sbomID) {
   }
 }
 
+async function findVexStatementsExpiringBefore(date, client = null) {
+  const query = "SELECT * FROM vex_statements WHERE policy_impact != 'EXPIRED' AND policy_impact != 'REVOKED' AND policy_valid_until <= $1 FOR UPDATE SKIP LOCKED";
+  const executor = client || db.pool;
+  const result = await executor.query(query, [date]);
+  return result.rows;
+}
+
+async function markExpiredVexStatements(ids, client = null) {
+  if (!ids || ids.length === 0) return [];
+  const query = `
+    UPDATE vex_statements
+    SET policy_impact = 'EXPIRED', statement_last_updated_at = NOW()
+    WHERE id = ANY($1)
+    RETURNING *;
+  `;
+  const executor = client || db.pool;
+  const result = await executor.query(query, [ids]);
+  return result.rows;
+}
+
 module.exports = {
   insertSBOMDocument: insertSBOMDocument,
   insertArtifactRecord: insertArtifactRecord,
@@ -629,5 +649,7 @@ module.exports = {
   insertDeploymentContext: insertDeploymentContext,
   getDeploymentContextBySBOMID: getDeploymentContextBySBOMID,
   insertPolicyException: insertPolicyException,
-  getPolicyExceptionsBySBOMID: getPolicyExceptionsBySBOMID
+  getPolicyExceptionsBySBOMID: getPolicyExceptionsBySBOMID,
+  findVexStatementsExpiringBefore: findVexStatementsExpiringBefore,
+  markExpiredVexStatements: markExpiredVexStatements
 };

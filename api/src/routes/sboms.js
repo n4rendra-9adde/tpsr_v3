@@ -14,10 +14,21 @@ router.get('/sboms', async function (req, res) {
     var enriched = await Promise.all(sboms.map(async function (item) {
       var decision = await trustRepository.getLatestTrustDecisionBySBOMID(item.sbom_id);
       var normalized = trustRepository.normalizeTrustStatus(decision ? decision.trust_status : null);
+      
+      var outboxRecords = await trustRepository.getOutboxRecordsBySBOMID(item.sbom_id);
+      var latestOutbox = outboxRecords.length > 0 ? outboxRecords[0] : null;
+      var anchorStatus = 'UNANCHORED';
+      if (latestOutbox) {
+        if (['PENDING', 'RETRY_PENDING', 'PROCESSING'].includes(latestOutbox.status)) anchorStatus = 'PENDING_ANCHOR';
+        else if (latestOutbox.status === 'COMPLETED') anchorStatus = 'ANCHORED';
+        else if (latestOutbox.status === 'FAILED_REQUIRES_REVIEW') anchorStatus = 'ANCHOR_FAILED';
+      }
+
       var result = Object.assign({}, item, {
         trustStatus: normalized.trustDecision,
         trustReasonCode: decision ? decision.reason_code : 'GOV-002',
-        trustReasonDescription: decision ? decision.reason_description : 'v3 trust evaluation not yet executed'
+        trustReasonDescription: decision ? decision.reason_description : 'v3 trust evaluation not yet executed',
+        ledgerAnchorStatus: anchorStatus
       });
       if (normalized.legacyNormalized) {
         result.legacyNormalized = true;
@@ -58,6 +69,15 @@ router.get('/sboms/:sbomID/document', async function (req, res) {
     var decision = await trustRepository.getLatestTrustDecisionBySBOMID(sbomID);
     var normalized = trustRepository.normalizeTrustStatus(decision ? decision.trust_status : null);
 
+    var outboxRecords = await trustRepository.getOutboxRecordsBySBOMID(sbomID);
+    var latestOutbox = outboxRecords.length > 0 ? outboxRecords[0] : null;
+    var anchorStatus = 'UNANCHORED';
+    if (latestOutbox) {
+      if (['PENDING', 'RETRY_PENDING', 'PROCESSING'].includes(latestOutbox.status)) anchorStatus = 'PENDING_ANCHOR';
+      else if (latestOutbox.status === 'COMPLETED') anchorStatus = 'ANCHORED';
+      else if (latestOutbox.status === 'FAILED_REQUIRES_REVIEW') anchorStatus = 'ANCHOR_FAILED';
+    }
+
     var responsePayload = {
       message: 'SBOM document retrieved successfully',
       sbomID: record.sbom_id,
@@ -76,6 +96,7 @@ router.get('/sboms/:sbomID/document', async function (req, res) {
       trustStatus: normalized.trustDecision,
       trustReasonCode: decision ? decision.reason_code : 'GOV-002',
       trustReasonDescription: decision ? decision.reason_description : 'v3 trust evaluation not yet executed',
+      ledgerAnchorStatus: anchorStatus,
       sbom: record.sbom_json
     };
 

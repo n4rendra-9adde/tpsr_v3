@@ -174,6 +174,7 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 			existing.PolicyVersion == input.PolicyVersion &&
 			existing.IdempotencyKey == input.IdempotencyKey &&
 			existing.ProvenanceHash == input.ProvenanceHash &&
+			existing.EvidenceBundleHash == input.EvidenceBundleHash &&
 			reflect.DeepEqual(existing.SignatureHashes, input.SignatureHashes) &&
 			reflect.DeepEqual(existing.ActiveVexIds, input.ActiveVexIds) &&
 			existing.EffectiveRiskScore == input.EffectiveRiskScore {
@@ -239,6 +240,7 @@ func (c *SBOMContract) RecordTrustDecision(ctx contractapi.TransactionContextInt
 		PolicyVersion:      input.PolicyVersion,
 		IdempotencyKey:     input.IdempotencyKey,
 		ProvenanceHash:     input.ProvenanceHash,
+		EvidenceBundleHash: input.EvidenceBundleHash,
 		SignatureHashes:    sbom.SignatureHashes,
 		ActiveVexIds:       sbom.ActiveVexIds,
 		EffectiveRiskScore: input.EffectiveRiskScore,
@@ -295,6 +297,7 @@ func (c *SBOMContract) GetTrustDecision(ctx contractapi.TransactionContextInterf
 		PolicyVersion:      pointer.PolicyVersion,
 		IdempotencyKey:     pointer.IdempotencyKey,
 		ProvenanceHash:     pointer.ProvenanceHash,
+		EvidenceBundleHash: pointer.EvidenceBundleHash,
 		SignatureHashes:    pointer.SignatureHashes,
 		ActiveVexIds:       pointer.ActiveVexIds,
 		EffectiveRiskScore: pointer.EffectiveRiskScore,

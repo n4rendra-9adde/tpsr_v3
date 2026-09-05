@@ -20,8 +20,12 @@ describe('8-Stage SLSA Provenance Verification Engine', () => {
     const blobPath = path.join(tmpDir, 'blob.txt');
     const predPath = path.join(tmpDir, 'predicate.json');
     const predV02Path = path.join(tmpDir, 'predicate_v02.json');
+    const predBadBuilderPath = path.join(tmpDir, 'predicate_bad_builder.json');
+    const predBadSourcePath = path.join(tmpDir, 'predicate_bad_source.json');
     const envPath = path.join(tmpDir, 'envelope.json');
     const envV02Path = path.join(tmpDir, 'envelope_v02.json');
+    const envBadBuilderPath = path.join(tmpDir, 'envelope_bad_builder.json');
+    const envBadSourcePath = path.join(tmpDir, 'envelope_bad_source.json');
 
     // dummy blob
     fs.writeFileSync(blobPath, 'dummy', 'utf8');
@@ -66,6 +70,16 @@ describe('8-Stage SLSA Provenance Verification Engine', () => {
     };
     fs.writeFileSync(predV02Path, JSON.stringify(predicateV02));
 
+    // Predicate with Unauthorized Builder
+    const predicateBadBuilder = JSON.parse(JSON.stringify(predicate));
+    predicateBadBuilder.runDetails.builder.id = 'https://malicious-runner.com/unauthorized';
+    fs.writeFileSync(predBadBuilderPath, JSON.stringify(predicateBadBuilder));
+
+    // Predicate with Unauthorized Source Repo
+    const predicateBadSource = JSON.parse(JSON.stringify(predicate));
+    predicateBadSource.buildDefinition.externalParameters.source.uri = 'https://github.com/malicious/fork';
+    fs.writeFileSync(predBadSourcePath, JSON.stringify(predicateBadSource));
+
     const cosignBin = path.join(__dirname, '../../../../bin/cosign');
     
     // Generate keypair
@@ -81,8 +95,19 @@ describe('8-Stage SLSA Provenance Verification Engine', () => {
     // Attest v0.2
     execSync(`env COSIGN_PASSWORD="" ${cosignBin} attest-blob --key cosign.key --predicate predicate_v02.json --type slsaprovenance02 --yes --tlog-upload=false --output-signature envelope_v02.json blob.txt`, { cwd: tmpDir });
 
+    // Attest Bad Builder
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} attest-blob --key cosign.key --predicate predicate_bad_builder.json --type slsaprovenance1 --yes --tlog-upload=false --output-signature envelope_bad_builder.json blob.txt`, { cwd: tmpDir });
+
+    // Attest Bad Source
+    execSync(`env COSIGN_PASSWORD="" ${cosignBin} attest-blob --key cosign.key --predicate predicate_bad_source.json --type slsaprovenance1 --yes --tlog-upload=false --output-signature envelope_bad_source.json blob.txt`, { cwd: tmpDir });
+
     validEnvelope = JSON.parse(fs.readFileSync(envPath, 'utf8'));
     validEnvelopeV02 = JSON.parse(fs.readFileSync(envV02Path, 'utf8'));
+    
+    // Attach dummy hashes to bad envelopes for tests
+    validEnvelope._dummyHash = dummyHash;
+    validEnvelope._badBuilder = JSON.parse(fs.readFileSync(envBadBuilderPath, 'utf8'));
+    validEnvelope._badSource = JSON.parse(fs.readFileSync(envBadSourcePath, 'utf8'));
     
     // Override the validHash for the tests since attest-blob bound it to "dummy" hash
     validEnvelope._dummyHash = dummyHash;
@@ -138,5 +163,19 @@ describe('8-Stage SLSA Provenance Verification Engine', () => {
     const res = await verifyProvenance(tampered, validEnvelope._dummyHash, 'OFFLINE_KEYED', testPubKey);
     expect(res.status).toBe('INVALID');
     expect(res.reasonCode).toBe('PRV-006'); // Envelope tampered
+  });
+
+  test('Stage 6: Rejects properly signed provenance if Builder Identity is unauthorized', async () => {
+    const res = await verifyProvenance(validEnvelope._badBuilder, validEnvelope._dummyHash, 'OFFLINE_KEYED', testPubKey);
+    expect(res.status).toBe('INVALID');
+    expect(res.reasonCode).toBe('PRV-003');
+    expect(res.reasonDescription).toMatch(/unauthorized/i);
+  });
+
+  test('Stage 6: Rejects properly signed provenance if Source Repository mismatches policy', async () => {
+    const res = await verifyProvenance(validEnvelope._badSource, validEnvelope._dummyHash, 'OFFLINE_KEYED', testPubKey);
+    expect(res.status).toBe('INVALID');
+    expect(res.reasonCode).toBe('PRV-004');
+    expect(res.reasonDescription).toMatch(/mismatch/i);
   });
 });

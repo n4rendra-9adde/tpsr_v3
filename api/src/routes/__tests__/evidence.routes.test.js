@@ -83,6 +83,44 @@ describe('TPSR v3 Evidence Governance Routes Unit Tests', () => {
     expect(res.body.evidenceId).toBe(501);
   });
 
+  test('POST /api/v1/sbom/:sbomId/provenance: Enforces Artifact-SBOM-Provenance binding by explicitly fetching artifact hash', async () => {
+    // 1. Mock the SBOM
+    sbomRepository.getSBOMDocumentBySBOMID.mockResolvedValue({
+      id: 105,
+      sbom_id: 'test-sbom-105',
+      sbom_hash: 'sbom_hash_not_artifact_hash'
+    });
+    
+    // 2. Mock the Artifact Record linked to the SBOM
+    const realArtifactHash = 'abc123def4567890abcdef1234567890abcdef1234567890abcdef1234567890';
+    sbomRepository.getArtifactRecordsBySBOMDocumentID.mockResolvedValue([
+      { artifact_hash: realArtifactHash }
+    ]);
+
+    provenanceEngine.verifyProvenance.mockResolvedValue({
+      status: 'VALID',
+      reasonCode: 'PRV-000'
+    });
+    sbomRepository.insertProvenanceAttestation.mockResolvedValue({ id: 505 });
+
+    const res = await request(app)
+      .post('/api/v1/sbom/test-sbom-105/provenance')
+      .set('x-user-id', 'dev-user')
+      .set('x-user-role', 'developer')
+      .send({ 
+        envelope: { payloadType: 'application/vnd.in-toto+json', payload: 'bW9jaw==' }
+      });
+
+    expect(res.status).toBe(201);
+    // CRUCIAL BINDING TEST: verifyProvenance MUST have been called with the realArtifactHash, NOT the sbom_hash
+    expect(provenanceEngine.verifyProvenance).toHaveBeenCalledWith(
+      expect.any(Object),
+      realArtifactHash, // Explicit Artifact-to-Provenance binding target
+      'OFFLINE_KEYED',
+      null
+    );
+  });
+
   test('POST /api/v1/sbom/:sbomId/signatures: Rejects synthetic/simulated signature and returns 422', async () => {
     sbomRepository.getSBOMDocumentBySBOMID.mockResolvedValue({
       id: 102,

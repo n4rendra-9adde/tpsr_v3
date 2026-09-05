@@ -23,7 +23,7 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
     const mockRecord = {
       id: 'outbox-101',
       action: 'RECORD_TRUST_DECISION',
-      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0' },
+      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0', evidenceBundleHash: 'mockHash' },
       retry_count: 0
     };
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);
@@ -47,7 +47,7 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
     const mockRecord = {
       id: 'outbox-102',
       action: 'RECORD_TRUST_DECISION',
-      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0' },
+      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0', evidenceBundleHash: 'mockHash' },
       retry_count: 1,
     };
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);
@@ -76,7 +76,7 @@ describe('TPSR v3 Transactional Ledger Outbox Worker Concurrency & Retry Tests',
     const mockRecord = {
       id: 'outbox-103',
       action: 'RECORD_TRUST_DECISION',
-      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0' },
+      payload: { version: '3.0', sbomID: 'sb-1', decisionId: 'd-1', trustStatus: 'TRUSTED', reasonCode: 'TR-1', reasonDescription: 'ok', policyVersion: '1.0', evidenceBundleHash: 'mockHash' },
       retry_count: 4
     };
     trustRepository.claimPendingOutboxRecords.mockResolvedValue([mockRecord]);

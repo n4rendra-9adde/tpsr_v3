@@ -1,4 +1,4 @@
-# Tamper-Proof SBOM Registry (TPSR) — Project Overview
+# TPSR: A Context and Provenance-Aware, Tamper-Proof SBOM Registry and Lifecycle Management Framework
 
 A state-of-the-art, secure, and resilient system for anchoring, verifying, and managing the lifecycle of **Software Bill of Materials (SBOMs)** using a hybrid architecture of **Hyperledger Fabric Blockchain** and **PostgreSQL Database**.
 

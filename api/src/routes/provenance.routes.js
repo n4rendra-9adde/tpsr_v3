@@ -30,7 +30,20 @@ async function handleRecordProvenance(req, res) {
       return res.status(404).json({ error: `SBOM document not found for ID: ${sbomId}` });
     }
 
-    const expectedArtifactHash = body.expectedArtifactHash || pgDocument.sbom_hash;
+    let expectedArtifactHash = body.expectedArtifactHash;
+    
+    // Explicitly enforce Artifact-SBOM-Provenance binding
+    // Instead of verifying against the SBOM's hash, we must verify against the Artifact's hash
+    // that this SBOM describes. This prevents mixing evidence from different builds.
+    if (!expectedArtifactHash) {
+      const artifacts = await sbomRepository.getArtifactRecordsBySBOMDocumentID(pgDocument.id);
+      if (artifacts && artifacts.length > 0) {
+        expectedArtifactHash = artifacts[0].artifact_hash;
+      } else {
+        // Fallback for edge cases where the artifact hash was not provided during SBOM submission
+        expectedArtifactHash = pgDocument.sbom_hash;
+      }
+    }
     
     // Check if the user is providing explicit offline keys, else try to use policy or fallbacks
     const signatureType = body.signatureType || 'OFFLINE_KEYED';

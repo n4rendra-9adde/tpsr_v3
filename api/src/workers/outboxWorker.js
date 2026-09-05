@@ -76,7 +76,7 @@ async function processOutboxBatch(batchSize = 10, workerId = 'outbox-worker-1', 
       }
       
       if (action === 'RECORD_TRUST_DECISION') {
-        const required = ['version', 'sbomID', 'decisionId', 'trustStatus', 'reasonCode', 'reasonDescription', 'policyVersion'];
+        const required = ['version', 'sbomID', 'decisionId', 'trustStatus', 'reasonCode', 'reasonDescription', 'policyVersion', 'evidenceBundleHash'];
         for (const req of required) {
           if (!payloadObj[req]) {
             throw new Error(`OUTBOX_ACTION_PAYLOAD_MISMATCH: Missing required field ${req} for RECORD_TRUST_DECISION`);

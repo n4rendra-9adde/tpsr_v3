@@ -90,6 +90,7 @@ type RecordTrustDecisionInput struct {
 	SignatureHashes    []string `json:"signatureHashes,omitempty"`
 	ActiveVexIds       []string `json:"activeVexIds,omitempty"`
 	EffectiveRiskScore float64  `json:"effectiveRiskScore,omitempty"`
+	EvidenceBundleHash string   `json:"evidenceBundleHash"`
 }
 
 type TrustEvidenceRecord struct {
@@ -114,6 +115,7 @@ type TrustDecisionPointer struct {
 	SignatureHashes    []string `json:"signatureHashes,omitempty"`
 	ActiveVexIds       []string `json:"activeVexIds,omitempty"`
 	EffectiveRiskScore float64  `json:"effectiveRiskScore,omitempty"`
+	EvidenceBundleHash string   `json:"evidenceBundleHash"`
 	RecordedAt         int64    `json:"recordedAt"`
 	RecordedBy         string   `json:"recordedBy"`
 }
@@ -134,6 +136,7 @@ type TrustDecisionResponse struct {
 	SignatureHashes    []string `json:"signatureHashes"`
 	ActiveVexIds       []string `json:"activeVexIds"`
 	EffectiveRiskScore float64  `json:"effectiveRiskScore"`
+	EvidenceBundleHash string   `json:"evidenceBundleHash"`
 	RecordedAt         int64    `json:"recordedAt"`
 	RecordedBy         string   `json:"recordedBy"`
 }

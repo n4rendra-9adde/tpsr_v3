@@ -1,7 +1,7 @@
-# TPSR — Tamper-Proof SBOM Registry
+# TPSR: A Context and Provenance-Aware, Tamper-Proof SBOM Registry and Lifecycle Management Framework
 
 ## Project Summary
-The Tamper-Proof SBOM Registry (TPSR) is an enterprise-grade, tamper-evident Software Bill of Materials (SBOM) registry. It is designed to secure the software supply chain by providing post-generation artifact integrity, immutable audit history, and strict policy-driven lifecycle governance.
+The Tamper-Proof SBOM Registry (TPSR) is a prototype-scale, tamper-evident Software Bill of Materials (SBOM) registry. It is designed to secure the software supply chain by providing post-generation artifact integrity, immutable audit history, and strict policy-driven lifecycle governance within defined trust assumptions.
 
 TPSR is built on a hybrid architecture that leverages:
 - **Hyperledger Fabric** for immutable cryptographic anchoring and state transitions.
@@ -11,12 +11,12 @@ TPSR is built on a hybrid architecture that leverages:
 - **Go Chaincode** for ledger interactions.
 
 ## Problem Statement
-Software supply chain integrity is a critical challenge in modern development. To trust dependencies and build artifacts, organizations must be able to detect post-generation SBOM tampering. TPSR provides full traceability, non-repudiation, and independent cryptographic validation of SBOM records, ensuring they have not been maliciously or accidentally altered.
+Software supply chain integrity is a critical challenge in modern development. To trust dependencies and build artifacts, organizations must be able to detect post-generation SBOM tampering. TPSR provides full traceability, non-repudiation, and cryptographically verifiable validation of SBOM records, ensuring they have not been maliciously or accidentally altered within the system's operational trust boundaries.
 
 ## Core Capabilities
 - **CAECTD Trust Governance**: 4-state Trust Model (`TRUSTED`, `CONDITIONALLY_ACCEPTED`, `REVIEW_REQUIRED`, `REJECTED`) supporting VEX overlays and Deployment Context Assertions.
-- **Transactional Outbox Pattern**: Decouples API ingestion from blockchain consensus, allowing high-throughput scaling (tested with 1,250+ records).
-- **Upstream Verification**: Built-in validation of offline-keyed Cosign signatures and SLSA Level 3 provenance.
+- **Transactional Outbox Pattern**: Decouples API ingestion from blockchain consensus, demonstrating asynchronous processing capabilities (tested with ~1,250 records).
+- **Upstream Verification**: Built-in verification of externally generated, explicitly keyed Cosign signatures and SLSA Level 3 provenance envelopes.
 - **Advanced Tamper Intelligence**: Custom diff engine categorizes tampering into `COMPONENT_INJECTION`, `COMPONENT_REMOVAL`, `VERSION_MODIFICATION`, and `METADATA_MODIFICATION`.
 - **High-Resolution Performance Telemetry**: `hrtime.bigint()` instrumentation proves end-to-end ingestion returns in ~45ms.
 - **Role-Based Access Control (RBAC)**: Protects lifecycle transitions based on user roles (Developer, Security, Auditor, Admin).
